@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Next.js & Frontend Build Outputs
+.next/
+out/
+build/
+dist/
+.turbo/
+
+# Environment Variables & Secrets
+.env
+.env*.local
+!.env.example
+secrets/
+
+# IDE & Editor Configs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large Data & Local SQLite (Keep raw schema and sample fixtures)
+*.sqlite3
+*.db
