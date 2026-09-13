@@ -77,6 +77,33 @@ class OpenSkyAdapterTestCase(unittest.TestCase):
         self.assertIsNone(flight.position.altitude_baro_ft)
         self.assertIsNone(flight.position.groundspeed_mps)
 
+    def test_normalize_mlat_and_uat_sources(self):
+        """Test normalization of MLAT and UAT position sources."""
+        # MLAT vector (e.g. domestic ATR 72 tracked via multilateration)
+        mlat_vector = [
+            "70a8b1", "BHA619  ", "Nepal", 1726135706, 1726135706,
+            83.98, 28.20, 2118.0, False, None, None, None,
+            None, 2150.0, None, False, 2, 3
+        ]
+        flight_mlat = self.provider._normalize_state_vector(mlat_vector)
+        self.assertIsNotNone(flight_mlat)
+        self.assertEqual(flight_mlat.identification.callsign, "BHA619")
+        self.assertEqual(flight_mlat.identification.position_source, "MLAT")
+        self.assertEqual(flight_mlat.identification.category, 3)
+        self.assertEqual(flight_mlat.identification.category_name, "Small (15,500 to 75,000 lbs)")
+        self.assertIsNone(flight_mlat.position.groundspeed_mps)
+
+        # UAT / ADS-R vector
+        uat_vector = [
+            "70a8c2", "NYT878  ", "Nepal", 1726135706, 1726135706,
+            84.42, 27.68, 3360.0, False, 110.0, 90.0, 0.0,
+            None, 3400.0, "1200", False, 4, 3
+        ]
+        flight_uat = self.provider._normalize_state_vector(uat_vector)
+        self.assertIsNotNone(flight_uat)
+        self.assertEqual(flight_uat.identification.callsign, "NYT878")
+        self.assertEqual(flight_uat.identification.position_source, "UAT / ADS-R")
+
     def test_invalid_vector(self):
         """Test that invalid or empty state vectors return None."""
         self.assertIsNone(self.provider._normalize_state_vector([]))

@@ -5,6 +5,7 @@ Provider-independent schema for live aircraft tracking.
 
 from datetime import datetime
 from typing import Optional, List
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field, computed_field
 
 class FlightPosition(BaseModel):
@@ -52,6 +53,10 @@ class FlightIdentification(BaseModel):
     origin_country: Optional[str] = Field(default=None, description="Country of registration or ICAO address allocation")
     is_nepal_registered: bool = Field(default=False, description="True if ICAO24 belongs to the Nepalese 70a8.. allocation block")
     squawk: Optional[str] = Field(default=None, description="4-digit octal transponder squawk code")
+    category: Optional[int] = Field(default=None, description="OpenSky emitter category code (0-17)")
+    category_name: Optional[str] = Field(default=None, description="Descriptive category name (e.g. Light, Small, Large, Rotorcraft)")
+    position_source: Optional[str] = Field(default=None, description="Position source technology (ADS-B, MLAT, ASTERIX, FLARM)")
+    spi: Optional[bool] = Field(default=None, description="Special Purpose Indicator (ident button active)")
 
 class FlightRoute(BaseModel):
     """Normalized flight origin and destination airport references."""
@@ -69,6 +74,9 @@ class NormalizedFlight(BaseModel):
     identification: FlightIdentification
     position: FlightPosition
     route: Optional[FlightRoute] = None
+    aircraft_spec: Optional[dict] = Field(default=None, description="Linked aircraft performance & capacity specifications")
+    nearest_airport: Optional[str] = Field(default=None, description="Nearest airport code and name")
+    nearest_airport_distance_km: Optional[float] = Field(default=None, description="Distance to nearest airport in km")
     last_contact: Optional[datetime] = Field(default=None, description="UTC timestamp of the latest signal receipt")
     data_freshness_seconds: Optional[float] = Field(default=None, description="Seconds elapsed between signal receipt and query")
 

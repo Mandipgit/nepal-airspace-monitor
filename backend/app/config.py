@@ -6,6 +6,7 @@ Loads configuration from environment variables and .env file.
 import os
 from functools import lru_cache
 from typing import List
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field
 
 # Load .env if python-dotenv is installed
@@ -17,10 +18,10 @@ except ImportError:
     pass
 
 class BoundingBoxConfig(BaseModel):
-    lamin: float = Field(default=26.34, description="Southern latitude bound")
-    lomin: float = Field(default=80.05, description="Western longitude bound")
-    lamax: float = Field(default=30.45, description="Northern latitude bound")
-    lomax: float = Field(default=88.20, description="Eastern longitude bound")
+    lamin: float = Field(default=25.80, description="Southern latitude bound (Nepal FIR corridor)")
+    lomin: float = Field(default=79.80, description="Western longitude bound")
+    lamax: float = Field(default=30.65, description="Northern latitude bound")
+    lomax: float = Field(default=88.50, description="Eastern longitude bound")
 
 class Settings(BaseModel):
     # Server settings
@@ -60,12 +61,12 @@ class Settings(BaseModel):
             url = url[:-8].rstrip("/")
         return url
     
-    # Nepal Airspace Bounding Box Defaults
+    # Nepal Airspace Bounding Box Defaults (Full Regional Corridor)
     NEPAL_BBOX: BoundingBoxConfig = BoundingBoxConfig(
-        lamin=float(os.getenv("NEPAL_BOUNDING_BOX_LAMIN", "26.34")),
-        lomin=float(os.getenv("NEPAL_BOUNDING_BOX_LOMIN", "80.05")),
-        lamax=float(os.getenv("NEPAL_BOUNDING_BOX_LAMAX", "30.45")),
-        lomax=float(os.getenv("NEPAL_BOUNDING_BOX_LOMAX", "88.20"))
+        lamin=float(os.getenv("NEPAL_BOUNDING_BOX_LAMIN", "25.00")),
+        lomin=float(os.getenv("NEPAL_BOUNDING_BOX_LOMIN", "79.00")),
+        lamax=float(os.getenv("NEPAL_BOUNDING_BOX_LAMAX", "31.50")),
+        lomax=float(os.getenv("NEPAL_BOUNDING_BOX_LOMAX", "89.50"))
     )
 
 @lru_cache()

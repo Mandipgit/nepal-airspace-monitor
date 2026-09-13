@@ -4,6 +4,7 @@ Provides normalized live aircraft tracking data for the frontend.
 """
 
 from typing import Optional
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Query, HTTPException, status
 
 from app.models.flight import (
@@ -23,6 +24,8 @@ async def get_live_flights(
     lamax: Optional[float] = Query(None, description="Northern latitude bound override"),
     lomax: Optional[float] = Query(None, description="Eastern longitude bound override"),
     nepal_only: bool = Query(False, description="Filter only Nepalese registered aircraft (70a8.. ICAO24 prefix)"),
+    source: Optional[str] = Query(None, description="Filter by surveillance source (e.g. ADS-B, MLAT, UAT)"),
+    enriched: bool = Query(True, description="Enrich with aircraft specs and nearest airport proximity"),
     force_refresh: bool = Query(False, description="Bypass server-side cache and query provider immediately")
 ):
     """
@@ -35,6 +38,8 @@ async def get_live_flights(
         lamax=lamax,
         lomax=lomax,
         nepal_only=nepal_only,
+        source=source,
+        enriched=enriched,
         force_refresh=force_refresh
     )
 

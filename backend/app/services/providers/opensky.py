@@ -3,6 +3,7 @@ OpenSky Network Flight Data Provider
 Implements BaseFlightProvider to fetch, authenticate, and normalize live OpenSky states.
 """
 
+import base64
 import logging
 import time
 from datetime import datetime, timezone
@@ -29,13 +30,16 @@ AIRLINE_REGISTRY: Dict[str, Tuple[str, str]] = {
     "NYT": ("NYT", "Yeti Airlines"),
     "TRA": ("TRA", "Tara Air"),
     "SMT": ("SMT", "Summit Air"),
-    "HRA": ("Himalaya Airlines", "Himalaya Airlines"),
+    "HRA": ("HRA", "Himalaya Airlines"),
+    "HIM": ("HIM", "Himalaya Airlines"),
     "GBL": ("GBL", "Guna Airlines"),
     # Frequent International & Regional Carriers Operating in Nepal Airspace
     "BBC": ("BBC", "Biman Bangladesh Airlines"),
     "AIC": ("AIC", "Air India"),
     "IGO": ("IGO", "IndiGo"),
     "AXB": ("AXB", "Air India Express"),
+    "AIX": ("AIX", "Air India Express"),
+    "AKJ": ("AKJ", "Akasa Air"),
     "SEJ": ("SEJ", "SpiceJet"),
     "VTI": ("VTI", "Vistara"),
     "QTR": ("QTR", "Qatar Airways"),
@@ -45,11 +49,51 @@ AIRLINE_REGISTRY: Dict[str, Tuple[str, str]] = {
     "CSN": ("CSN", "China Southern Airlines"),
     "CCA": ("CCA", "Air China"),
     "CXA": ("CXA", "XiamenAir"),
+    "CPA": ("CPA", "Cathay Pacific"),
     "SLK": ("SLK", "SilkAir"),
     "SIA": ("SIA", "Singapore Airlines"),
     "THA": ("THA", "Thai Airways"),
+    "KAL": ("KAL", "Korean Air"),
+    "JAL": ("JAL", "Japan Airlines"),
+    "BTN": ("BTN", "Drukair"),
+    "QNT": ("QNT", "Qanot Sharq"),
+    "MXD": ("MXD", "Batik Air Malaysia"),
+    "RMF": ("RMF", "Royal Malaysian Air Force"),
+    "RPP": ("RPP", "Royal Air Philippines"),
+    "IRM": ("IRM", "Mahan Air"),
+    "SMR": ("SMR", "Somon Air"),
+    "KNE": ("KNE", "flynas"),
     "MSR": ("MSR", "EgyptAir"),
     "DHK": ("DHK", "DHL Air"),
+}
+
+OPENSKY_CATEGORY_MAP: Dict[int, str] = {
+    0: "No Information",
+    1: "General Aircraft",
+    2: "Light (< 15,500 lbs)",
+    3: "Small (15,500 to 75,000 lbs)",
+    4: "Large (75,000 to 300,000 lbs)",
+    5: "High Vortex Large",
+    6: "Heavy (> 300,000 lbs)",
+    7: "High Performance",
+    8: "Rotorcraft (Helicopter)",
+    9: "Glider",
+    10: "Lighter-than-air",
+    11: "Parachutist",
+    12: "Ultralight",
+    14: "Unmanned Aerial Vehicle (UAV)",
+    15: "Trans-atmospheric Vehicle",
+}
+
+OPENSKY_POSITION_SOURCE_MAP: Dict[int, str] = {
+    0: "ADS-B",
+    1: "ASTERIX",
+    2: "MLAT",
+    3: "FLARM",
+    4: "UAT / ADS-R",
+    5: "TIS-B",
+    6: "ADS-C",
+    7: "Other"
 }
 
 class OpenSkyProvider(BaseFlightProvider):
@@ -124,7 +168,15 @@ class OpenSkyProvider(BaseFlightProvider):
         heading = state[10]
         vert_rate = state[11]
         geo_alt = state[13] if len(state) > 13 else None
-        squawk = state[14] if len(state) > 14 else None
+        squawk = state[14] if len(state) > 14 and state[14] else None
+        spi = bool(state[15]) if len(state) > 15 and state[15] is not None else None
+        pos_src_idx = state[16] if len(state) > 16 and state[16] is not None else None
+        if pos_src_idx is not None:
+            position_source = OPENSKY_POSITION_SOURCE_MAP.get(pos_src_idx, f"Other ({pos_src_idx})")
+        else:
+            position_source = "ADS-B"
+        cat_idx = state[17] if len(state) > 17 and state[17] is not None else None
+        category_name = OPENSKY_CATEGORY_MAP.get(cat_idx) if cat_idx is not None else None
         
         # Position timestamp
         pos_dt = datetime.fromtimestamp(time_pos, timezone.utc) if time_pos else None
@@ -135,19 +187,25 @@ class OpenSkyProvider(BaseFlightProvider):
         if contact_dt:
             freshness_sec = max(0.0, (datetime.now(timezone.utc) - contact_dt).total_seconds())
 
-        # Check Nepalese ICAO block (Empirically discovered: 70a8..)
-        is_nepal_reg = icao24.startswith("70a8")
-        if is_nepal_reg and not origin_country:
-            origin_country = "Nepal"
-            
         # Resolve airline from callsign prefix
         operator_icao = None
         operator_name = None
         if callsign:
-            # Check 3-letter prefix
             prefix = callsign[:3]
             if prefix in AIRLINE_REGISTRY:
                 operator_icao, operator_name = AIRLINE_REGISTRY[prefix]
+
+        # Check Nepalese registration (ICAO Annex 10 allocation 70a8.. to 70af.., country, operator, or callsign)
+        nepal_hex_prefixes = ("70a8", "70a9", "70aa", "70ab", "70ac", "70ad", "70ae", "70af")
+        nepal_operators = {"BHA", "NYT", "SHA", "RNA", "TRA", "SMT", "HRA", "HIM", "GBL"}
+        is_nepal_reg = bool(
+            (origin_country and origin_country.strip().lower() == "nepal") or
+            icao24.startswith(nepal_hex_prefixes) or
+            (operator_icao in nepal_operators) or
+            (callsign and callsign[:3] in nepal_operators)
+        )
+        if is_nepal_reg and not origin_country:
+            origin_country = "Nepal"
 
         position = FlightPosition(
             latitude=lat,
@@ -168,7 +226,11 @@ class OpenSkyProvider(BaseFlightProvider):
             operator_name=operator_name,
             origin_country=origin_country,
             is_nepal_registered=is_nepal_reg,
-            squawk=squawk
+            squawk=squawk,
+            category=cat_idx,
+            category_name=category_name,
+            position_source=position_source,
+            spi=spi
         )
         
         return NormalizedFlight(
@@ -194,7 +256,8 @@ class OpenSkyProvider(BaseFlightProvider):
             "lamin": lamin,
             "lomin": lomin,
             "lamax": lamax,
-            "lomax": lomax
+            "lomax": lomax,
+            "extended": 1
         }
         headers = {
             "User-Agent": "NepalFlightTracker/1.0"
@@ -207,10 +270,15 @@ class OpenSkyProvider(BaseFlightProvider):
             close_client_at_end = True
 
         try:
-            # Check for OAuth2 token if configured
+            # Check for OAuth2 token if configured, or HTTP Basic Auth
             token = await self._get_auth_token(client)
             if token:
                 headers["Authorization"] = f"Bearer {token}"
+            elif self.settings.OPENSKY_USERNAME and self.settings.OPENSKY_PASSWORD:
+                creds = base64.b64encode(
+                    f"{self.settings.OPENSKY_USERNAME}:{self.settings.OPENSKY_PASSWORD}".encode()
+                ).decode()
+                headers["Authorization"] = f"Basic {creds}"
 
             start_time = time.time()
             response = await client.get(url, params=params, headers=headers)
