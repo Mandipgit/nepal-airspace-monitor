@@ -1,9 +1,9 @@
-"""
-Unit Tests for OpenSky Provider Adapter
-"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import unittest
-from backend.app.services.providers.opensky import OpenSkyProvider
+from app.services.providers.opensky import OpenSkyProvider
 
 class OpenSkyAdapterTestCase(unittest.TestCase):
     def setUp(self):

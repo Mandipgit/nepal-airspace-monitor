@@ -1,11 +1,11 @@
-"""
-Unit Tests for AsyncTTLCache
-"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import unittest
 import asyncio
 import time
-from backend.app.core.cache import AsyncTTLCache
+from app.core.cache import AsyncTTLCache
 
 class AsyncTTLCacheTestCase(unittest.IsolatedAsyncioTestCase):
     async def test_cache_hit_and_miss(self):

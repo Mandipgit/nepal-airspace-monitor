@@ -39,3 +39,5 @@ Thumbs.db
 # Large Data & Local SQLite (Keep raw schema and sample fixtures)
 *.sqlite3
 *.db
+credentials.json
+

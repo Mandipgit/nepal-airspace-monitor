@@ -1,19 +1,19 @@
-"""
-Integration Tests for Flights API Endpoints
-"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import unittest
 from starlette.testclient import TestClient
 
-from backend.app.main import app
-from backend.app.models.flight import (
+from app.main import app
+from app.models.flight import (
     NormalizedFlight,
     FlightIdentification,
     FlightPosition
 )
-from backend.app.services.providers.base import BaseFlightProvider
-from backend.app.services.flight_service import FlightService, flight_service
-from backend.app.core.cache import flight_cache
+from app.services.providers.base import BaseFlightProvider
+from app.services.flight_service import FlightService, flight_service
+from app.core.cache import flight_cache
 
 class MockFlightProvider(BaseFlightProvider):
     """Mock provider returning fixed test flights."""

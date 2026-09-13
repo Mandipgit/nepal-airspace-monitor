@@ -1,10 +1,10 @@
-"""
-Unit Tests for Health Check Endpoints
-"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import unittest
 from starlette.testclient import TestClient
-from backend.app.main import app
+from app.main import app
 
 class HealthCheckTestCase(unittest.TestCase):
     def setUp(self):

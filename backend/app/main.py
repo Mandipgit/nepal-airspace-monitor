@@ -1,18 +1,21 @@
-"""
-FastAPI Application Entry Point
-Nepal Flight Tracker Backend
-"""
+import sys
+from pathlib import Path
+
+# Ensure backend directory is in sys.path
+backend_dir = Path(__file__).resolve().parent.parent
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.config import get_settings
-from backend.app.core.logging import setup_logging
-from backend.app.core.errors import AppError, app_error_handler
-from backend.app.api.v1.router import api_v1_router
-from backend.app.api.v1.health import router as health_router
-from backend.app import __version__
+from app.config import get_settings
+from app.core.logging import setup_logging
+from app.core.errors import AppError, app_error_handler
+from app.api.v1.router import api_v1_router
+from app.api.v1.health import router as health_router
+from app import __version__
 
 logger = setup_logging()
 
@@ -60,6 +63,7 @@ def create_app() -> FastAPI:
 app = create_app()
 
 if __name__ == "__main__":
+    # pyrefly: ignore [missing-import]
     import uvicorn
     settings = get_settings()
     uvicorn.run(

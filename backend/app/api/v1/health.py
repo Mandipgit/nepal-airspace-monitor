@@ -6,8 +6,8 @@ Provides system liveness and basic environment metadata.
 from datetime import datetime, timezone
 from fastapi import APIRouter
 from pydantic import BaseModel
-from backend.app.config import get_settings
-from backend.app import __version__
+from app.config import get_settings
+from app import __version__
 
 router = APIRouter(tags=["System"])
 

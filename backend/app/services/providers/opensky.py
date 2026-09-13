@@ -9,14 +9,14 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any, Tuple
 import httpx
 
-from backend.app.config import get_settings
-from backend.app.core.errors import ProviderError, RateLimitError
-from backend.app.models.flight import (
+from app.config import get_settings
+from app.core.errors import ProviderError, RateLimitError
+from app.models.flight import (
     NormalizedFlight,
     FlightIdentification,
     FlightPosition
 )
-from backend.app.services.providers.base import BaseFlightProvider
+from app.services.providers.base import BaseFlightProvider
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ Abstract class defining the contract for all live aircraft data providers.
 
 from abc import ABC, abstractmethod
 from typing import List
-from backend.app.models.flight import NormalizedFlight
+from app.models.flight import NormalizedFlight
 
 class BaseFlightProvider(ABC):
     """Abstract base class for live flight telemetry providers."""

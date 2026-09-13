@@ -5,7 +5,7 @@ Configures structured, clean logging for the FastAPI application.
 
 import logging
 import sys
-from backend.app.config import get_settings
+from app.config import get_settings
 
 def setup_logging():
     """Configure root logger format and level."""

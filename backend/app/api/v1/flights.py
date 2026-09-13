@@ -6,13 +6,13 @@ Provides normalized live aircraft tracking data for the frontend.
 from typing import Optional
 from fastapi import APIRouter, Query, HTTPException, status
 
-from backend.app.models.flight import (
+from app.models.flight import (
     FlightCollectionResponse,
     NormalizedFlight
 )
-from backend.app.services.flight_service import flight_service
-from backend.app.core.cache import flight_cache
-from backend.app.core.errors import FlightNotFoundError
+from app.services.flight_service import flight_service
+from app.core.cache import flight_cache
+from app.core.errors import FlightNotFoundError
 
 router = APIRouter(prefix="/flights", tags=["Flights"])
 

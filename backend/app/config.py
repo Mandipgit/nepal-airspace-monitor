@@ -7,10 +7,13 @@ import os
 from functools import lru_cache
 from typing import List
 from pydantic import BaseModel, Field
-from dotenv import load_dotenv
 
-# Load .env if present
-load_dotenv()
+# Load .env if python-dotenv is installed
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 class BoundingBoxConfig(BaseModel):
     lamin: float = Field(default=26.34, description="Southern latitude bound")

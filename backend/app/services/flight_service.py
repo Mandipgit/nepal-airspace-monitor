@@ -7,14 +7,14 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, List
 
-from backend.app.config import get_settings
-from backend.app.core.cache import flight_cache
-from backend.app.models.flight import (
+from app.config import get_settings
+from app.core.cache import flight_cache
+from app.models.flight import (
     NormalizedFlight,
     FlightCollectionResponse
 )
-from backend.app.services.providers.base import BaseFlightProvider
-from backend.app.services.providers.opensky import OpenSkyProvider
+from app.services.providers.base import BaseFlightProvider
+from app.services.providers.opensky import OpenSkyProvider
 
 logger = logging.getLogger(__name__)
 
