@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 # Load .env if python-dotenv is installed
 try:
+    # pyrefly: ignore [missing-import]
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
@@ -46,10 +47,18 @@ class Settings(BaseModel):
     # FlightAware AeroAPI (Reserved for Phase 9)
     FLIGHTAWARE_API_KEY: str = os.getenv("FLIGHTAWARE_API_KEY", "")
     
-    # Supabase (Reserved for Phase 5)
-    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    # Supabase (PostgreSQL) Configuration
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").rstrip("/")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
     SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+    SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+
+    def get_canonical_supabase_url(self) -> str:
+        """Return base Supabase project URL without trailing /rest/v1."""
+        url = self.SUPABASE_URL.rstrip("/")
+        if url.endswith("/rest/v1"):
+            url = url[:-8].rstrip("/")
+        return url
     
     # Nepal Airspace Bounding Box Defaults
     NEPAL_BBOX: BoundingBoxConfig = BoundingBoxConfig(

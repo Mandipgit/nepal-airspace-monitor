@@ -27,5 +27,12 @@ class HealthCheckTestCase(unittest.TestCase):
         data = response.json()
         self.assertEqual(data["status"], "healthy")
 
+    def test_database_health_endpoint(self):
+        """Test GET /api/v1/health/db returns structured status."""
+        response = self.client.get("/api/v1/health/db")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("status", data)
+
 if __name__ == "__main__":
     unittest.main()

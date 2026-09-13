@@ -1,13 +1,9 @@
-"""
-Health check endpoint
-Provides system liveness and basic environment metadata.
-"""
-
 from datetime import datetime, timezone
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.config import get_settings
 from app import __version__
+from app.services.supabase.client import check_supabase_connection
 
 router = APIRouter(tags=["System"])
 
@@ -27,3 +23,8 @@ async def get_health():
         version=__version__,
         timestamp=datetime.now(timezone.utc).isoformat()
     )
+
+@router.get("/health/db")
+async def get_database_health():
+    """Probe Supabase PostgreSQL database connection, latency, and status."""
+    return await check_supabase_connection()
