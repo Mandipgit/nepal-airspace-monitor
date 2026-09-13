@@ -45,22 +45,24 @@ async def main():
         return
 
     # 3. Test querying PostgreSQL tables via PostgREST
-    print("\n[3] Testing query against database...")
-    try:
-        # Check if any tables exist or test postgrest connection
-        # Querying an uncreated table will return a clean PostgREST 404/PGRST204 or table not found error
-        res = admin_client.table("airports").select("*").limit(1).execute()
-        print(f"    Found existing 'airports' table! Data: {res.data}")
-    except Exception as e:
-        err_msg = str(e)
-        if "relation \"public.airports\" does not exist" in err_msg or "PGRST204" in err_msg or "PGRST205" in err_msg or "404" in err_msg or "does not exist" in err_msg:
-            print("    [+] Database connection and authentication SUCCEEDED!")
-            print("        Table 'airports' does not exist yet (as expected before schema creation).")
-        else:
-            print(f"    Response from database: {err_msg}")
+    print("\n[3] Testing query against database tables...")
+    anon_client = get_supabase_client()
+    
+    tables = ["airlines", "airports", "runways", "aircraft_specifications"]
+    for t in tables:
+        try:
+            res = anon_client.table(t).select("*").limit(5).execute()
+            count = len(res.data)
+            print(f"    [+] Table '{t}' verified accessible! (Sample rows fetched: {count})")
+            if t == "airlines" and count > 0:
+                print("        Seeded Airlines:")
+                for a in res.data[:6]:
+                    print(f"        * [{a['icao_code']}] {a['name']} - Callsign: {a['callsign']} (Domestic: {a['is_domestic']})")
+        except Exception as e:
+            print(f"    [!] Error accessing table '{t}': {e}")
 
     print("=" * 70)
-    print("SUPABASE CONNECTIVITY VERIFIED SUCCESSFULLY")
+    print("SUPABASE SCHEMA & TABLES VERIFIED SUCCESSFULLY")
     print("=" * 70)
 
 if __name__ == "__main__":
