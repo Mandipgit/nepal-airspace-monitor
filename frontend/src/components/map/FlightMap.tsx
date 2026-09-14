@@ -10,12 +10,14 @@ import {
 } from "maplibre-gl";
 import { NormalizedFlight } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
+import { fetchFlightTrajectory } from "@/lib/api";
 import { Layers, Compass, Scan } from "lucide-react";
 
 // Register MapLibre Web Worker from local public bundle (solves Next.js Turbopack missing vector tiles)
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs");
 }
+
 
 interface FlightMapProps {
   flights: NormalizedFlight[];
@@ -80,87 +82,489 @@ const OPENFREEMAP_STYLES: Record<TileStyle, { name: string; url: string; isDark:
 
 const MAJOR_AIRPORTS = new Set(["VNKT", "VNPK", "VNBW", "VNLK", "VNVT", "VNNG", "VNJS"]);
 
+export type AircraftCategory =
+  | "helicopter"
+  | "turboprop"
+  | "regional"
+  | "narrowbody"
+  | "widebody"
+  | "generic";
+
 /**
- * Generate 64x64 Retina canvas icons for aircraft symbol layer
+ * Classify aircraft into FlightRadar24-style silhouette categories
+ */
+export function resolveAircraftCategory(flight: NormalizedFlight): AircraftCategory {
+  const typeCode = (
+    flight.identification.aircraft_type_icao ||
+    flight.aircraft_spec?.icao_type ||
+    ""
+  ).toUpperCase().trim();
+  const catCode = flight.identification.category;
+  const catName = (flight.identification.category_name || "").toLowerCase();
+  const specModel = (flight.aircraft_spec?.model || "").toUpperCase();
+
+  // 1. Helicopter / Rotorcraft
+  if (
+    catCode === 7 ||
+    catName.includes("rotor") ||
+    catName.includes("heli") ||
+    typeCode.startsWith("H") ||
+    typeCode.startsWith("EC") ||
+    typeCode.startsWith("AS") ||
+    typeCode.startsWith("B06") ||
+    typeCode.startsWith("B412") ||
+    typeCode.startsWith("R44") ||
+    typeCode.startsWith("R66") ||
+    typeCode.startsWith("MI") ||
+    specModel.includes("HELICOPTER")
+  ) {
+    return "helicopter";
+  }
+
+  // 2. Wide-Body / Heavy Airliners (Transatlantic / Intercontinental)
+  const widebodyTypes = [
+    "A330", "A332", "A333", "A338", "A339", "A33X",
+    "A340", "A342", "A343", "A345", "A346",
+    "A350", "A359", "A35K",
+    "A380", "A388",
+    "B744", "B747", "B748", "B741", "B742",
+    "B777", "B772", "B773", "B77L", "B77W", "B778", "B779",
+    "B787", "B788", "B789", "B78X",
+    "B762", "B763", "B764", "B767",
+    "MD11", "DC10", "IL96"
+  ];
+  if (
+    catCode === 5 ||
+    catName.includes("heavy") ||
+    widebodyTypes.some((t) => typeCode.includes(t)) ||
+    specModel.includes("330") ||
+    specModel.includes("350") ||
+    specModel.includes("777") ||
+    specModel.includes("787") ||
+    specModel.includes("747")
+  ) {
+    return "widebody";
+  }
+
+  // 3. Small Turboprop (ATR 42/72, Dash 8, Twin Otter, Dornier 228, Caravan, etc.)
+  const turbopropTypes = [
+    "AT72", "AT75", "AT76", "AT42", "AT43", "AT45", "ATR",
+    "DH8A", "DH8B", "DH8C", "DH8D", "DHC8", "Q400",
+    "DHC6", "DH6",
+    "D228", "DO228",
+    "C208", "PC12", "PC6",
+    "B350", "BE20", "BE9L", "B190", "JS41", "L410", "SF34", "F50", "AN24", "AN26", "Y12"
+  ];
+  const op = (flight.identification.operator_icao || "").toUpperCase();
+  if (
+    turbopropTypes.some((t) => typeCode.includes(t)) ||
+    specModel.includes("ATR") ||
+    specModel.includes("TWIN OTTER") ||
+    specModel.includes("DASH 8") ||
+    specModel.includes("DORNIER") ||
+    specModel.includes("CARAVAN") ||
+    op === "BHA" || // Buddha Air ATR fleet
+    op === "NYT" || // Yeti Airlines ATR fleet
+    op === "TRA" || // Tara Air DHC-6 / Dornier
+    op === "SMT"    // Summit Air L-410 / Dornier
+  ) {
+    return "turboprop";
+  }
+
+  // 4. Regional Jets (CRJ-200/700/900, Embraer ERJ 145 / E-Jets)
+  const regionalTypes = [
+    "CRJ1", "CRJ2", "CRJ7", "CRJ9", "CRJX", "CL60",
+    "E135", "E140", "E145", "E170", "E175", "E190", "E195", "E290", "E295",
+    "SU95", "ARJ21", "BCS1", "BCS3", "A220"
+  ];
+  if (
+    regionalTypes.some((t) => typeCode.includes(t)) ||
+    specModel.includes("CRJ") ||
+    specModel.includes("EMBRAER")
+  ) {
+    return "regional";
+  }
+
+  // 5. Narrow-Body Airliners (A320/A321 family, B737 family)
+  const narrowbodyTypes = [
+    "A318", "A319", "A320", "A321", "A20N", "A21N",
+    "B731", "B732", "B733", "B734", "B735", "B736", "B737", "B738", "B739", "B38M", "B39M",
+    "B752", "B753",
+    "C919", "MC21", "T204"
+  ];
+  if (
+    narrowbodyTypes.some((t) => typeCode.includes(t)) ||
+    specModel.includes("320") ||
+    specModel.includes("321") ||
+    specModel.includes("737") ||
+    catCode === 3 ||
+    catName.includes("large")
+  ) {
+    return "narrowbody";
+  }
+
+  return "generic";
+}
+
+/**
+ * Strict color assignment based on user specifications:
+ * - Selected: RED with clear glowing highlight
+ * - Callsign starts with "9N": GREEN
+ * - All other aircraft: YELLOW
+ */
+export function getAircraftColor(
+  flight: NormalizedFlight,
+  isSelected: boolean
+): "selected" | "green" | "yellow" {
+  if (isSelected) return "selected";
+  const callsign = (flight.identification.callsign || "").trim().toUpperCase();
+  const registration = (flight.identification.registration || "").trim().toUpperCase();
+
+  if (
+    callsign.startsWith("9N") ||
+    registration.startsWith("9N") ||
+    (flight.identification.is_nepal_registered && (callsign.startsWith("9N") || !callsign))
+  ) {
+    return "green";
+  }
+  return "yellow";
+}
+
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+}
+
+/**
+ * Draw highly distinct aircraft silhouette pointing UP (0 deg heading)
+ */
+function drawSilhouette(
+  ctx: CanvasRenderingContext2D,
+  category: AircraftCategory,
+  fillColor: string,
+  strokeColor: string
+) {
+  ctx.save();
+  ctx.fillStyle = fillColor;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  switch (category) {
+    case "helicopter": {
+      // Rotor Disc (semi-transparent spinning disc)
+      ctx.beginPath();
+      ctx.ellipse(0, -4, 14, 14, 0, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor === "#ef4444" ? "rgba(239, 68, 68, 0.25)" : "rgba(255, 255, 255, 0.20)";
+      ctx.fill();
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+
+      // Fuselage & Cabin Bubble
+      ctx.beginPath();
+      ctx.moveTo(0, -14); // Nose
+      ctx.bezierCurveTo(-5, -14, -6, -5, -5, 1);
+      ctx.lineTo(-2, 13); // Tail boom port
+      ctx.lineTo(-1, 16); // Tail end
+      ctx.lineTo(1, 16);
+      ctx.lineTo(2, 13);
+      ctx.bezierCurveTo(5, 1, 6, -5, 5, -14); // Cabin starboard
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Tail rotor blade
+      ctx.beginPath();
+      ctx.moveTo(1, 13);
+      ctx.lineTo(6, 13);
+      ctx.moveTo(1, 16);
+      ctx.lineTo(6, 16);
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = strokeColor;
+      ctx.stroke();
+
+      // Main rotor hub
+      ctx.beginPath();
+      ctx.arc(0, -4, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      break;
+    }
+
+    case "turboprop": {
+      // Straight wings with twin engine nacelles & T-tail (ATR 72 / Dash 8 / Twin Otter)
+      ctx.beginPath();
+      ctx.moveTo(0, -19); // Nose
+      ctx.bezierCurveTo(-2.5, -18, -3.2, -10, -3.2, -6);
+      ctx.lineTo(-19, -4); // Port wing tip leading
+      ctx.lineTo(-19, -1); // Port wing tip trailing
+      ctx.lineTo(-3.2, 0);
+      ctx.lineTo(-2.8, 14);
+      ctx.lineTo(-8.5, 15.5); // Port stabilizer
+      ctx.lineTo(-8.5, 18);
+      ctx.lineTo(0, 18.5); // Tail cone
+      ctx.lineTo(8.5, 18); // Starboard stabilizer
+      ctx.lineTo(8.5, 15.5);
+      ctx.lineTo(2.8, 14);
+      ctx.lineTo(3.2, 0);
+      ctx.lineTo(19, -1); // Starboard wing tip trailing
+      ctx.lineTo(19, -4); // Starboard wing tip leading
+      ctx.lineTo(3.2, -6);
+      ctx.bezierCurveTo(3.2, -10, 2.5, -18, 0, -19);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Twin Engine Nacelles / Turboprops
+      ctx.beginPath();
+      drawRoundedRect(ctx, -9.5, -7.5, 3.2, 8, 1.5);
+      drawRoundedRect(ctx, 6.3, -7.5, 3.2, 8, 1.5);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case "regional": {
+      // Rear-engine swept wing jet with T-tail (CRJ-200/900, ERJ 145)
+      ctx.beginPath();
+      ctx.moveTo(0, -21); // Nose
+      ctx.bezierCurveTo(-2.4, -20, -3.0, -12, -3.0, -6);
+      ctx.lineTo(-18, 5); // Port wing tip leading
+      ctx.lineTo(-17.5, 8); // Port wing tip trailing
+      ctx.lineTo(-3.0, 4);
+      ctx.lineTo(-2.6, 16);
+      ctx.lineTo(-9.5, 17.5); // T-Tail port
+      ctx.lineTo(-9.5, 20);
+      ctx.lineTo(0, 20.5); // Tail tip
+      ctx.lineTo(9.5, 20);
+      ctx.lineTo(9.5, 17.5); // T-Tail starboard
+      ctx.lineTo(2.6, 16);
+      ctx.lineTo(3.0, 4);
+      ctx.lineTo(17.5, 8); // Starboard wing tip trailing
+      ctx.lineTo(18, 5); // Starboard wing tip leading
+      ctx.lineTo(3.0, -6);
+      ctx.bezierCurveTo(3.0, -12, 2.4, -20, 0, -21);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Rear Pod Engines
+      ctx.beginPath();
+      drawRoundedRect(ctx, -6.8, 8, 3, 7.5, 1.5);
+      drawRoundedRect(ctx, 3.8, 8, 3, 7.5, 1.5);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case "narrowbody": {
+      // Swept wings, underwing twin engines, conventional tail (A320, B737)
+      ctx.beginPath();
+      ctx.moveTo(0, -25); // Nose
+      ctx.bezierCurveTo(-3.2, -23, -4.0, -14, -4.0, -8);
+      ctx.lineTo(-24, 7); // Port wing tip leading
+      ctx.lineTo(-23.5, 10); // Port wing tip trailing
+      ctx.lineTo(-4.0, 5);
+      ctx.lineTo(-3.2, 17);
+      ctx.lineTo(-11, 21.5); // Port tail
+      ctx.lineTo(-10.5, 23.5);
+      ctx.lineTo(0, 24); // Tail cone
+      ctx.lineTo(10.5, 23.5); // Starboard tail
+      ctx.lineTo(11, 21.5);
+      ctx.lineTo(3.2, 17);
+      ctx.lineTo(4.0, 5);
+      ctx.lineTo(23.5, 10); // Starboard wing tip trailing
+      ctx.lineTo(24, 7); // Starboard wing tip leading
+      ctx.lineTo(4.0, -8);
+      ctx.bezierCurveTo(4.0, -14, 3.2, -23, 0, -25);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Underwing Turbofans
+      ctx.beginPath();
+      drawRoundedRect(ctx, -12.5, -2, 3.8, 9, 1.8);
+      drawRoundedRect(ctx, 8.7, -2, 3.8, 9, 1.8);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case "widebody": {
+      // Long wingspan, broad fuselage, massive turbofans (A330, A350, B777, B787)
+      ctx.beginPath();
+      ctx.moveTo(0, -32); // Nose
+      ctx.bezierCurveTo(-4.2, -30, -5.2, -18, -5.2, -10);
+      ctx.lineTo(-32, 10); // Heavy port wing tip leading
+      ctx.lineTo(-31.5, 14); // Heavy port wing tip trailing
+      ctx.lineTo(-5.2, 7);
+      ctx.lineTo(-4.2, 23);
+      ctx.lineTo(-14.5, 28.5); // Port tail
+      ctx.lineTo(-14, 31);
+      ctx.lineTo(0, 31.5); // Tail tip
+      ctx.lineTo(14, 31); // Starboard tail
+      ctx.lineTo(14.5, 28.5);
+      ctx.lineTo(4.2, 23);
+      ctx.lineTo(5.2, 7);
+      ctx.lineTo(31.5, 14); // Starboard wing tip trailing
+      ctx.lineTo(32, 10); // Starboard wing tip leading
+      ctx.lineTo(5.2, -10);
+      ctx.bezierCurveTo(5.2, -18, 4.2, -30, 0, -32);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Heavy Underwing Turbofans
+      ctx.beginPath();
+      drawRoundedRect(ctx, -16.5, -3, 4.8, 12, 2.4);
+      drawRoundedRect(ctx, 11.7, -3, 4.8, 12, 2.4);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case "generic":
+    default: {
+      // Standard aerodynamic twin-jet profile
+      ctx.beginPath();
+      ctx.moveTo(0, -22);
+      ctx.bezierCurveTo(-3.0, -20, -3.8, -12, -3.8, -7);
+      ctx.lineTo(-21, 6);
+      ctx.lineTo(-20.5, 9);
+      ctx.lineTo(-3.8, 4.5);
+      ctx.lineTo(-3.0, 16);
+      ctx.lineTo(-10, 20);
+      ctx.lineTo(-9.5, 22);
+      ctx.lineTo(0, 22.5);
+      ctx.lineTo(9.5, 22);
+      ctx.lineTo(10, 20);
+      ctx.lineTo(3.0, 16);
+      ctx.lineTo(3.8, 4.5);
+      ctx.lineTo(20.5, 9);
+      ctx.lineTo(21, 6);
+      ctx.lineTo(3.8, -7);
+      ctx.bezierCurveTo(3.8, -12, 3.0, -20, 0, -22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      drawRoundedRect(ctx, -11, -1, 3.4, 8, 1.6);
+      drawRoundedRect(ctx, 7.6, -1, 3.4, 8, 1.6);
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Generate 96x96 Retina canvas icons for each category and color state
  */
 function registerAircraftIcons(map: MapLibreMap) {
-  const iconDefs: {
-    id: string;
-    color: string;
-    stroke: string;
-    isStale?: boolean;
-    isSelected?: boolean;
-  }[] = [
-    { id: "plane-nepal", color: "#10b981", stroke: "#020617" }, // Emerald 9N
-    { id: "plane-intl", color: "#0284c7", stroke: "#020617" }, // Sky Blue Intl
-    { id: "plane-mlat", color: "#f59e0b", stroke: "#020617" }, // High-vis Amber MLAT
-    { id: "plane-ground", color: "#64748b", stroke: "#020617" }, // Slate Ground
-    { id: "plane-selected", color: "#00f0ff", stroke: "#ffffff", isSelected: true }, // Cyan Selected
-    { id: "plane-stale", color: "#f59e0b", stroke: "#f59e0b", isStale: true }, // Hollow Stale
+  const categories: AircraftCategory[] = [
+    "helicopter",
+    "turboprop",
+    "regional",
+    "narrowbody",
+    "widebody",
+    "generic",
   ];
 
-  iconDefs.forEach(({ id, color, stroke, isStale, isSelected }) => {
-    if (map.hasImage(id)) return;
-    const size = 64;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const cx = size / 2;
-    const cy = size / 2;
+  const palettes: {
+    colorKey: "green" | "yellow" | "selected";
+    fill: string;
+    stroke: string;
+    isSelected?: boolean;
+  }[] = [
+    { colorKey: "green", fill: "#22c55e", stroke: "#0f172a" },
+    { colorKey: "yellow", fill: "#facc15", stroke: "#0f172a" },
+    { colorKey: "selected", fill: "#ef4444", stroke: "#ffffff", isSelected: true },
+  ];
 
-    // Glowing selection halo
-    if (isSelected) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, 26, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(0, 240, 255, 0.35)";
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#00f0ff";
-      ctx.stroke();
+  const size = 96;
+
+  categories.forEach((category) => {
+    palettes.forEach(({ colorKey, fill, stroke, isSelected }) => {
+      const id = `plane-${category}-${colorKey}`;
+      if (map.hasImage(id)) return;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const cx = size / 2;
+      const cy = size / 2;
+
+      // 6. Selected state: clear vibrant glow & beacon rings
+      if (isSelected) {
+        // Outer soft radial aura
+        const glowGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 42);
+        glowGrad.addColorStop(0, "rgba(239, 68, 68, 0.65)");
+        glowGrad.addColorStop(0.55, "rgba(239, 68, 68, 0.28)");
+        glowGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
+        ctx.fillStyle = glowGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Neon outer focus ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, 33, 0, Math.PI * 2);
+        ctx.lineWidth = 2.8;
+        ctx.strokeStyle = "#ef4444";
+        ctx.stroke();
+
+        // High-contrast white inner highlight ring
+        ctx.beginPath();
+        ctx.arc(cx, cy, 29.5, 0, Math.PI * 2);
+        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+        ctx.stroke();
+      }
+
+      // Draw silhouette centered at (cx, cy)
+      ctx.save();
+      ctx.translate(cx, cy);
+      drawSilhouette(ctx, category, fill, stroke);
+      ctx.restore();
+
+      const imgData = ctx.getImageData(0, 0, size, size);
+      map.addImage(id, imgData, { pixelRatio: 2 });
+    });
+  });
+
+  // Backward compatibility fallbacks
+  const legacyAliases: [string, string][] = [
+    ["plane-nepal", "plane-turboprop-green"],
+    ["plane-intl", "plane-narrowbody-yellow"],
+    ["plane-mlat", "plane-turboprop-yellow"],
+    ["plane-ground", "plane-turboprop-yellow"],
+    ["plane-selected", "plane-narrowbody-selected"],
+    ["plane-stale", "plane-generic-yellow"],
+  ];
+  legacyAliases.forEach(([aliasId, targetId]) => {
+    if (!map.hasImage(aliasId) && map.hasImage(targetId)) {
+      // Intentionally mapped
     }
-
-    // Aircraft Silhouette (Pointing UP = 0 deg heading)
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(1.4, 1.4);
-
-    const ox = -12;
-    const oy = -12;
-    ctx.beginPath();
-    ctx.moveTo(12 + ox, 2 + oy);
-    ctx.lineTo(10 + ox, 8 + oy);
-    ctx.lineTo(3 + ox, 11 + oy);
-    ctx.lineTo(3 + ox, 13 + oy);
-    ctx.lineTo(10 + ox, 12 + oy);
-    ctx.lineTo(10 + ox, 18 + oy);
-    ctx.lineTo(7 + ox, 20 + oy);
-    ctx.lineTo(7 + ox, 22 + oy);
-    ctx.lineTo(12 + ox, 21 + oy);
-    ctx.lineTo(17 + ox, 22 + oy);
-    ctx.lineTo(17 + ox, 20 + oy);
-    ctx.lineTo(14 + ox, 18 + oy);
-    ctx.lineTo(14 + ox, 12 + oy);
-    ctx.lineTo(21 + ox, 13 + oy);
-    ctx.lineTo(21 + ox, 11 + oy);
-    ctx.lineTo(14 + ox, 8 + oy);
-    ctx.closePath();
-
-    if (!isStale) {
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-    ctx.lineWidth = isStale ? 2.5 : 1.8;
-    ctx.strokeStyle = isStale ? color : stroke;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.stroke();
-
-    ctx.restore();
-
-    const imgData = ctx.getImageData(0, 0, size, size);
-    map.addImage(id, imgData, { pixelRatio: 2 });
   });
 }
 
@@ -192,18 +596,10 @@ function flightsToGeoJSON(
     }
 
     const isSelected = flight.id === selectedFlightId;
-    const isNepal = flight.identification.is_nepal_registered;
-    const onGround = flight.position.on_ground;
-    const isMlat = flight.identification.position_source?.toUpperCase().includes("MLAT") || false;
-    const freshnessSec = flight.data_freshness_seconds ?? null;
-    const isStale = freshnessSec !== null && freshnessSec > 25;
-
-    let iconId = "plane-intl";
-    if (isNepal) iconId = "plane-nepal";
-    if (isMlat) iconId = isNepal ? "plane-nepal" : "plane-mlat";
-    if (onGround) iconId = "plane-ground";
-    if (isStale) iconId = "plane-stale";
-    if (isSelected) iconId = "plane-selected";
+    const category = resolveAircraftCategory(flight);
+    const colorName = getAircraftColor(flight, isSelected);
+    const iconId = `plane-${category}-${colorName}`;
+    const isGreen = colorName === "green";
 
     const callsign = flight.identification.callsign || flight.identification.icao24.toUpperCase();
     const altFt = flight.position.altitude_baro_ft ?? 0;
@@ -228,7 +624,8 @@ function flightsToGeoJSON(
         heading: flight.position.heading_deg ?? 0,
         icon: iconId,
         isSelected,
-        isNepal,
+        isGreen,
+        category,
         labelCallsign,
         labelFL,
         labelFull,
@@ -241,6 +638,7 @@ function flightsToGeoJSON(
     features,
   };
 }
+
 
 export const FlightMap: React.FC<FlightMapProps> = ({
   flights,
@@ -361,6 +759,71 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         }
       }
 
+      // 3.5. Flight Trajectory & Breadcrumb GeoJSON Source & Layers (rendered beneath aircraft)
+      if (!map.getSource("trajectory")) {
+        try {
+          map.addSource("trajectory", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [],
+            },
+          });
+
+          // Trajectory glowing outer path
+          map.addLayer({
+            id: "trajectory-glow",
+            type: "line",
+            source: "trajectory",
+            filter: ["==", ["geometry-type"], "LineString"],
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#ef4444",
+              "line-width": 7,
+              "line-opacity": 0.45,
+              "line-blur": 3,
+            },
+          });
+
+          // Trajectory crisp vector path
+          map.addLayer({
+            id: "trajectory-line",
+            type: "line",
+            source: "trajectory",
+            filter: ["==", ["geometry-type"], "LineString"],
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#ef4444",
+              "line-width": 2.5,
+              "line-opacity": 0.95,
+            },
+          });
+
+          // Trajectory breadcrumb waypoints
+          map.addLayer({
+            id: "trajectory-points",
+            type: "circle",
+            source: "trajectory",
+            filter: ["==", ["geometry-type"], "Point"],
+            paint: {
+              "circle-radius": 3.5,
+              "circle-color": "#ffffff",
+              "circle-stroke-color": "#ef4444",
+              "circle-stroke-width": 1.8,
+              "circle-opacity": 0.95,
+            },
+          });
+        } catch (err) {
+          console.error("Error adding trajectory layers:", err);
+        }
+      }
+
       // 4. Aircraft GeoJSON Source & High-Performance Symbol Layers
       const bounds = map.getBounds();
       const currentBbox = {
@@ -400,11 +863,13 @@ export const FlightMap: React.FC<FlightMapProps> = ({
                 ["linear"],
                 ["zoom"],
                 4,
-                0.55,
+                0.70,
                 7,
-                0.75,
-                10,
                 0.95,
+                10,
+                1.25,
+                14,
+                1.55,
               ],
             },
           });
@@ -456,9 +921,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             paint: {
               "text-color": [
                 "case",
-                ["==", ["get", "isNepal"], true],
+                ["==", ["get", "isGreen"], true],
                 isDarkStyle ? "#34d399" : "#065f46",
-                isDarkStyle ? "#e2e8f0" : "#0f172a",
+                isDarkStyle ? "#facc15" : "#b45309",
               ],
               "text-halo-color": isDarkStyle
                 ? "rgba(2, 6, 23, 0.95)"
@@ -485,7 +950,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
               "text-ignore-placement": true,
             },
             paint: {
-              "text-color": isDarkStyle ? "#00f0ff" : "#0284c7",
+              "text-color": "#ef4444",
               "text-halo-color": isDarkStyle
                 ? "rgba(2, 6, 23, 0.95)"
                 : "rgba(255, 255, 255, 0.95)",
@@ -497,6 +962,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
           console.error("Error adding aircraft layers:", err);
         }
       }
+
     },
     []
   );
@@ -791,6 +1257,117 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     }
   }, [selectedFlightId, flights]);
 
+  // Option 1: Live Flight Trajectory & Breadcrumbs trail manager
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!selectedFlightId) {
+      if (map && map.isStyleLoaded() && map.getSource("trajectory")) {
+        (map.getSource("trajectory") as GeoJSONSource).setData({
+          type: "FeatureCollection",
+          features: [],
+        });
+      }
+      return;
+    }
+
+    const selectedFlight = flightsRef.current.find((f) => f.id === selectedFlightId);
+    if (!selectedFlight) return;
+
+    const targetIcao = selectedFlight.identification.icao24;
+    let isCancelled = false;
+
+    const renderTrajectoryFeatures = (
+      points: { latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }[]
+    ) => {
+      const currentMap = mapInstanceRef.current;
+      if (!currentMap || !currentMap.isStyleLoaded()) return;
+      const source = currentMap.getSource("trajectory") as GeoJSONSource;
+      if (!source) return;
+
+      const coords: [number, number][] = points.map((p) => [p.longitude, p.latitude]);
+
+      // Connect to latest real-time aircraft coordinate if available
+      if (
+        selectedFlight.position.latitude !== null &&
+        selectedFlight.position.longitude !== null
+      ) {
+        const curLng = selectedFlight.position.longitude;
+        const curLat = selectedFlight.position.latitude;
+        if (
+          coords.length === 0 ||
+          Math.abs(coords[coords.length - 1][0] - curLng) > 0.0001 ||
+          Math.abs(coords[coords.length - 1][1] - curLat) > 0.0001
+        ) {
+          coords.push([curLng, curLat]);
+        }
+      }
+
+      const features: GeoJSON.Feature[] = [];
+
+      // LineString path
+      if (coords.length >= 2) {
+        features.push({
+          type: "Feature",
+          geometry: {
+            type: "LineString",
+            coordinates: coords,
+          },
+          properties: {
+            id: "trajectory-line",
+          },
+        });
+      }
+
+      // Breadcrumb dots
+      const recentPts = points.slice(-30);
+      recentPts.forEach((pt, idx) => {
+        features.push({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [pt.longitude, pt.latitude],
+          },
+          properties: {
+            id: `traj-pt-${idx}`,
+            alt: pt.altitude_ft,
+            spd: pt.groundspeed_kts,
+          },
+        });
+      });
+
+      source.setData({
+        type: "FeatureCollection",
+        features,
+      });
+    };
+
+    // Draw initial point immediately
+    if (selectedFlight.position.latitude !== null && selectedFlight.position.longitude !== null) {
+      renderTrajectoryFeatures([
+        {
+          latitude: selectedFlight.position.latitude,
+          longitude: selectedFlight.position.longitude,
+          altitude_ft: selectedFlight.position.altitude_baro_ft,
+          groundspeed_kts: selectedFlight.position.ground_speed_kts,
+        },
+      ]);
+    }
+
+    // Fetch full trajectory trail from backend
+    fetchFlightTrajectory(targetIcao)
+      .then((res) => {
+        if (isCancelled) return;
+        renderTrajectoryFeatures(res.points || []);
+      })
+      .catch((err) => {
+        console.warn(`Could not fetch trajectory for ${targetIcao}:`, err);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedFlightId, flights]);
+
   return (
     <div className="relative w-full h-full flex-1 overflow-hidden">
       {/* MapLibre WebGL DOM Container */}
@@ -838,19 +1415,19 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       {/* Streamlined Minimal Floating Legend */}
       <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[10px] text-slate-300 shadow-lg backdrop-blur-md pointer-events-none">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Nepal (9N)</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+          <span className="font-semibold text-emerald-400">9N (Nepal)</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-sky-400" />
-          <span>Regional</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/50" />
+          <span className="font-semibold text-yellow-300">Other / Transit</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <span>MLAT</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
+          <span className="font-semibold text-red-400">Selected & Trail</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-1.5 h-1.5 rounded-full border border-emerald-400 bg-slate-800" />
+          <span className="w-1.5 h-1.5 rounded-full border border-slate-300 bg-slate-700" />
           <span>Airports</span>
         </div>
       </div>
@@ -859,3 +1436,4 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 };
 
 export default FlightMap;
+

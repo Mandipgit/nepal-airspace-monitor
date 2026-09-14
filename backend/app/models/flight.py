@@ -88,3 +88,20 @@ class FlightCollectionResponse(BaseModel):
     cache_age_seconds: Optional[float] = Field(default=None, description="Age of cached payload in seconds")
     rate_limit_remaining: Optional[int] = Field(default=None, description="Remaining API rate limit credits reported by provider (X-Rate-Limit-Remaining)")
     flights: List[NormalizedFlight] = Field(default_factory=list, description="List of normalized flight entities")
+
+class TrajectoryPoint(BaseModel):
+    """Single spatial and kinematic breadcrumb point in a flight trajectory."""
+    latitude: float = Field(description="WGS-84 latitude in decimal degrees")
+    longitude: float = Field(description="WGS-84 longitude in decimal degrees")
+    altitude_ft: Optional[int] = Field(default=None, description="Barometric or geometric altitude in feet")
+    groundspeed_kts: Optional[int] = Field(default=None, description="Groundspeed in knots")
+    heading_deg: Optional[float] = Field(default=None, description="Track heading in degrees")
+    timestamp: datetime = Field(description="UTC timestamp of the breadcrumb point")
+
+class FlightTrajectoryResponse(BaseModel):
+    """API response envelope for flight trajectory breadcrumb trail."""
+    icao24: str = Field(description="24-bit ICAO address")
+    callsign: Optional[str] = Field(default=None, description="Radiotelephony callsign")
+    total_points: int = Field(description="Count of breadcrumb waypoints")
+    points: List[TrajectoryPoint] = Field(default_factory=list, description="Chronological trajectory breadcrumbs")
+

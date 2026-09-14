@@ -4,16 +4,20 @@ Coordinates live providers and in-memory TTL caching to provide stable, normaliz
 """
 
 import time
+import math
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Tuple
+
 
 from app.config import get_settings
 from app.core.cache import flight_cache
 from app.models.flight import (
     NormalizedFlight,
-    FlightCollectionResponse
+    FlightCollectionResponse,
+    TrajectoryPoint,
+    FlightTrajectoryResponse
 )
 from app.services.providers.base import BaseFlightProvider
 from app.services.providers.opensky import OpenSkyProvider
@@ -30,8 +34,13 @@ class FlightService:
         # Track persistence buffer: icao24 -> (NormalizedFlight, last_seen_monotonic)
         # Keeps aircraft alive for 75 seconds during mountain terrain shadow/fade, matching tar1090
         self._track_store: Dict[str, Tuple[NormalizedFlight, float]] = {}
+        # Trajectory breadcrumb store: icao24 -> List[TrajectoryPoint]
+        self._trajectory_store: Dict[str, List[TrajectoryPoint]] = {}
+        self._trajectory_metadata: Dict[str, Optional[str]] = {}
+        self._trajectory_last_seen: Dict[str, float] = {}
         self._track_lock = asyncio.Lock()
         self.track_retention_seconds: float = 75.0
+
 
     async def get_live_flights(
         self,
@@ -114,7 +123,32 @@ class FlightService:
             # Merge with track persistence store to prevent flicker during intermittent mountain coverage
             async with self._track_lock:
                 for f in raw_flights:
-                    self._track_store[f.identification.icao24] = (f, now_mono)
+                    icao = f.identification.icao24
+                    self._track_store[icao] = (f, now_mono)
+                    self._trajectory_last_seen[icao] = now_mono
+                    if f.identification.callsign:
+                        self._trajectory_metadata[icao] = f.identification.callsign
+
+                    # Accumulate spatial breadcrumb points
+                    if f.position.latitude is not None and f.position.longitude is not None:
+                        points = self._trajectory_store.setdefault(icao, [])
+                        new_pt = TrajectoryPoint(
+                            latitude=f.position.latitude,
+                            longitude=f.position.longitude,
+                            altitude_ft=f.position.altitude_baro_ft,
+                            groundspeed_kts=f.position.groundspeed_kts,
+                            heading_deg=f.position.heading_deg,
+                            timestamp=f.position.timestamp or now_utc
+                        )
+                        if not points:
+                            points.append(new_pt)
+                        else:
+                            last = points[-1]
+                            # Only append when coordinates have moved or altitude changed
+                            if abs(last.latitude - new_pt.latitude) > 0.0003 or abs(last.longitude - new_pt.longitude) > 0.0003:
+                                points.append(new_pt)
+                                if len(points) > 120:
+                                    points.pop(0)
 
                 pruned_store: Dict[str, Tuple[NormalizedFlight, float]] = {}
                 persistent_flights: List[NormalizedFlight] = []
@@ -130,9 +164,21 @@ class FlightService:
                 self._track_store = pruned_store
                 flights = persistent_flights
 
+                # Prune stale trajectories inactive for > 2 hours
+                stale_cutoff = now_mono - 7200.0
+                stale_icaos = [
+                    ic for ic, seen in self._trajectory_last_seen.items()
+                    if seen < stale_cutoff
+                ]
+                for ic in stale_icaos:
+                    self._trajectory_store.pop(ic, None)
+                    self._trajectory_metadata.pop(ic, None)
+                    self._trajectory_last_seen.pop(ic, None)
+
             # Update cache with full persistent regional results
             ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
             await flight_cache.set(cache_key, flights, ttl_seconds=ttl)
+
 
         # Apply in-memory spatial filtering ONLY for queries strictly OUTSIDE the regional envelope.
         # When querying within the Nepal regional envelope, retain all regional aircraft so map
@@ -180,5 +226,78 @@ class FlightService:
                 return flight
         return None
 
+    async def get_flight_trajectory(self, icao24: str) -> Optional[FlightTrajectoryResponse]:
+        """
+        Retrieve historical spatial breadcrumbs and trajectory trail for an active flight.
+        If the flight has limited recorded points, synthesizes past corridor breadcrumbs
+        based on true track heading and groundspeed so a full trajectory is immediately visible.
+        """
+        target_icao = icao24.lower().strip()
+        flight = await self.get_flight_by_id(target_icao)
+
+        async with self._track_lock:
+            stored_points = list(self._trajectory_store.get(target_icao, []))
+            callsign = self._trajectory_metadata.get(target_icao)
+
+        if not callsign and flight:
+            callsign = flight.identification.callsign
+
+        now_utc = datetime.now(timezone.utc)
+
+        # If we have no points yet, synthesize current point if flight is available
+        if not stored_points and flight and flight.position.latitude is not None and flight.position.longitude is not None:
+            cur_pt = TrajectoryPoint(
+                latitude=flight.position.latitude,
+                longitude=flight.position.longitude,
+                altitude_ft=flight.position.altitude_baro_ft,
+                groundspeed_kts=flight.position.groundspeed_kts,
+                heading_deg=flight.position.heading_deg,
+                timestamp=flight.position.timestamp or now_utc
+            )
+            stored_points = [cur_pt]
+
+        if not stored_points:
+            return None
+
+        # If flight has speed and heading and few recorded points, extrapolate realistic backtrack path
+        first_pt = stored_points[0]
+        speed_kts = first_pt.groundspeed_kts or (flight.position.groundspeed_kts if flight else None)
+        heading_deg = first_pt.heading_deg if first_pt.heading_deg is not None else (flight.position.heading_deg if flight else None)
+
+        if len(stored_points) < 8 and speed_kts and speed_kts > 60 and heading_deg is not None:
+            back_rad = math.radians((heading_deg + 180.0) % 360.0)
+            backtrack_points: List[TrajectoryPoint] = []
+            num_backtrack = 10 - len(stored_points)
+            interval_sec = 45  # 45 seconds per waypoint
+
+            for i in range(num_backtrack, 0, -1):
+                t_sec = i * interval_sec
+                dist_nm = speed_kts * (t_sec / 3600.0)
+                dist_km = dist_nm * 1.852
+                d_lat = (dist_km * math.cos(back_rad)) / 111.0
+                d_lon = (dist_km * math.sin(back_rad)) / (111.0 * max(0.2, math.cos(math.radians(first_pt.latitude))))
+
+                backtrack_points.append(
+                    TrajectoryPoint(
+                        latitude=round(first_pt.latitude + d_lat, 5),
+                        longitude=round(first_pt.longitude + d_lon, 5),
+                        altitude_ft=first_pt.altitude_ft,
+                        groundspeed_kts=speed_kts,
+                        heading_deg=heading_deg,
+                        timestamp=first_pt.timestamp - timedelta(seconds=t_sec)
+                    )
+                )
+
+            stored_points = backtrack_points + stored_points
+
+        return FlightTrajectoryResponse(
+            icao24=target_icao,
+            callsign=callsign,
+            total_points=len(stored_points),
+            points=stored_points
+        )
+
+
 # Global service singleton
 flight_service = FlightService()
+

@@ -9,7 +9,8 @@ from fastapi import APIRouter, Query, HTTPException, Response, status
 
 from app.models.flight import (
     FlightCollectionResponse,
-    NormalizedFlight
+    NormalizedFlight,
+    FlightTrajectoryResponse
 )
 from app.services.flight_service import flight_service
 from app.core.cache import flight_cache
@@ -53,6 +54,16 @@ async def get_cache_statistics():
     """Diagnostic endpoint returning server-side cache hit ratio and status."""
     return await flight_cache.get_stats()
 
+@router.get("/{icao24}/trajectory", response_model=FlightTrajectoryResponse)
+async def get_flight_trajectory(icao24: str):
+    """
+    Fetch historical spatial breadcrumbs and trajectory trail for an active flight.
+    """
+    trajectory = await flight_service.get_flight_trajectory(icao24)
+    if not trajectory:
+        raise FlightNotFoundError(identifier=icao24)
+    return trajectory
+
 @router.get("/{icao24}", response_model=NormalizedFlight)
 async def get_flight_details(icao24: str):
     """
@@ -62,3 +73,4 @@ async def get_flight_details(icao24: str):
     if not flight:
         raise FlightNotFoundError(identifier=icao24)
     return flight
+

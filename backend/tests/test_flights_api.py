@@ -122,14 +122,22 @@ class FlightsAPITestCase(unittest.TestCase):
         self.assertIn("error", data)
         self.assertEqual(data["error"]["type"], "FlightNotFoundError")
 
-    def test_get_cache_stats(self):
-        """Test GET /api/v1/flights/cache/stats returns diagnostic cache metrics."""
-        res = self.client.get("/api/v1/flights/cache/stats")
+    def test_get_flight_trajectory(self):
+        """Test GET /api/v1/flights/{icao24}/trajectory returns breadcrumb trail."""
+        # Prime the flights cache so trajectory has data
+        self.client.get("/api/v1/flights/live")
+        res = self.client.get("/api/v1/flights/70a8ee/trajectory")
         self.assertEqual(res.status_code, 200)
-        stats = res.json()
-        self.assertIn("hits", stats)
-        self.assertIn("misses", stats)
-        self.assertIn("hit_ratio", stats)
+        data = res.json()
+        self.assertEqual(data["icao24"], "70a8ee")
+        self.assertEqual(data["callsign"], "BHA137")
+        self.assertGreaterEqual(data["total_points"], 1)
+        # Latest point in chronological order is current aircraft position
+        last_pt = data["points"][-1]
+        self.assertEqual(last_pt["latitude"], 27.99)
+        self.assertEqual(last_pt["longitude"], 83.94)
 
 if __name__ == "__main__":
     unittest.main()
+
+

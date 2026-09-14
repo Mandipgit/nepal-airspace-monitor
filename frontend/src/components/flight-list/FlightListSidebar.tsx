@@ -208,13 +208,32 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                 onClick={() => onSelectFlight(flight)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer select-none ${
                   isSelected
-                    ? "bg-slate-800/90 border-cyan-400/80 shadow-lg shadow-cyan-950/40 translate-x-1"
+                    ? "bg-slate-800/95 border-red-500/80 shadow-lg shadow-red-950/40 translate-x-1"
                     : "bg-slate-900/60 hover:bg-slate-850 border-slate-800/60 hover:border-slate-700"
                 }`}
               >
                 {/* Card Top: Callsign, Operator, Reg badge */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-1.5">
+                    {/* Status dot matching map marker color */}
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        isSelected
+                          ? "bg-red-500 shadow-sm shadow-red-500/80 animate-pulse"
+                          : (flight.identification.callsign || "").toUpperCase().startsWith("9N") ||
+                            (flight.identification.registration || "").toUpperCase().startsWith("9N") ||
+                            isNepal
+                          ? "bg-emerald-400"
+                          : "bg-yellow-400"
+                      }`}
+                      title={
+                        isSelected
+                          ? "Selected"
+                          : (flight.identification.callsign || "").toUpperCase().startsWith("9N") || isNepal
+                          ? "Nepal 9N (Green)"
+                          : "Other / Transit (Yellow)"
+                      }
+                    />
                     <span className="font-mono-avionics text-sm font-bold text-slate-100 tracking-wider">
                       {flight.identification.callsign || flight.identification.icao24.toUpperCase()}
                     </span>
@@ -223,6 +242,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                         NP 9N
                       </span>
                     )}
+
                     {/* Position Surveillance Source Badge */}
                     {(() => {
                       const posSrc = flight.identification.position_source || "ADS-B";

@@ -79,3 +79,20 @@ export interface FlightCollectionResponse {
   rate_limit_remaining?: number | null;
   flights: NormalizedFlight[];
 }
+
+export interface TrajectoryPoint {
+  latitude: number;
+  longitude: number;
+  altitude_ft: number | null;
+  groundspeed_kts: number | null;
+  heading_deg: number | null;
+  timestamp: string;
+}
+
+export interface FlightTrajectoryResponse {
+  icao24: string;
+  callsign: string | null;
+  total_points: number;
+  points: TrajectoryPoint[];
+}
+
