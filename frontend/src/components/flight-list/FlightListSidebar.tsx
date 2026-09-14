@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, Plane, Compass, ArrowUpRight, Shield, MapPin, Gauge } from "lucide-react";
+import { Search, Plane, Compass, ArrowUpRight, Shield, MapPin, Gauge, Activity } from "lucide-react";
 import { NormalizedFlight } from "@/types/flight";
 
 interface FlightListSidebarProps {
@@ -9,6 +9,7 @@ interface FlightListSidebarProps {
   selectedFlightId: string | null;
   onSelectFlight: (flight: NormalizedFlight) => void;
   loading: boolean;
+  rateLimitRemaining?: number | null;
 }
 
 type FilterTab = "all" | "nepal" | "adsb" | "mlat" | "uat" | "airborne" | "ground";
@@ -18,6 +19,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
   selectedFlightId,
   onSelectFlight,
   loading,
+  rateLimitRemaining,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
@@ -320,6 +322,22 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
           })
         )}
       </div>
+
+      {/* Footer Telemetry Status */}
+      {rateLimitRemaining !== undefined && rateLimitRemaining !== null && (
+        <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md flex items-center justify-between text-[11px] font-mono-avionics text-slate-400 shrink-0">
+          <span className="flex items-center gap-1.5">
+            <Activity className={`w-3.5 h-3.5 ${
+              rateLimitRemaining > 1000 ? "text-cyan-400" :
+              rateLimitRemaining > 200 ? "text-amber-400" : "text-rose-400"
+            }`} />
+            <span className="text-slate-300">OpenSky Credits</span>
+          </span>
+          <span className="font-bold text-cyan-300">
+            {rateLimitRemaining.toLocaleString()} remaining
+          </span>
+        </div>
+      )}
     </aside>
   );
 };

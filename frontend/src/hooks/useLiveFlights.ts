@@ -104,6 +104,7 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
     error,
     lastUpdated,
     cacheAge: data?.cache_age_seconds ?? null,
+    rateLimitRemaining: data?.rate_limit_remaining ?? null,
     countdown,
     stats: {
       total: data?.total ?? flights.length,

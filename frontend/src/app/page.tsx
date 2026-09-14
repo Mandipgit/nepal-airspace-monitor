@@ -27,6 +27,7 @@ export default function Home() {
     stats,
     cacheAge,
     countdown,
+    rateLimitRemaining,
     refetch,
   } = useLiveFlights({
     enriched: true,
@@ -53,7 +54,21 @@ export default function Home() {
 
   const handleBoundsChange = useCallback(
     (bounds: { lamin: number; lomin: number; lamax: number; lomax: number }) => {
-      setViewportBounds(bounds);
+      setViewportBounds((prev) => {
+        if (
+          prev.lamin !== undefined &&
+          prev.lomin !== undefined &&
+          prev.lamax !== undefined &&
+          prev.lomax !== undefined &&
+          Math.abs(prev.lamin - bounds.lamin) < 0.02 &&
+          Math.abs(prev.lomin - bounds.lomin) < 0.02 &&
+          Math.abs(prev.lamax - bounds.lamax) < 0.02 &&
+          Math.abs(prev.lomax - bounds.lomax) < 0.02
+        ) {
+          return prev;
+        }
+        return bounds;
+      });
     },
     []
   );
@@ -78,6 +93,7 @@ export default function Home() {
         refreshing={refreshing}
         onRefresh={refetch}
         cacheAge={cacheAge}
+        rateLimitRemaining={rateLimitRemaining}
       />
 
       {/* Network / Provider Error Banner */}
@@ -109,6 +125,7 @@ export default function Home() {
             selectedFlightId={selectedFlight?.id ?? null}
             onSelectFlight={handleSelectFlight}
             loading={loading}
+            rateLimitRemaining={rateLimitRemaining}
           />
         </div>
 

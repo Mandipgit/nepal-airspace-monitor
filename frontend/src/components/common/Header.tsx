@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Radar, RefreshCw, Plane, ShieldCheck, Database } from "lucide-react";
+import { Radar, RefreshCw, Plane, ShieldCheck, Database, Activity } from "lucide-react";
 
 interface HeaderProps {
   totalFlights: number;
@@ -10,6 +10,7 @@ interface HeaderProps {
   refreshing: boolean;
   onRefresh: () => void;
   cacheAge: number | null;
+  rateLimitRemaining?: number | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   refreshing,
   onRefresh,
   cacheAge,
+  rateLimitRemaining,
 }) => {
   return (
     <header className="h-16 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 flex items-center justify-between z-30 shrink-0 select-none">
@@ -60,6 +62,33 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="text-emerald-300/80">Nepal (9N):</span>
             <span className="font-bold text-emerald-300 font-mono-avionics">{nepalFlights}</span>
           </div>
+
+          {rateLimitRemaining !== null && rateLimitRemaining !== undefined && (
+            <div
+              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg border text-xs transition-colors ${
+                rateLimitRemaining > 1000
+                  ? "bg-slate-900/80 border-slate-800 text-slate-300"
+                  : rateLimitRemaining > 200
+                  ? "bg-amber-950/40 border-amber-800/40 text-amber-300"
+                  : "bg-rose-950/40 border-rose-800/40 text-rose-300"
+              }`}
+              title={`OpenSky Network API Credits: ${rateLimitRemaining.toLocaleString()} remaining (X-Rate-Limit-Remaining)`}
+            >
+              <Activity
+                className={`w-3.5 h-3.5 ${
+                  rateLimitRemaining > 1000
+                    ? "text-cyan-400"
+                    : rateLimitRemaining > 200
+                    ? "text-amber-400"
+                    : "text-rose-400"
+                }`}
+              />
+              <span className="text-slate-400">API Quota:</span>
+              <span className="font-bold font-mono-avionics text-cyan-300">
+                {rateLimitRemaining.toLocaleString()}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-800 text-xs text-slate-400">
             <Database className="w-3.5 h-3.5 text-purple-400" />

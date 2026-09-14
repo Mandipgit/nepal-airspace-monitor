@@ -86,4 +86,5 @@ class FlightCollectionResponse(BaseModel):
     timestamp: datetime = Field(description="UTC timestamp when this response was assembled")
     cached: bool = Field(default=False, description="True if served from server-side in-memory cache")
     cache_age_seconds: Optional[float] = Field(default=None, description="Age of cached payload in seconds")
+    rate_limit_remaining: Optional[int] = Field(default=None, description="Remaining API rate limit credits reported by provider (X-Rate-Limit-Remaining)")
     flights: List[NormalizedFlight] = Field(default_factory=list, description="List of normalized flight entities")

@@ -104,10 +104,15 @@ class OpenSkyProvider(BaseFlightProvider):
         self._client = client
         self._token: Optional[str] = None
         self._token_expires_at: float = 0.0
+        self._last_rate_limit_remaining: Optional[int] = None
 
     @property
     def name(self) -> str:
         return "opensky"
+
+    @property
+    def last_rate_limit_remaining(self) -> Optional[int]:
+        return self._last_rate_limit_remaining
 
     async def _get_auth_token(self, http_client: httpx.AsyncClient) -> Optional[str]:
         """Fetch OAuth2 Bearer token if client credentials are configured."""
@@ -286,10 +291,15 @@ class OpenSkyProvider(BaseFlightProvider):
             
             # Rate limit inspection
             remaining_quota = response.headers.get("X-Rate-Limit-Remaining")
-            if remaining_quota:
-                logger.debug(f"OpenSky quota remaining: {remaining_quota}")
+            if remaining_quota is not None:
+                try:
+                    self._last_rate_limit_remaining = int(remaining_quota)
+                except (ValueError, TypeError):
+                    pass
+                logger.debug(f"OpenSky quota remaining: {self._last_rate_limit_remaining}")
 
             if response.status_code == 429:
+                self._last_rate_limit_remaining = 0
                 retry_after = response.headers.get("X-Rate-Limit-Retry-After-Seconds")
                 retry_int = int(retry_after) if retry_after and retry_after.isdigit() else 60
                 logger.warning(f"OpenSky rate limit hit. Retry after {retry_int}s.")

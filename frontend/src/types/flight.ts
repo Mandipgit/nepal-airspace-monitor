@@ -76,5 +76,6 @@ export interface FlightCollectionResponse {
   timestamp: string;
   cached: boolean;
   cache_age_seconds: number | null;
+  rate_limit_remaining?: number | null;
   flights: NormalizedFlight[];
 }

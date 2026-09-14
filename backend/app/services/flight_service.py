@@ -3,9 +3,11 @@ Flight Service Orchestrator
 Coordinates live providers and in-memory TTL caching to provide stable, normalized flight data.
 """
 
+import time
+import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 
 from app.config import get_settings
 from app.core.cache import flight_cache
@@ -25,6 +27,11 @@ class FlightService:
     def __init__(self, provider: Optional[BaseFlightProvider] = None):
         self.settings = get_settings()
         self.provider = provider or OpenSkyProvider()
+        # Track persistence buffer: icao24 -> (NormalizedFlight, last_seen_monotonic)
+        # Keeps aircraft alive for 75 seconds during mountain terrain shadow/fade, matching tar1090
+        self._track_store: Dict[str, Tuple[NormalizedFlight, float]] = {}
+        self._track_lock = asyncio.Lock()
+        self.track_retention_seconds: float = 75.0
 
     async def get_live_flights(
         self,
@@ -90,7 +97,7 @@ class FlightService:
         # Cache miss or forced refresh: query external provider
         if not is_cached:
             logger.info(f"Cache miss for {cache_key}. Fetching live flights from provider '{self.provider.name}'...")
-            flights = await self.provider.get_live_flights(
+            raw_flights = await self.provider.get_live_flights(
                 lamin=query_lamin,
                 lomin=query_lomin,
                 lamax=query_lamax,
@@ -99,16 +106,39 @@ class FlightService:
 
             # Enrich flights if requested
             if enriched:
-                flights = await enrichment_service.enrich_flight_collection(flights)
+                raw_flights = await enrichment_service.enrich_flight_collection(raw_flights)
 
-            # Update cache with full regional results
+            now_mono = time.monotonic()
+            now_utc = datetime.now(timezone.utc)
+
+            # Merge with track persistence store to prevent flicker during intermittent mountain coverage
+            async with self._track_lock:
+                for f in raw_flights:
+                    self._track_store[f.identification.icao24] = (f, now_mono)
+
+                pruned_store: Dict[str, Tuple[NormalizedFlight, float]] = {}
+                persistent_flights: List[NormalizedFlight] = []
+                for icao, (f, seen_mono) in self._track_store.items():
+                    age_seconds = now_mono - seen_mono
+                    if age_seconds <= self.track_retention_seconds:
+                        # Recalculate freshness based on last contact
+                        if f.last_contact:
+                            f.data_freshness_seconds = max(0.0, (now_utc - f.last_contact).total_seconds())
+                        pruned_store[icao] = (f, seen_mono)
+                        persistent_flights.append(f)
+
+                self._track_store = pruned_store
+                flights = persistent_flights
+
+            # Update cache with full persistent regional results
             ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
             await flight_cache.set(cache_key, flights, ttl_seconds=ttl)
 
-        # Apply in-memory spatial filtering if specific sub-bounds were requested
+        # Apply in-memory spatial filtering ONLY for queries strictly OUTSIDE the regional envelope.
+        # When querying within the Nepal regional envelope, retain all regional aircraft so map
+        # and sidebar stay complete and consistent without chopping off edge flights during pan/zoom.
         filtered_flights = flights
-        if lamin is not None and lomin is not None and lamax is not None and lomax is not None:
-            # Add small padding buffer (0.15 deg ~ 16km) so edge aircraft remain visible during pan/zoom
+        if not is_sub_regional and (lamin is not None and lomin is not None and lamax is not None and lomax is not None):
             pad = 0.15
             filtered_flights = [
                 f for f in filtered_flights
@@ -137,6 +167,7 @@ class FlightService:
             timestamp=datetime.now(timezone.utc),
             cached=is_cached,
             cache_age_seconds=round(cache_age, 1),
+            rate_limit_remaining=self.provider.last_rate_limit_remaining,
             flights=filtered_flights
         )
 

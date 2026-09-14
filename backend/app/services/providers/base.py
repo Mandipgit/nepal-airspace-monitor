@@ -4,7 +4,7 @@ Abstract class defining the contract for all live aircraft data providers.
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 from app.models.flight import NormalizedFlight
 
 class BaseFlightProvider(ABC):
@@ -15,6 +15,11 @@ class BaseFlightProvider(ABC):
     def name(self) -> str:
         """Unique provider identifier string (e.g., 'opensky', 'flightaware')."""
         pass
+
+    @property
+    def last_rate_limit_remaining(self) -> Optional[int]:
+        """Remaining API rate limit credits reported by the provider, if available."""
+        return None
 
     @abstractmethod
     async def get_live_flights(

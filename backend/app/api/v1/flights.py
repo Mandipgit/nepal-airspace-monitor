@@ -5,7 +5,7 @@ Provides normalized live aircraft tracking data for the frontend.
 
 from typing import Optional
 # pyrefly: ignore [missing-import]
-from fastapi import APIRouter, Query, HTTPException, status
+from fastapi import APIRouter, Query, HTTPException, Response, status
 
 from app.models.flight import (
     FlightCollectionResponse,
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/flights", tags=["Flights"])
 
 @router.get("/live", response_model=FlightCollectionResponse)
 async def get_live_flights(
+    response: Response,
     lamin: Optional[float] = Query(None, description="Southern latitude bound override"),
     lomin: Optional[float] = Query(None, description="Western longitude bound override"),
     lamax: Optional[float] = Query(None, description="Northern latitude bound override"),
@@ -31,8 +32,9 @@ async def get_live_flights(
     """
     Fetch active live flights within the Nepal bounding box.
     Cached on server for the configured TTL window (default 10s) to protect API limits.
+    Exposes provider X-Rate-Limit-Remaining in both payload and response headers.
     """
-    return await flight_service.get_live_flights(
+    result = await flight_service.get_live_flights(
         lamin=lamin,
         lomin=lomin,
         lamax=lamax,
@@ -42,6 +44,9 @@ async def get_live_flights(
         enriched=enriched,
         force_refresh=force_refresh
     )
+    if result.rate_limit_remaining is not None:
+        response.headers["X-Rate-Limit-Remaining"] = str(result.rate_limit_remaining)
+    return result
 
 @router.get("/cache/stats")
 async def get_cache_statistics():
