@@ -203,14 +203,28 @@ class OpenSkyProvider(BaseFlightProvider):
         # Check Nepalese registration (ICAO Annex 10 allocation 70a8.. to 70af.., country, operator, or callsign)
         nepal_hex_prefixes = ("70a8", "70a9", "70aa", "70ab", "70ac", "70ad", "70ae", "70af")
         nepal_operators = {"BHA", "NYT", "SHA", "RNA", "TRA", "SMT", "HRA", "HIM", "GBL"}
+        callsign_upper = callsign.upper() if callsign else ""
+        is_nepal_callsign = bool(
+            callsign_upper.startswith("9N") or
+            callsign_upper.startswith("9-N") or
+            (len(callsign_upper) >= 3 and callsign_upper[:3] in nepal_operators)
+        )
         is_nepal_reg = bool(
             (origin_country and origin_country.strip().lower() == "nepal") or
             icao24.startswith(nepal_hex_prefixes) or
             (operator_icao in nepal_operators) or
-            (callsign and callsign[:3] in nepal_operators)
+            is_nepal_callsign
         )
         if is_nepal_reg and not origin_country:
             origin_country = "Nepal"
+
+        # Resolve tail registration if callsign follows 9N format
+        registration = None
+        if callsign_upper.startswith("9N") or callsign_upper.startswith("9-N"):
+            if "-" in callsign_upper:
+                registration = callsign_upper
+            elif len(callsign_upper) > 2:
+                registration = f"9N-{callsign_upper[2:]}"
 
         position = FlightPosition(
             latitude=lat,
@@ -227,6 +241,7 @@ class OpenSkyProvider(BaseFlightProvider):
         identification = FlightIdentification(
             icao24=icao24,
             callsign=callsign,
+            registration=registration,
             operator_icao=operator_icao,
             operator_name=operator_name,
             origin_country=origin_country,

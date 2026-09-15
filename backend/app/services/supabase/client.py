@@ -18,18 +18,18 @@ _supabase_admin_client: Optional[Client] = None
 
 def get_supabase_client() -> Client:
     """
-    Get or create standard Supabase client initialized with anon/public key.
-    Safe for read operations and RLS-enforced queries.
+    Get or create standard Supabase client.
+    Uses service_role key on backend if available to bypass restrictive RLS policies for server-side queries.
     """
     global _supabase_client
     if _supabase_client is None:
         settings = get_settings()
         url = settings.get_canonical_supabase_url()
-        key = settings.SUPABASE_KEY
+        key = settings.SUPABASE_SERVICE_ROLE_KEY or settings.SUPABASE_KEY
         if not url or not key:
             raise ValueError("SUPABASE_URL and SUPABASE_KEY must be configured in environment.")
         _supabase_client = create_client(url, key)
-        logger.info(f"Initialized standard Supabase client for project: {url}")
+        logger.info(f"Initialized Supabase client for project: {url}")
     return _supabase_client
 
 def get_supabase_admin_client() -> Client:

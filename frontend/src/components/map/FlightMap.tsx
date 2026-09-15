@@ -219,12 +219,19 @@ export function getAircraftColor(
   if (isSelected) return "selected";
   const callsign = (flight.identification.callsign || "").trim().toUpperCase();
   const registration = (flight.identification.registration || "").trim().toUpperCase();
+  const operator = (flight.identification.operator_icao || "").trim().toUpperCase();
+  const originCountry = (flight.identification.origin_country || "").trim().toLowerCase();
 
-  if (
+  const isNepal =
+    flight.identification.is_nepal_registered ||
+    originCountry === "nepal" ||
     callsign.startsWith("9N") ||
+    callsign.startsWith("9-N") ||
     registration.startsWith("9N") ||
-    (flight.identification.is_nepal_registered && (callsign.startsWith("9N") || !callsign))
-  ) {
+    registration.startsWith("9-N") ||
+    ["BHA", "NYT", "SHA", "RNA", "HRA", "TRA", "SMT", "GKR", "HIM", "GBL"].includes(operator);
+
+  if (isNepal) {
     return "green";
   }
   return "yellow";
@@ -495,7 +502,7 @@ function registerAircraftIcons(map: MapLibreMap) {
   }[] = [
     { colorKey: "green", fill: "#22c55e", stroke: "#0f172a" },
     { colorKey: "yellow", fill: "#facc15", stroke: "#0f172a" },
-    { colorKey: "selected", fill: "#ef4444", stroke: "#ffffff", isSelected: true },
+    { colorKey: "selected", fill: "#ef4444", stroke: "#0f172a", isSelected: true },
   ];
 
   const size = 96;
@@ -514,34 +521,7 @@ function registerAircraftIcons(map: MapLibreMap) {
       const cx = size / 2;
       const cy = size / 2;
 
-      // 6. Selected state: clear vibrant glow & beacon rings
-      if (isSelected) {
-        // Outer soft radial aura
-        const glowGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 42);
-        glowGrad.addColorStop(0, "rgba(239, 68, 68, 0.65)");
-        glowGrad.addColorStop(0.55, "rgba(239, 68, 68, 0.28)");
-        glowGrad.addColorStop(1, "rgba(239, 68, 68, 0)");
-        ctx.fillStyle = glowGrad;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 42, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Neon outer focus ring
-        ctx.beginPath();
-        ctx.arc(cx, cy, 33, 0, Math.PI * 2);
-        ctx.lineWidth = 2.8;
-        ctx.strokeStyle = "#ef4444";
-        ctx.stroke();
-
-        // High-contrast white inner highlight ring
-        ctx.beginPath();
-        ctx.arc(cx, cy, 29.5, 0, Math.PI * 2);
-        ctx.lineWidth = 1.4;
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
-        ctx.stroke();
-      }
-
-      // Draw silhouette centered at (cx, cy)
+      // Draw clean silhouette centered at (cx, cy) - no radial glow or extra boundaries
       ctx.save();
       ctx.translate(cx, cy);
       drawSilhouette(ctx, category, fill, stroke);
@@ -602,14 +582,26 @@ function flightsToGeoJSON(
     const isGreen = colorName === "green";
 
     const callsign = flight.identification.callsign || flight.identification.icao24.toUpperCase();
-    const altFt = flight.position.altitude_baro_ft ?? 0;
-    const spdKts = flight.position.ground_speed_kts ?? 0;
-    const fl = Math.round(altFt / 100);
+    const altFt =
+      flight.position.altitude_baro_ft ??
+      (flight.position.altitude_baro_m != null
+        ? Math.round(flight.position.altitude_baro_m * 3.28084)
+        : null);
+
+    const spdKts =
+      flight.position.groundspeed_kts ??
+      (flight.position.groundspeed_mps != null
+        ? Math.round(flight.position.groundspeed_mps * 1.94384)
+        : null);
+
+    const fl = altFt != null ? Math.round(altFt / 100) : null;
+    const altLabel = altFt != null ? `${Math.round(altFt).toLocaleString()} ft` : "--- ft";
+    const spdLabel = spdKts != null ? `${Math.round(spdKts)} kts` : "--- kts";
 
     // Multi-tier labels for progressive disclosure
     const labelCallsign = callsign;
-    const labelFL = `${callsign}\nFL${fl}`;
-    const labelFull = `${callsign}\n${Math.round(altFt).toLocaleString()} ft • ${Math.round(spdKts)} kts`;
+    const labelFL = fl != null ? `${callsign}\nFL${fl}` : callsign;
+    const labelFull = `${callsign}\n${altLabel} • ${spdLabel}`;
 
     features.push({
       type: "Feature",
@@ -981,9 +973,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
       maxBounds: NEPAL_MAX_BOUNDS,
-      maxBoundsViscosity: 1.0, // 100% rigid boundary - cannot scroll or drag outside bounds
       attributionControl: false,
     });
+
 
     // Navigation Controls (Zoom & Compass)
     map.addControl(
@@ -1347,8 +1339,16 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         {
           latitude: selectedFlight.position.latitude,
           longitude: selectedFlight.position.longitude,
-          altitude_ft: selectedFlight.position.altitude_baro_ft,
-          groundspeed_kts: selectedFlight.position.ground_speed_kts,
+          altitude_ft:
+            selectedFlight.position.altitude_baro_ft ??
+            (selectedFlight.position.altitude_baro_m != null
+              ? Math.round(selectedFlight.position.altitude_baro_m * 3.28084)
+              : null),
+          groundspeed_kts:
+            selectedFlight.position.groundspeed_kts ??
+            (selectedFlight.position.groundspeed_mps != null
+              ? Math.round(selectedFlight.position.groundspeed_mps * 1.94384)
+              : null),
         },
       ]);
     }

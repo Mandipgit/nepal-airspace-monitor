@@ -30,13 +30,18 @@ export interface FlightPosition {
   vertical_rate_mps: number | null;
   on_ground: boolean;
   timestamp: string | null;
+  altitude_baro_ft?: number | null;
+  groundspeed_kts?: number | null;
+  vertical_rate_fpm?: number | null;
 }
 
 export interface FlightRoute {
   origin_icao: string | null;
   origin_iata: string | null;
+  origin_name?: string | null;
   destination_icao: string | null;
   destination_iata: string | null;
+  destination_name?: string | null;
 }
 
 export interface AircraftSpec {

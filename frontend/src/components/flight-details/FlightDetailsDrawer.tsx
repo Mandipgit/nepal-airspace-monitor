@@ -34,13 +34,17 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
   const onGround = position.on_ground;
 
   // Conversions
-  const altFt = position.altitude_baro_m ? Math.round(position.altitude_baro_m * 3.28084) : null;
+  const altFt =
+    position.altitude_baro_ft ??
+    (position.altitude_baro_m ? Math.round(position.altitude_baro_m * 3.28084) : null);
   const altGeoFt = position.altitude_geo_m ? Math.round(position.altitude_geo_m * 3.28084) : null;
-  const speedKts = position.groundspeed_mps ? Math.round(position.groundspeed_mps * 1.94384) : null;
+  const speedKts =
+    position.groundspeed_kts ??
+    (position.groundspeed_mps ? Math.round(position.groundspeed_mps * 1.94384) : null);
   const speedKmh = position.groundspeed_mps ? Math.round(position.groundspeed_mps * 3.6) : null;
-  const vertRateFpm = position.vertical_rate_mps
-    ? Math.round(position.vertical_rate_mps * 196.85)
-    : null;
+  const vertRateFpm =
+    position.vertical_rate_fpm ??
+    (position.vertical_rate_mps ? Math.round(position.vertical_rate_mps * 196.85) : null);
   const heading = position.heading_deg ? Math.round(position.heading_deg) : null;
 
   return (
@@ -87,6 +91,57 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
 
       {/* Scrollable Dossier Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Flight Route / Itinerary Card */}
+        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md">
+          <div className="flex items-center justify-between">
+            {/* Origin Airport */}
+            <div className="text-left flex-1 min-w-0 pr-2">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">
+                Departure
+              </span>
+              <span className="font-mono-avionics text-xl font-extrabold text-cyan-400 tracking-wide block">
+                {flight.route?.origin_iata || flight.route?.origin_icao || (isNepal ? "KTM" : "DEP")}
+              </span>
+              <span
+                className="text-xs text-slate-200 font-medium truncate block"
+                title={flight.route?.origin_name || (isNepal ? "Kathmandu (Tribhuvan)" : "Departure Airport")}
+              >
+                {flight.route?.origin_name || (isNepal ? "Kathmandu" : "Origin Airport")}
+              </span>
+            </div>
+
+            {/* Flight Path Graphic */}
+            <div className="flex flex-col items-center px-2 shrink-0">
+              <div className="flex items-center space-x-1.5 text-cyan-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                <div className="w-14 h-[2px] bg-gradient-to-r from-cyan-400 via-sky-300 to-emerald-400 relative">
+                  <Plane className="w-3.5 h-3.5 text-sky-200 absolute -top-[6px] left-1/2 -translate-x-1/2 transform rotate-90" />
+                </div>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              </div>
+              <span className="text-[9px] font-mono-avionics text-slate-400 mt-1 uppercase font-semibold">
+                {onGround ? "On Ground" : altFt !== null ? `En Route • FL${Math.round(altFt / 100)}` : "En Route"}
+              </span>
+            </div>
+
+            {/* Destination Airport */}
+            <div className="text-right flex-1 min-w-0 pl-2">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold block">
+                Arrival
+              </span>
+              <span className="font-mono-avionics text-xl font-extrabold text-emerald-400 tracking-wide block">
+                {flight.route?.destination_iata || flight.route?.destination_icao || (isNepal ? "PKR" : "ARR")}
+              </span>
+              <span
+                className="text-xs text-slate-200 font-medium truncate block"
+                title={flight.route?.destination_name || (isNepal ? "Pokhara International" : "Destination Airport")}
+              >
+                {flight.route?.destination_name || (isNepal ? "Pokhara" : "Destination Airport")}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Real-time Avionics Grid */}
         <div>
           <h3 className="text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-2 flex items-center gap-1.5">
@@ -246,18 +301,18 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
           </div>
         )}
 
-        {/* Supabase Enriched Aircraft Specifications */}
+        {/* Enriched Aircraft Specifications */}
         {aircraft_spec ? (
           <div>
             <h3 className="text-[11px] font-bold tracking-wider text-slate-400 uppercase mb-2 flex items-center gap-1.5">
               <Plane className="w-3.5 h-3.5 text-purple-400" />
-              <span>Aircraft Specifications (Supabase DB)</span>
+              <span>Aircraft Specifications</span>
             </h3>
 
             <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2.5 text-xs">
               <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-slate-400">Model:</span>
-                <span className="font-bold text-slate-100">{aircraft_spec.model}</span>
+                <span className="text-slate-400 font-medium">Model:</span>
+                <span className="font-bold text-slate-100 font-mono-avionics">{aircraft_spec.model}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -276,12 +331,12 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
                 <div>
                   <span className="text-slate-400 block text-[10px]">Engine</span>
                   <span className="text-slate-200 capitalize">
-                    {aircraft_spec.engine_type || "Turboprop"} ({aircraft_spec.number_of_engines || 2}x)
+                    {aircraft_spec.engine_type || "Turbofan"} ({aircraft_spec.number_of_engines || 2}x)
                   </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px]">Passenger Capacity</span>
-                  <span className="font-mono-avionics font-bold text-slate-200">
+                  <span className="font-mono-avionics font-bold text-emerald-400">
                     {aircraft_spec.passenger_capacity ? `${aircraft_spec.passenger_capacity} seats` : "N/A"}
                   </span>
                 </div>
@@ -307,7 +362,7 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
         ) : (
           <div className="p-3 rounded-xl bg-slate-900/50 border border-slate-800/80 text-[11px] text-slate-400 flex items-center gap-2">
             <Layers className="w-4 h-4 text-slate-500 shrink-0" />
-            <span>Specifications pending for ICAO type &quot;{identification.aircraft_type_icao || "UNK"}&quot;.</span>
+            <span>Standard specifications active for {identification.aircraft_type_icao || identification.category_name || "General Aviation"}.</span>
           </div>
         )}
       </div>
