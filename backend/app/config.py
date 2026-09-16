@@ -54,6 +54,12 @@ class Settings(BaseModel):
     SUPABASE_SERVICE_ROLE_KEY: str = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
 
+    # Authentication & JWT Configuration
+    JWT_SECRET: str = os.getenv("JWT_SECRET", "nepal-airspace-monitor-jwt-secret-key-32chars-min-change-in-prod")
+    JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
     def get_canonical_supabase_url(self) -> str:
         """Return base Supabase project URL without trailing /rest/v1."""
         url = self.SUPABASE_URL.rstrip("/")

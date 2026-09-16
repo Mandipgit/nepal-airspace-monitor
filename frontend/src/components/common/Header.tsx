@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Radar, RefreshCw, Plane, ShieldCheck, Database, Activity } from "lucide-react";
+import { Radar, RefreshCw, Plane, ShieldCheck, Database, Activity, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface HeaderProps {
   totalFlights: number;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   cacheAge,
   rateLimitRemaining,
 }) => {
+  const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   return (
     <header className="h-16 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-4 flex items-center justify-between z-30 shrink-0 select-none">
       {/* Brand & Radar Symbol */}
@@ -117,6 +119,40 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-cyan-400" : ""}`} />
           </button>
+        </div>
+
+        {/* User Authentication Status */}
+        <div className="flex items-center space-x-2 pl-2 border-l border-slate-800/80">
+          {isAuthenticated && user ? (
+            <div className="flex items-center space-x-2">
+              <div
+                className="flex items-center space-x-2 px-2.5 py-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs"
+                title={`${user.first_name} ${user.last_name} (${user.email})`}
+              >
+                <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center text-[10px] font-bold text-slate-950">
+                  {user.first_name.charAt(0).toUpperCase()}
+                </div>
+                <span className="font-medium text-slate-200 hidden md:inline max-w-[120px] truncate">
+                  {user.first_name} {user.last_name}
+                </span>
+              </div>
+              <button
+                onClick={() => logout()}
+                title="Sign Out"
+                className="p-2 rounded-lg bg-slate-900/80 hover:bg-rose-950/50 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer shadow-sm"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => openAuthModal("login")}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 hover:from-cyan-500/30 hover:to-emerald-500/30 border border-cyan-500/40 text-cyan-300 hover:text-cyan-200 text-xs font-semibold shadow-lg shadow-cyan-500/10 transition-all cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

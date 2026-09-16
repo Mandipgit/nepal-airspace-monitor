@@ -72,16 +72,37 @@ class FlightsAPITestCase(unittest.TestCase):
         # Inject mock provider into global flight service
         flight_service.provider = self.mock_provider
         self.client = TestClient(app)
+        # Obtain valid authentication session
+        reg_res = self.client.post("/api/auth/register", json={
+            "first_name": "Flight",
+            "last_name": "Tester",
+            "email": "flight_tester@example.com",
+            "password": "Password123!"
+        })
+        if reg_res.status_code == 201:
+            self.token = reg_res.json()["access_token"]
+        else:
+            login_res = self.client.post("/api/auth/login", json={
+                "email": "flight_tester@example.com",
+                "password": "Password123!"
+            })
+            self.token = login_res.json()["access_token"]
+        self.headers = {"Authorization": f"Bearer {self.token}"}
 
     def tearDown(self):
         # Clear cache between tests
         import asyncio
         asyncio.run(flight_cache.clear())
 
+    def test_unauthenticated_request_rejected(self):
+        """Test GET /api/v1/flights/live without token returns 401 Unauthorized."""
+        res = self.client.get("/api/v1/flights/live")
+        self.assertEqual(res.status_code, 401)
+
     def test_get_live_flights_and_caching(self):
-        """Test GET /api/v1/flights/live returns normalized flights and caches second call."""
+        """Test GET /api/v1/flights/live returns normalized flights and caches second call when authenticated."""
         # Call 1: Cache miss
-        res1 = self.client.get("/api/v1/flights/live")
+        res1 = self.client.get("/api/v1/flights/live", headers=self.headers)
         self.assertEqual(res1.status_code, 200)
         data1 = res1.json()
         self.assertEqual(data1["total"], 2)
@@ -89,7 +110,7 @@ class FlightsAPITestCase(unittest.TestCase):
         self.assertEqual(self.mock_provider.call_count, 1)
 
         # Call 2: Cache hit
-        res2 = self.client.get("/api/v1/flights/live")
+        res2 = self.client.get("/api/v1/flights/live", headers=self.headers)
         self.assertEqual(res2.status_code, 200)
         data2 = res2.json()
         self.assertEqual(data2["total"], 2)
@@ -99,7 +120,7 @@ class FlightsAPITestCase(unittest.TestCase):
 
     def test_nepal_only_filter(self):
         """Test nepal_only=true filters to only Nepalese registered aircraft."""
-        res = self.client.get("/api/v1/flights/live?nepal_only=true")
+        res = self.client.get("/api/v1/flights/live?nepal_only=true", headers=self.headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["total"], 1)
@@ -108,7 +129,7 @@ class FlightsAPITestCase(unittest.TestCase):
 
     def test_get_flight_by_icao24_success(self):
         """Test GET /api/v1/flights/{icao24} returns target flight."""
-        res = self.client.get("/api/v1/flights/70a8ee")
+        res = self.client.get("/api/v1/flights/70a8ee", headers=self.headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["identification"]["callsign"], "BHA137")
@@ -116,7 +137,7 @@ class FlightsAPITestCase(unittest.TestCase):
 
     def test_get_flight_by_icao24_not_found(self):
         """Test GET /api/v1/flights/{icao24} returns 404 for unknown flight."""
-        res = self.client.get("/api/v1/flights/ffffff")
+        res = self.client.get("/api/v1/flights/ffffff", headers=self.headers)
         self.assertEqual(res.status_code, 404)
         data = res.json()
         self.assertIn("error", data)
@@ -125,8 +146,8 @@ class FlightsAPITestCase(unittest.TestCase):
     def test_get_flight_trajectory(self):
         """Test GET /api/v1/flights/{icao24}/trajectory returns breadcrumb trail."""
         # Prime the flights cache so trajectory has data
-        self.client.get("/api/v1/flights/live")
-        res = self.client.get("/api/v1/flights/70a8ee/trajectory")
+        self.client.get("/api/v1/flights/live", headers=self.headers)
+        res = self.client.get("/api/v1/flights/70a8ee/trajectory", headers=self.headers)
         self.assertEqual(res.status_code, 200)
         data = res.json()
         self.assertEqual(data["icao24"], "70a8ee")

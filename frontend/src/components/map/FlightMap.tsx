@@ -11,7 +11,7 @@ import {
 import { NormalizedFlight } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
 import { fetchFlightTrajectory } from "@/lib/api";
-import { Layers, Compass, Scan } from "lucide-react";
+import { Layers, Compass, Scan, PanelLeftOpen } from "lucide-react";
 
 // Register MapLibre Web Worker from local public bundle (solves Next.js Turbopack missing vector tiles)
 if (typeof window !== "undefined") {
@@ -27,6 +27,8 @@ interface FlightMapProps {
   onBoundsChange?: (bounds: { lamin: number; lomin: number; lamax: number; lomax: number }) => void;
   syncViewport?: boolean;
   onToggleSyncViewport?: () => void;
+  isSidebarOpen?: boolean;
+  onOpenSidebar?: () => void;
 }
 
 // Kathmandu FIR Airspace Corridor (covers STAR arrivals & approaches)
@@ -640,6 +642,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   onBoundsChange,
   syncViewport = true,
   onToggleSyncViewport,
+  isSidebarOpen = true,
+  onOpenSidebar,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
@@ -974,8 +978,16 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       maxZoom: MAX_ZOOM,
       maxBounds: NEPAL_MAX_BOUNDS,
       attributionControl: false,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
+      fadeDuration: 80,
     });
 
+    // Configure silky smooth wheel zoom and continuous momentum panning
+    map.scrollZoom.setWheelZoomRate(1 / 450);
+    map.scrollZoom.enable();
+    map.dragPan.enable();
 
     // Navigation Controls (Zoom & Compass)
     map.addControl(
@@ -985,24 +997,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }),
       "top-right"
     );
-
-    // Pan locking manager:
-    // At minimum zoom (maximum zoom out framed to blue dotted FIR box), lock dragging completely.
-    // When user zooms in, enable dragging/panning within NEPAL_MAX_BOUNDS.
-    const updatePanLock = () => {
-      if (!map) return;
-      const currentZoom = map.getZoom();
-      const lockThreshold = (minZoomRef.current || MIN_ZOOM) + 0.08;
-      if (currentZoom <= lockThreshold) {
-        if (map.dragPan.isEnabled()) {
-          map.dragPan.disable();
-        }
-      } else {
-        if (!map.dragPan.isEnabled()) {
-          map.dragPan.enable();
-        }
-      }
-    };
 
     // Initial load handler
     map.on("load", () => {
@@ -1017,7 +1011,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       const fitZoom = Math.round(map.getZoom() * 100) / 100;
       map.setMinZoom(fitZoom);
       minZoomRef.current = fitZoom;
-      updatePanLock();
 
       // Trigger initial bounds calculation
       const b = map.getBounds();
@@ -1031,18 +1024,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }
     });
 
-    // Update pan lock dynamically on zoom changes
-    map.on("zoom", updatePanLock);
-
-    // Re-frame exactly to FIR bounds when zooming all the way back out
-    map.on("zoomend", () => {
-      const baseZoom = minZoomRef.current || MIN_ZOOM;
-      if (map.getZoom() <= baseZoom + 0.08) {
-        map.fitBounds(NEPAL_FIR_BOUNDS, { padding: 0, duration: 250 });
-        updatePanLock();
-      }
-    });
-
     // Re-fit on container resize (e.g. sidebar toggle)
     map.on("resize", () => {
       const baseZoom = minZoomRef.current || MIN_ZOOM;
@@ -1051,7 +1032,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         const fitZoom = Math.round(map.getZoom() * 100) / 100;
         map.setMinZoom(fitZoom);
         minZoomRef.current = fitZoom;
-        updatePanLock();
       }
     });
 
@@ -1224,7 +1204,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
     map.fitBounds(NEPAL_FIR_BOUNDS, {
       padding: 0,
-      duration: 800,
+      duration: 600,
     });
   };
 
@@ -1375,6 +1355,18 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
       {/* Floating Map Controls */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
+        {/* Open Sidebar Menu Toggle (Appears smoothly when sidebar is closed) */}
+        {!isSidebarOpen && onOpenSidebar && (
+          <button
+            onClick={onOpenSidebar}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
+            title="Open Navigation Menu"
+          >
+            <PanelLeftOpen className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Menu</span>
+          </button>
+        )}
+
         {/* OpenFreeMap Style Switcher */}
         <button
           onClick={cycleTileLayer}
