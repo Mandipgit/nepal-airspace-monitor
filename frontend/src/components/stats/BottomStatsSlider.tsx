@@ -26,42 +26,49 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
 
   return (
     <div className="absolute bottom-4 right-4 z-20 select-none flex flex-col items-end">
-      {/* Slider Container */}
-      <div className="bg-[#11141b] rounded-xl overflow-hidden border border-white/7 shadow-2xl transition-all duration-300">
+      {/* Slider Container - Distinct Elevated Console */}
+      <div className="bg-[#111218] rounded-xl overflow-hidden border border-white/18 shadow-[0_12px_40px_rgba(0,0,0,0.95)] ring-1 ring-black/80 backdrop-blur-xl transition-all duration-300">
         {/* Toggle Bar / Header */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full px-3 py-1.5 bg-[#0d1017] hover:bg-[#141822] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors border-b border-white/5 cursor-pointer"
+          className="w-full px-3.5 py-2 bg-[#191b24] hover:bg-[#222430] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors border-b border-white/12 cursor-pointer"
         >
-          <span className="font-mono-avionics text-slate-300">Airspace Telemetry</span>
-          <div className="flex items-center space-x-1.5">
-            <span className="text-[9px] text-slate-500 font-normal">
-              {isExpanded ? "Collapse" : `${totalFlights} Active`}
+          <div className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-sans font-bold tracking-wider text-white text-[11px] uppercase">
+              Live Status
             </span>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            {!isExpanded && (
+              <span className="text-[10px] text-neutral-400 font-medium font-sans">
+                {totalFlights} Active
+              </span>
+            )}
             {isExpanded ? (
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-300" />
             ) : (
-              <ChevronUp className="w-3 h-3 text-slate-400" />
+              <ChevronUp className="w-3.5 h-3.5 text-neutral-300" />
             )}
           </div>
         </button>
 
         {/* Expanded Drawer Content - Clean Aviation Data Grid */}
         {isExpanded && (
-          <div className="p-3 bg-[#11141b] flex items-center gap-4 divide-x divide-white/6 text-left">
+          <div className="p-3.5 bg-[#111218] flex items-center gap-4 divide-x divide-white/12 text-left">
             {/* Live Flights */}
             <div className="pr-1">
-              <div className="text-[9px] uppercase font-semibold text-slate-400 tracking-wider">
+              <div className="text-[9px] uppercase font-semibold text-neutral-400 tracking-wider">
                 Live Flights
               </div>
-              <div className="font-mono-avionics text-base font-bold text-slate-100 mt-0.5 leading-none">
+              <div className="font-mono-avionics text-base font-bold text-neutral-100 mt-0.5 leading-none">
                 {totalFlights}
               </div>
             </div>
 
             {/* Nepal Registered Flights */}
             <div className="pl-4 pr-1">
-              <div className="text-[9px] uppercase font-semibold text-slate-400 tracking-wider">
+              <div className="text-[9px] uppercase font-semibold text-neutral-400 tracking-wider">
                 Nepal (9N)
               </div>
               <div className="font-mono-avionics text-base font-bold text-emerald-400 mt-0.5 leading-none">
@@ -72,10 +79,10 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
             {/* OpenSky API Credits Quota */}
             {rateLimitRemaining !== null && rateLimitRemaining !== undefined && (
               <div className="pl-4 pr-1">
-                <div className="text-[9px] uppercase font-semibold text-slate-400 tracking-wider">
+                <div className="text-[9px] uppercase font-semibold text-neutral-400 tracking-wider">
                   API Quota
                 </div>
-                <div className="font-mono-avionics text-base font-bold text-slate-200 mt-0.5 leading-none">
+                <div className="font-mono-avionics text-base font-bold text-neutral-200 mt-0.5 leading-none">
                   {rateLimitRemaining.toLocaleString()}
                 </div>
               </div>
@@ -84,10 +91,10 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
             {/* Refresh Countdown & Manual Polling Button */}
             <div className="pl-4 flex items-center gap-2.5">
               <div>
-                <div className="text-[9px] uppercase font-semibold text-slate-400 tracking-wider">
+                <div className="text-[9px] uppercase font-semibold text-neutral-400 tracking-wider">
                   Refresh
                 </div>
-                <div className="font-mono-avionics text-base font-bold text-slate-200 mt-0.5 leading-none">
+                <div className="font-mono-avionics text-base font-bold text-neutral-200 mt-0.5 leading-none">
                   {countdown}s
                 </div>
               </div>
@@ -99,10 +106,10 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
                 onPress={onRefresh}
                 isDisabled={refreshing}
                 aria-label="Refresh telemetry"
-                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/8 transition-all p-1 cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white border border-white/8 transition-all p-1 cursor-pointer"
               >
                 <RefreshCw
-                  className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-sky-400" : ""}`}
+                  className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-white" : ""}`}
                 />
               </Button>
             </div>

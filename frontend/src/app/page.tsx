@@ -17,6 +17,7 @@ import { List } from "lucide-react";
 export default function Home() {
   const { isAuthenticated } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [syncViewport, setSyncViewport] = useState<boolean>(true);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [viewportBounds, setViewportBounds] = useState<{
@@ -103,9 +104,13 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#080a0f] text-slate-100 relative">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-black text-neutral-100 relative">
       {/* 1. Dedicated Top Navigation Bar Inspired by Reference Screenshot */}
-      <TopBar onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
+      <TopBar
+        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={setIsDarkMode}
+      />
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
       <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
@@ -154,6 +159,8 @@ export default function Home() {
             onToggleSyncViewport={handleToggleSyncViewport}
             isSidebarOpen={isSidebarOpen}
             onOpenSidebar={() => setIsSidebarOpen(true)}
+            isDarkMode={isDarkMode}
+            onToggleDarkMode={setIsDarkMode}
           />
 
           {/* Bottom Right Telemetry Drawer / Slider */}
@@ -169,7 +176,7 @@ export default function Home() {
 
           {/* Connection Notice Pill */}
           {error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-[#12151c]/90 px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-black/95 px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               <span>Connection notice: {error}</span>
               <button
@@ -185,9 +192,9 @@ export default function Home() {
           <div className="absolute bottom-4 left-4 z-20 md:hidden">
             <button
               onClick={() => setIsSearchOpen((prev) => !prev)}
-              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#12151c] border border-white/10 text-xs font-bold text-slate-200 shadow-2xl cursor-pointer"
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-neutral-900 border border-white/10 text-xs font-bold text-neutral-200 shadow-2xl cursor-pointer"
             >
-              <List className="w-4 h-4 text-sky-400" />
+              <List className="w-4 h-4 text-white" />
               <span>Flights ({flights.length})</span>
             </button>
           </div>

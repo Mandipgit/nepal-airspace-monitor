@@ -3,20 +3,20 @@
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  --bg-radar: #080a0f;
-  --bg-panel: rgba(17, 20, 27, 0.96);
-  --bg-panel-floating: rgba(19, 23, 32, 0.88);
-  --bg-card: rgba(24, 28, 38, 0.82);
-  --border-subtle: rgba(255, 255, 255, 0.07);
-  --border-panel: rgba(255, 255, 255, 0.08);
+  --bg-radar: #000000;
+  --bg-panel: rgba(12, 12, 12, 0.98);
+  --bg-panel-floating: rgba(18, 18, 18, 0.94);
+  --bg-card: rgba(22, 22, 22, 0.9);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-panel: rgba(255, 255, 255, 0.1);
   --accent-nepal: #10b981;
-  --accent-airborne: #38bdf8;
+  --accent-airborne: #ffffff;
   --accent-alert: #f59e0b;
 }
 
 body {
   background-color: var(--bg-radar);
-  color: #f1f5f9;
+  color: #f5f5f5;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow: hidden;
   user-select: none;
@@ -28,41 +28,41 @@ body {
   letter-spacing: -0.02em;
 }
 
-/* Modern Dark Aviation Panels Matching Screenshot */
+/* Modern Dark Aviation Panels - Pure Black & Neutral Monochrome */
 .glass-sidebar {
-  background: rgba(13, 16, 22, 0.98);
+  background: rgba(8, 8, 8, 0.98);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-panel {
-  background: rgba(17, 20, 27, 0.96);
+  background: rgba(12, 12, 12, 0.98);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .glass-panel-floating {
-  background: rgba(19, 23, 32, 0.92);
+  background: rgba(16, 16, 16, 0.95);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.9);
 }
 
 .glass-card {
-  background: rgba(24, 28, 38, 0.78);
+  background: rgba(22, 22, 22, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-card-active {
-  background: rgba(30, 36, 48, 0.95);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+  background: rgba(30, 30, 30, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.06);
 }
 
 /* Hide scrollbar for clean filter pills */
@@ -94,42 +94,41 @@ body {
   animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
-
-/* Custom Scrollbars */
+/* Custom Scrollbars - Neutral Dark */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(10, 10, 10, 0.8);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(45, 45, 45, 0.85);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: rgba(70, 70, 70, 1);
 }
 
-/* MapLibre Dark Theme Tweaks */
+/* MapLibre Dark Theme Tweaks - Pure Black & Neutral Gray */
 .maplibregl-map {
   font-family: inherit;
 }
 
 .maplibregl-ctrl-group {
-  background-color: rgba(15, 23, 42, 0.9) !important;
-  border: 1px solid rgba(51, 65, 85, 0.6) !important;
+  background-color: rgba(12, 12, 12, 0.95) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 10px !important;
   overflow: hidden !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.6) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.8) !important;
   backdrop-filter: blur(12px) !important;
 }
 
 .maplibregl-ctrl-group button {
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   width: 32px !important;
   height: 32px !important;
 }
@@ -139,33 +138,33 @@ body {
 }
 
 .maplibregl-ctrl-group button:hover {
-  background-color: rgba(30, 41, 59, 0.9) !important;
+  background-color: rgba(30, 30, 30, 0.95) !important;
 }
 
 .maplibregl-ctrl-icon {
-  filter: invert(1) brightness(0.85);
+  filter: invert(1) brightness(0.9);
 }
 
 .maplibregl-popup-content {
-  background: rgba(15, 23, 42, 0.94) !important;
+  background: rgba(12, 12, 12, 0.98) !important;
   backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(51, 65, 85, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 10px !important;
   padding: 8px 12px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8) !important;
-  color: #f1f5f9 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.9) !important;
+  color: #f5f5f5 !important;
 }
 
 .maplibregl-popup-anchor-top .maplibregl-popup-tip {
-  border-bottom-color: rgba(15, 23, 42, 0.94) !important;
+  border-bottom-color: rgba(12, 12, 12, 0.98) !important;
 }
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
-  border-top-color: rgba(15, 23, 42, 0.94) !important;
+  border-top-color: rgba(12, 12, 12, 0.98) !important;
 }
 .maplibregl-popup-anchor-left .maplibregl-popup-tip {
-  border-right-color: rgba(15, 23, 42, 0.94) !important;
+  border-right-color: rgba(12, 12, 12, 0.98) !important;
 }
 .maplibregl-popup-anchor-right .maplibregl-popup-tip {
-  border-left-color: rgba(15, 23, 42, 0.94) !important;
+  border-left-color: rgba(12, 12, 12, 0.98) !important;
 }
 

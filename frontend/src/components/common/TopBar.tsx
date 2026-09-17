@@ -3,13 +3,19 @@
 import React, { useState } from "react";
 import { Avatar, Button } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { Radar, Bell, Sun, Moon, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, Sun, Moon, LogOut, User as UserIcon } from "lucide-react";
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
+  isDarkMode?: boolean;
+  onToggleDarkMode?: (dark: boolean) => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = () => {
+export const TopBar: React.FC<TopBarProps> = ({
+  onToggleSidebar,
+  isDarkMode = true,
+  onToggleDarkMode,
+}) => {
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
@@ -18,18 +24,18 @@ export const TopBar: React.FC<TopBarProps> = () => {
   const userInitial = (user?.first_name || user?.email || "G").charAt(0).toUpperCase();
   const displayName = user
     ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
-    : "Guest Pilot";
+    : "Guest Mode";
 
   return (
-    <header className="h-14 w-full bg-[#080a0f] border-b border-white/7 px-4 flex items-center justify-between z-40 shrink-0 select-none">
-      {/* Left: Brand Identity & Radar Status */}
+    <header className="h-14 w-full bg-[#0d0e13] border-b border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.85)] px-4 flex items-center justify-between z-40 shrink-0 select-none">
+      {/* Left: User Identity / Guest Mode Avatar & Live Status */}
       <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-sky-400">
-          <Radar className="w-4 h-4 animate-spin" style={{ animationDuration: "10s" }} />
+        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/15 flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0 select-none">
+          {isAuthenticated ? userInitial : "G"}
         </div>
         <div className="flex items-center space-x-2.5">
-          <h1 className="text-xs font-bold tracking-widest uppercase text-slate-100 font-mono-avionics">
-            Nepal Airspace Monitor
+          <h1 className="text-sm md:text-base font-bold text-white tracking-tight font-sans select-none">
+            {isAuthenticated ? displayName : "Guest Mode"}
           </h1>
           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
             LIVE
@@ -40,20 +46,30 @@ export const TopBar: React.FC<TopBarProps> = () => {
       {/* Right: Controls strictly matching the reference screenshot */}
       <div className="flex items-center space-x-3">
         {/* Theme / Display Control Capsule [ ☼ ☾ ] */}
-        <div className="hidden sm:flex items-center bg-[#12151c] border border-white/8 rounded-full p-0.5 shadow-inner">
+        <div className="hidden sm:flex items-center bg-[#181a24] border border-white/15 rounded-full p-0.5 shadow-inner">
           <button
             type="button"
-            className="p-1.5 rounded-full text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-            title="Light mode (preview)"
+            onClick={() => onToggleDarkMode?.(false)}
+            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              !isDarkMode
+                ? "bg-amber-400/20 text-amber-300 ring-1 ring-amber-400/40 shadow-sm"
+                : "text-neutral-500 hover:text-neutral-300"
+            }`}
+            title="Switch to Light mode"
             aria-label="Light mode"
           >
             <Sun className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            className="p-1.5 rounded-full bg-white/10 text-sky-400 shadow-sm transition-colors cursor-pointer"
-            title="Dark mode active"
-            aria-label="Dark mode active"
+            onClick={() => onToggleDarkMode?.(true)}
+            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              isDarkMode
+                ? "bg-white/20 text-white shadow-sm ring-1 ring-white/25"
+                : "text-neutral-500 hover:text-neutral-300"
+            }`}
+            title="Switch to Dark mode"
+            aria-label="Dark mode"
           >
             <Moon className="w-3.5 h-3.5" />
           </button>
@@ -67,27 +83,27 @@ export const TopBar: React.FC<TopBarProps> = () => {
             variant="ghost"
             onPress={() => setNotificationsOpen(!notificationsOpen)}
             aria-label="Airspace notifications"
-            className="w-9 h-9 rounded-full bg-[#12151c] hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all p-0 flex items-center justify-center cursor-pointer shadow-sm relative active:scale-95"
+            className="w-9 h-9 rounded-full bg-[#111111] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-all p-0 flex items-center justify-center cursor-pointer shadow-sm relative active:scale-95"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#080a0f]" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#000000]" />
           </Button>
 
           {/* Quick Notification Dropdown (Subtle operations telemetry notice) */}
           {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-xl bg-[#12151c] border border-white/10 shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95">
+            <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-xl bg-[#111111] border border-white/10 shadow-2xl z-50 text-xs animate-in fade-in zoom-in-95">
               <div className="flex items-center justify-between pb-2 border-b border-white/7 mb-2">
-                <span className="font-semibold text-slate-200">Airspace Feed Alerts</span>
+                <span className="font-semibold text-neutral-200">Airspace Feed Alerts</span>
                 <span className="text-[10px] text-emerald-400 font-mono-avionics font-bold">ALL CLEAR</span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
+              <p className="text-[11px] text-neutral-400 leading-relaxed">
                 ADS-B receivers across Kathmandu FIR (VNKT) are operating nominally. 100% telemetry synced with OpenSky feeds.
               </p>
             </div>
           )}
         </div>
 
-        {/* User Profile Avatar [M] */}
+        {/* User Profile Avatar */}
         <div className="relative">
           {isAuthenticated ? (
             <button
@@ -97,7 +113,7 @@ export const TopBar: React.FC<TopBarProps> = () => {
             >
               <Avatar
                 size="sm"
-                className="w-9 h-9 rounded-full bg-slate-800 border border-white/15 text-slate-100 font-mono font-bold text-sm flex items-center justify-center shadow-md"
+                className="w-9 h-9 rounded-full bg-neutral-800 border border-white/15 text-neutral-100 font-mono font-bold text-sm flex items-center justify-center shadow-md"
               >
                 <Avatar.Fallback>{userInitial}</Avatar.Fallback>
               </Avatar>
@@ -107,19 +123,19 @@ export const TopBar: React.FC<TopBarProps> = () => {
               size="sm"
               variant="ghost"
               onPress={() => openAuthModal("login")}
-              className="h-9 px-3.5 rounded-full bg-[#12151c] hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
+              className="h-9 px-3.5 rounded-full bg-[#111111] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
             >
-              <UserIcon className="w-3.5 h-3.5 text-slate-400" />
+              <UserIcon className="w-3.5 h-3.5 text-neutral-400" />
               <span>Sign In</span>
             </Button>
           )}
 
           {/* Authenticated User Menu Dropdown */}
           {isAuthenticated && showUserMenu && (
-            <div className="absolute right-0 mt-2 w-52 p-2 rounded-xl bg-[#12151c] border border-white/10 shadow-2xl z-50 animate-in fade-in zoom-in-95">
+            <div className="absolute right-0 mt-2 w-52 p-2 rounded-xl bg-[#111111] border border-white/10 shadow-2xl z-50 animate-in fade-in zoom-in-95">
               <div className="px-2.5 py-2 border-b border-white/7 mb-1">
-                <div className="text-xs font-semibold text-slate-200 truncate">{displayName}</div>
-                <div className="text-[10px] text-slate-400 truncate">{user?.email}</div>
+                <div className="text-xs font-semibold text-neutral-200 truncate">{displayName}</div>
+                <div className="text-[10px] text-neutral-400 truncate">{user?.email}</div>
               </div>
               <Button
                 fullWidth

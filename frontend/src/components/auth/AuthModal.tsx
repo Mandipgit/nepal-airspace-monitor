@@ -30,7 +30,7 @@ export const AuthModal: React.FC = () => {
           variant="ghost"
           onPress={closeAuthModal}
           aria-label="Close modal"
-          className="absolute -top-3.5 -right-3.5 z-20 w-8 h-8 rounded-full bg-slate-900 border border-white/10 text-slate-400 hover:text-white hover:bg-slate-800 shadow-2xl transition-all cursor-pointer flex items-center justify-center"
+          className="absolute -top-3.5 -right-3.5 z-20 w-8 h-8 rounded-full bg-neutral-900 border border-white/10 text-neutral-400 hover:text-white hover:bg-neutral-800 shadow-2xl transition-all cursor-pointer flex items-center justify-center"
         >
           <X className="w-4 h-4" />
         </Button>

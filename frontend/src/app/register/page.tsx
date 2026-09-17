@@ -18,12 +18,12 @@ export default function RegisterPage() {
   }, [isAuthenticated, isLoading, router]);
 
   return (
-    <div className="min-h-screen w-screen flex flex-col items-center justify-center p-4 bg-[#080a0f] text-slate-100 relative overflow-hidden">
+    <div className="min-h-screen w-screen flex flex-col items-center justify-center p-4 bg-black text-neutral-100 relative overflow-hidden">
       {/* Top back link */}
       <div className="absolute top-6 left-6 z-20">
         <Link
           href="/"
-          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-[#12151c] border border-white/8 text-xs font-medium text-slate-400 hover:text-slate-200 hover:border-white/15 transition-colors"
+          className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-[#141414] border border-white/8 text-xs font-medium text-neutral-400 hover:text-neutral-200 hover:border-white/15 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>Return to Radar Map</span>
@@ -32,10 +32,10 @@ export default function RegisterPage() {
 
       {/* Brand Header */}
       <div className="mb-6 flex items-center space-x-2.5 z-10">
-        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-sky-400">
+        <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white">
           <Radar className="w-4 h-4 animate-spin" style={{ animationDuration: "10s" }} />
         </div>
-        <span className="text-xs font-bold tracking-widest uppercase font-mono-avionics text-slate-200">
+        <span className="text-xs font-bold tracking-widest uppercase font-mono-avionics text-neutral-200">
           Nepal Airspace Monitor
         </span>
       </div>

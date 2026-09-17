@@ -75,5 +75,55 @@ class FlightEnrichmentTestCase(unittest.IsolatedAsyncioTestCase):
         enriched = await enrichment_service.enrich_flight(flight)
         self.assertIsNone(enriched.aircraft_spec)
 
+    async def test_aic211_delhi_to_kathmandu(self):
+        """Test Air India AIC211 is correctly resolved as DEL -> KTM (not KTM -> DEL)."""
+        flight = NormalizedFlight(
+            id="opensky_800589",
+            provider="opensky",
+            identification=FlightIdentification(
+                icao24="800589",
+                callsign="AIC211",
+                operator_icao="AIC",
+                operator_name="Air India",
+                is_nepal_registered=False
+            ),
+            position=FlightPosition(
+                latitude=27.4541,
+                longitude=85.2492,
+                altitude_baro_m=3223.0,
+                heading_deg=22.0
+            )
+        )
+
+        enriched = await enrichment_service.enrich_flight(flight)
+        self.assertIsNotNone(enriched.route)
+        self.assertEqual(enriched.route.origin_iata, "DEL")
+        self.assertEqual(enriched.route.destination_iata, "KTM")
+
+    async def test_bha960_bhadrapur_to_kathmandu(self):
+        """Test Buddha Air BHA960 is correctly resolved as BDP -> KTM (not KTM -> KTM)."""
+        flight = NormalizedFlight(
+            id="opensky_70a8ee",
+            provider="opensky",
+            identification=FlightIdentification(
+                icao24="70a8ee",
+                callsign="BHA960",
+                operator_icao="BHA",
+                operator_name="Buddha Air",
+                is_nepal_registered=True
+            ),
+            position=FlightPosition(
+                latitude=26.9000,
+                longitude=86.5000,
+                altitude_baro_m=3000.0,
+                heading_deg=290.0
+            )
+        )
+
+        enriched = await enrichment_service.enrich_flight(flight)
+        self.assertIsNotNone(enriched.route)
+        self.assertEqual(enriched.route.origin_iata, "BDP")
+        self.assertEqual(enriched.route.destination_iata, "KTM")
+
 if __name__ == "__main__":
     unittest.main()

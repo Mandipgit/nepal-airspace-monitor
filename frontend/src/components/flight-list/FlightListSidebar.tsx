@@ -76,22 +76,22 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
   }, [flights]);
 
   return (
-    <aside className="w-80 md:w-96 flex flex-col h-full bg-slate-950/80 backdrop-blur-2xl border-r border-slate-800/80 shrink-0 z-20 overflow-hidden">
+    <aside className="w-80 md:w-96 flex flex-col h-full bg-[#0a0a0a] backdrop-blur-2xl border-r border-white/8 shrink-0 z-20 overflow-hidden">
       {/* Search Header */}
-      <div className="p-3 border-b border-slate-800/80 space-y-2">
+      <div className="p-3 border-b border-white/8 space-y-2">
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search callsign, airline, hex (e.g. BHA, 70a8, MLAT)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-lg border border-slate-700/80 focus:outline-none focus:border-cyan-500 transition-colors"
+            className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#141414] text-neutral-100 placeholder-neutral-500 rounded-lg border border-white/8 focus:outline-none focus:border-white/20 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 text-xs"
             >
               ✕
             </button>
@@ -104,8 +104,8 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             onClick={() => setActiveTab("all")}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === "all"
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-white/10 text-white border border-white/20"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             All ({flights.length})
@@ -115,7 +115,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap flex items-center space-x-1 cursor-pointer ${
               activeTab === "nepal"
                 ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             <Shield className="w-3 h-3 text-emerald-400" />
@@ -125,8 +125,8 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             onClick={() => setActiveTab("adsb")}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === "adsb"
-                ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-neutral-800 text-neutral-200 border border-neutral-700"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             ADS-B ({adsbCount})
@@ -136,7 +136,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === "mlat"
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             MLAT ({mlatCount})
@@ -147,7 +147,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
               className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
                 activeTab === "uat"
                   ? "bg-purple-500/20 text-purple-300 border border-purple-500/40"
-                  : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                  : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
               }`}
             >
               UAT/Other ({uatOtherCount})
@@ -157,8 +157,8 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             onClick={() => setActiveTab("airborne")}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === "airborne"
-                ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-neutral-800 text-neutral-200 border border-neutral-700"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             Airborne ({flights.filter((f) => !f.position.on_ground).length})
@@ -167,8 +167,8 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
             onClick={() => setActiveTab("ground")}
             className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === "ground"
-                ? "bg-slate-700/40 text-slate-300 border border-slate-600"
-                : "bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-neutral-800 text-neutral-300 border border-neutral-700"
+                : "bg-neutral-900 text-neutral-400 hover:text-neutral-200 border border-neutral-800"
             }`}
           >
             Ground ({flights.filter((f) => f.position.on_ground).length})
@@ -177,14 +177,14 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
       </div>
 
       {/* Flight Cards List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-800/50 p-2 space-y-1.5">
+      <div className="flex-1 overflow-y-auto divide-y divide-white/6 p-2 space-y-1.5">
         {loading && flights.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs flex flex-col items-center justify-center space-y-2">
-            <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <div className="p-8 text-center text-neutral-500 text-xs flex flex-col items-center justify-center space-y-2">
+            <div className="w-6 h-6 border-2 border-white/40 border-t-transparent rounded-full animate-spin" />
             <span>Scanning Nepalese airspace...</span>
           </div>
         ) : filteredFlights.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 text-xs">
+          <div className="p-8 text-center text-neutral-500 text-xs">
             No aircraft matched current filters.
           </div>
         ) : (
@@ -208,8 +208,8 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                 onClick={() => onSelectFlight(flight)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer select-none ${
                   isSelected
-                    ? "bg-slate-800/95 border-red-500/80 shadow-lg shadow-red-950/40 translate-x-1"
-                    : "bg-slate-900/60 hover:bg-slate-850 border-slate-800/60 hover:border-slate-700"
+                    ? "bg-[#202020] border-red-500/80 shadow-lg shadow-red-950/40 translate-x-1"
+                    : "bg-[#141414] hover:bg-[#181818] border-white/6 hover:border-white/12"
                 }`}
               >
                 {/* Card Top: Callsign, Operator, Reg badge */}
@@ -234,7 +234,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                           : "Other / Transit (Yellow)"
                       }
                     />
-                    <span className="font-mono-avionics text-sm font-bold text-slate-100 tracking-wider">
+                    <span className="font-mono-avionics text-sm font-bold text-neutral-100 tracking-wider">
                       {flight.identification.callsign || flight.identification.icao24.toUpperCase()}
                     </span>
                     {isNepal && (
@@ -246,7 +246,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                     {/* Position Surveillance Source Badge */}
                     {(() => {
                       const posSrc = flight.identification.position_source || "ADS-B";
-                      let srcClass = "bg-sky-500/20 text-sky-300 border-sky-500/40";
+                      let srcClass = "bg-neutral-800 text-neutral-300 border-neutral-700";
                       if (posSrc.includes("MLAT")) {
                         srcClass = "bg-amber-500/25 text-amber-300 border-amber-500/50 font-semibold";
                       } else if (posSrc.includes("UAT")) {
@@ -254,7 +254,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                       } else if (posSrc.includes("FLARM")) {
                         srcClass = "bg-emerald-500/25 text-emerald-300 border-emerald-500/50";
                       } else if (posSrc.includes("ASTERIX")) {
-                        srcClass = "bg-blue-500/25 text-blue-300 border-blue-500/50";
+                        srcClass = "bg-neutral-800 text-neutral-300 border-neutral-700";
                       }
                       return (
                         <span className={`px-1.5 py-0.2 rounded text-[8.5px] font-mono tracking-tight border ${srcClass}`} title={`Surveillance Technology: ${posSrc}`}>
@@ -268,59 +268,59 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                       </span>
                     )}
                     {flight.identification.squawk && (
-                      <span className="px-1 py-0.2 rounded text-[8px] font-mono-avionics bg-cyan-950/60 text-cyan-300 border border-cyan-800/50">
+                      <span className="px-1 py-0.2 rounded text-[8px] font-mono-avionics bg-neutral-900 text-neutral-300 border border-neutral-700">
                         SQ {flight.identification.squawk}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center space-x-1">
                     {flight.identification.origin_country && !isNepal && (
-                      <span className="text-[9px] text-slate-400 px-1 py-0.5 rounded bg-slate-800/60">
+                      <span className="text-[9px] text-neutral-400 px-1 py-0.5 rounded bg-neutral-800/60">
                         {flight.identification.origin_country}
                       </span>
                     )}
-                    <span className="font-mono-avionics text-[10px] text-slate-400 uppercase">
+                    <span className="font-mono-avionics text-[10px] text-neutral-400 uppercase">
                       {flight.identification.icao24}
                     </span>
                   </div>
                 </div>
 
                 {/* Card Middle: Airline / Aircraft Model */}
-                <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
-                  <span className="truncate max-w-[180px] font-medium text-slate-300">
+                <div className="mt-1 flex items-center justify-between text-xs text-neutral-400">
+                  <span className="truncate max-w-[180px] font-medium text-neutral-300">
                     {flight.identification.operator_name || (isNepal ? "Domestic Nepal Carrier" : "Commercial Transit")}
                   </span>
-                  <span className="text-[11px] text-slate-400 truncate max-w-[120px]">
+                  <span className="text-[11px] text-neutral-400 truncate max-w-[120px]">
                     {flight.aircraft_spec?.model || flight.identification.aircraft_type_icao || "Aircraft"}
                   </span>
                 </div>
 
                 {/* Card Bottom: Telemetry pills */}
-                <div className="mt-2.5 pt-2 border-t border-slate-800/60 grid grid-cols-3 gap-2 text-[11px]">
+                <div className="mt-2.5 pt-2 border-t border-white/6 grid grid-cols-3 gap-2 text-[11px]">
                   {/* Altitude */}
                   <div className="flex flex-col">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400">Altitude</span>
-                    <span className="font-mono-avionics font-bold text-cyan-300">
+                    <span className="text-[9px] uppercase tracking-wider text-neutral-400">Altitude</span>
+                    <span className="font-mono-avionics font-bold text-neutral-100">
                       {onGround ? "Ground" : altFt !== null ? `${altFt.toLocaleString()} ft` : "N/A"}
                     </span>
                   </div>
 
                   {/* Groundspeed */}
                   <div className="flex flex-col">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400">Speed</span>
-                    <span className="font-mono-avionics font-bold text-slate-200">
+                    <span className="text-[9px] uppercase tracking-wider text-neutral-400">Speed</span>
+                    <span className="font-mono-avionics font-bold text-neutral-200">
                       {speedKts !== null ? `${speedKts} kts` : "N/A"}
                     </span>
                   </div>
 
                   {/* Heading */}
                   <div className="flex flex-col">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400">Heading</span>
-                    <div className="flex items-center space-x-1 font-mono-avionics font-bold text-slate-200">
+                    <span className="text-[9px] uppercase tracking-wider text-neutral-400">Heading</span>
+                    <div className="flex items-center space-x-1 font-mono-avionics font-bold text-neutral-200">
                       <span>{heading !== null ? `${heading}°` : "N/A"}</span>
                       {heading !== null && (
                         <Compass
-                          className="w-3 h-3 text-slate-400 inline-block"
+                          className="w-3 h-3 text-neutral-400 inline-block"
                           style={{ transform: `rotate(${heading}deg)` }}
                         />
                       )}
@@ -345,15 +345,15 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
 
       {/* Footer Telemetry Status */}
       {rateLimitRemaining !== undefined && rateLimitRemaining !== null && (
-        <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/90 backdrop-blur-md flex items-center justify-between text-[11px] font-mono-avionics text-slate-400 shrink-0">
+        <div className="px-3 py-2 border-t border-white/8 bg-black/90 backdrop-blur-md flex items-center justify-between text-[11px] font-mono-avionics text-neutral-400 shrink-0">
           <span className="flex items-center gap-1.5">
             <Activity className={`w-3.5 h-3.5 ${
-              rateLimitRemaining > 1000 ? "text-cyan-400" :
+              rateLimitRemaining > 1000 ? "text-neutral-200" :
               rateLimitRemaining > 200 ? "text-amber-400" : "text-rose-400"
             }`} />
-            <span className="text-slate-300">OpenSky Credits</span>
+            <span className="text-neutral-300">OpenSky Credits</span>
           </span>
-          <span className="font-bold text-cyan-300">
+          <span className="font-bold text-white">
             {rateLimitRemaining.toLocaleString()} remaining
           </span>
         </div>
