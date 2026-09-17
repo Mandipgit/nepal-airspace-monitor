@@ -75,13 +75,13 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="w-80 md:w-96 h-full glass-panel z-25 flex flex-col shrink-0 select-none overflow-hidden border-r border-white/8 transition-all duration-300 animate-in fade-in slide-in-from-left-4">
+    <div className="w-80 md:w-96 h-full bg-[#11141b] z-25 flex flex-col shrink-0 select-none overflow-hidden border-r border-white/7 transition-all duration-300">
       {/* Header with Search */}
-      <div className="p-3.5 border-b border-white/8 bg-slate-950/40 space-y-2.5">
+      <div className="p-3.5 border-b border-white/7 bg-[#0d1017] space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <ListFilter className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-100">
+            <ListFilter className="w-4 h-4 text-slate-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-100 font-mono-avionics">
               Airspace Flight Directory
             </h2>
           </div>
@@ -91,7 +91,7 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             variant="ghost"
             onPress={onClose}
             aria-label="Close directory"
-            className="text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg p-1 transition-colors"
+            className="w-7 h-7 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-lg p-1 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </Button>
@@ -105,12 +105,12 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             placeholder="Search callsign, airline, hex (e.g. BHA, 70a8)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-900/90 text-slate-100 placeholder-slate-500 rounded-xl border border-white/10 focus:outline-none focus:border-cyan-500 transition-colors"
+            className="w-full pl-8 pr-7 py-1.5 text-xs bg-[#181c26] text-slate-100 placeholder-slate-500 rounded-lg border border-white/8 focus:outline-none focus:border-white/20 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs cursor-pointer"
             >
               ✕
             </button>
@@ -123,8 +123,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("all")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer font-medium ${
               activeCategory === "all"
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-white/10 text-white border border-white/15"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             All ({flights.length})
@@ -133,8 +133,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("nepal")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap flex items-center space-x-1 cursor-pointer font-medium ${
               activeCategory === "nepal"
-                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             <Shield className="w-3 h-3 text-emerald-400" />
@@ -144,8 +144,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("adsb")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer font-medium ${
               activeCategory === "adsb"
-                ? "bg-sky-500/20 text-sky-300 border border-sky-500/40"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-white/10 text-white border border-white/15"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             ADS-B
@@ -154,8 +154,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("mlat")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer font-medium ${
               activeCategory === "mlat"
-                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-white/10 text-white border border-white/15"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             MLAT
@@ -164,8 +164,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("airborne")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer font-medium ${
               activeCategory === "airborne"
-                ? "bg-teal-500/20 text-teal-300 border border-teal-500/40"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-white/10 text-white border border-white/15"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             Airborne ({flights.filter((f) => !f.position.on_ground).length})
@@ -174,8 +174,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             onClick={() => setActiveCategory("ground")}
             className={`px-2.5 py-1 rounded-lg transition-all whitespace-nowrap cursor-pointer font-medium ${
               activeCategory === "ground"
-                ? "bg-slate-700/50 text-slate-200 border border-slate-600"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-white/5"
+                ? "bg-white/10 text-white border border-white/15"
+                : "bg-white/5 text-slate-400 hover:text-slate-200 border border-white/5"
             }`}
           >
             Ground ({flights.filter((f) => f.position.on_ground).length})
@@ -221,8 +221,8 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
                 onClick={() => onSelectFlight(flight)}
                 className={`p-3 rounded-xl border transition-all cursor-pointer select-none ${
                   isSelected
-                    ? "glass-card-active translate-x-1"
-                    : "glass-card hover:border-white/15"
+                    ? "bg-[#202635] border-white/20 translate-x-0.5"
+                    : "bg-[#181c26] border-white/6 hover:border-white/12"
                 }`}
               >
                 {/* Card Top: Callsign, Reg, Origin country */}
@@ -231,21 +231,21 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
                     <span
                       className={`w-2 h-2 rounded-full shrink-0 ${
                         isSelected
-                          ? "bg-cyan-400 shadow-sm shadow-cyan-400 animate-pulse"
+                          ? "bg-sky-400 shadow-sm shadow-sky-400"
                           : isNepal
                           ? "bg-emerald-400"
-                          : "bg-amber-400"
+                          : "bg-slate-400"
                       }`}
                     />
                     <span className="font-mono-avionics text-sm font-bold text-slate-100 tracking-wider truncate">
                       {flight.identification.callsign || flight.identification.icao24.toUpperCase()}
                     </span>
                     {isNepal && (
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                         9N
                       </span>
                     )}
-                    <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono border bg-slate-800/80 text-slate-300 border-slate-700 shrink-0">
+                    <span className="px-1.5 py-0.2 rounded text-[8.5px] font-mono border bg-white/5 text-slate-400 border-white/5 shrink-0">
                       {flight.identification.position_source || "ADS-B"}
                     </span>
                   </div>
@@ -266,12 +266,12 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
                 </div>
 
                 {/* Card Bottom: Telemetry */}
-                <div className="mt-2 pt-2 border-t border-white/6 grid grid-cols-3 gap-2 text-[11px]">
+                <div className="mt-2 pt-2 border-t border-white/5 grid grid-cols-3 gap-2 text-[11px]">
                   <div>
                     <span className="text-[9px] uppercase font-semibold text-slate-500 block">
                       Altitude
                     </span>
-                    <span className="font-mono-avionics font-bold text-cyan-300">
+                    <span className="font-mono-avionics font-bold text-slate-200">
                       {onGround ? "GND" : altFt !== null ? `${altFt.toLocaleString()} ft` : "N/A"}
                     </span>
                   </div>

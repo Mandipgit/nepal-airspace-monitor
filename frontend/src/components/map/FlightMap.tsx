@@ -11,7 +11,7 @@ import {
 import { NormalizedFlight } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
 import { fetchFlightTrajectory } from "@/lib/api";
-import { Layers, Compass, Scan, PanelLeftOpen } from "lucide-react";
+import { Layers, Scan, PanelLeftOpen } from "lucide-react";
 
 // Register MapLibre Web Worker from local public bundle (solves Next.js Turbopack missing vector tiles)
 if (typeof window !== "undefined") {
@@ -647,7 +647,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
-  const [activeTileStyle, setActiveTileStyle] = useState<TileStyle>("liberty");
+  const [activeTileStyle, setActiveTileStyle] = useState<TileStyle>("dark");
 
   const popupRef = useRef<Popup | null>(null);
   const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -967,7 +967,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialStyleDef = OPENFREEMAP_STYLES.liberty;
+    const initialStyleDef = OPENFREEMAP_STYLES.dark;
 
     const map = new MapLibreMap({
       container: mapContainerRef.current,
@@ -1355,14 +1355,14 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
       {/* Floating Map Controls */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
-        {/* Open Sidebar Menu Toggle (Appears smoothly when sidebar is closed) */}
+        {/* Open Sidebar Menu Toggle (Appears when sidebar is closed) */}
         {!isSidebarOpen && onOpenSidebar && (
           <button
             onClick={onOpenSidebar}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#12151c]/90 hover:bg-[#1a1f2b] border border-white/10 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
             title="Open Navigation Menu"
           >
-            <PanelLeftOpen className="w-3.5 h-3.5 text-cyan-400" />
+            <PanelLeftOpen className="w-3.5 h-3.5 text-sky-400" />
             <span>Menu</span>
           </button>
         )}
@@ -1370,21 +1370,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         {/* OpenFreeMap Style Switcher */}
         <button
           onClick={cycleTileLayer}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
-          title="Switch OpenFreeMap style (Liberty, Dark, Positron, Bright)"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#12151c]/90 hover:bg-[#1a1f2b] border border-white/10 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
+          title="Switch OpenFreeMap style (Dark, Liberty, Positron, Bright)"
         >
-          <Layers className="w-3.5 h-3.5 text-cyan-400" />
+          <Layers className="w-3.5 h-3.5 text-sky-400" />
           <span>{OPENFREEMAP_STYLES[activeTileStyle].name}</span>
-        </button>
-
-        {/* Center Nepal Reset */}
-        <button
-          onClick={handleResetView}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-md transition-colors cursor-pointer"
-          title="Reset map view to Nepal"
-        >
-          <Compass className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Center Nepal</span>
         </button>
 
         {/* Viewport Sync Toggle */}
@@ -1393,29 +1383,29 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             onClick={onToggleSyncViewport}
             className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xl backdrop-blur-md transition-colors cursor-pointer ${
               syncViewport
-                ? "bg-cyan-950/80 hover:bg-cyan-900/80 border-cyan-500/60 text-cyan-300"
-                : "bg-slate-900/95 hover:bg-slate-800 border-slate-700 text-slate-400"
+                ? "bg-[#12151c]/95 hover:bg-[#1a1f2b] border-sky-500/40 text-sky-300"
+                : "bg-[#12151c]/90 hover:bg-[#1a1f2b] border-white/10 text-slate-400"
             }`}
             title={syncViewport ? "Dynamic viewport bounds active (updates as you pan/zoom)" : "Locked to Nepal FIR"}
           >
-            <Scan className="w-3.5 h-3.5 text-cyan-400" />
+            <Scan className="w-3.5 h-3.5 text-sky-400" />
             <span>{syncViewport ? "Viewport Bounds ON" : "Lock FIR"}</span>
           </button>
         )}
       </div>
 
       {/* Streamlined Minimal Floating Legend */}
-      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[10px] text-slate-300 shadow-lg backdrop-blur-md pointer-events-none">
+      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3 px-3 py-1.5 rounded-xl bg-[#12151c]/90 border border-white/8 text-[10px] text-slate-300 shadow-xl backdrop-blur-md pointer-events-none">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
           <span className="font-semibold text-emerald-400">9N (Nepal)</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-sm shadow-yellow-400/50" />
+          <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
           <span className="font-semibold text-yellow-300">Other / Transit</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-sm shadow-red-500/50" />
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
           <span className="font-semibold text-red-400">Selected & Trail</span>
         </div>
         <div className="flex items-center space-x-1.5">

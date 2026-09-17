@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { TopBar } from "@/components/common/TopBar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { FlightDetailsPanel } from "@/components/flight-details/FlightDetailsPanel";
 import { FlightSearchDrawer } from "@/components/flight-list/FlightSearchDrawer";
@@ -102,90 +103,96 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0d14] text-slate-100 relative">
-      {/* 1. Left Application Sidebar / App Drawer */}
-      <AppSidebar
-        isOpen={isSidebarOpen}
-        onToggle={() => setIsSidebarOpen(false)}
-        isSearchOpen={isSearchOpen}
-        onToggleSearch={() => setIsSearchOpen((prev) => !prev)}
-        flightCount={flights.length}
-        syncViewport={syncViewport}
-        onToggleSyncViewport={handleToggleSyncViewport}
-      />
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#080a0f] text-slate-100 relative">
+      {/* 1. Dedicated Top Navigation Bar Inspired by Reference Screenshot */}
+      <TopBar onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
 
-      {/* 2. Selected Aircraft / Flight Details Panel (Immediately next to sidebar) */}
-      {selectedFlight && (
-        <FlightDetailsPanel
-          flight={selectedFlight}
-          onClose={() => setSelectedFlight(null)}
-        />
-      )}
-
-      {/* 3. Flight Explorer & Search Drawer (Shown when requested via sidebar or shortcut) */}
-      {isSearchOpen && (
-        <FlightSearchDrawer
-          isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
-          flights={flights}
-          selectedFlightId={selectedFlight?.id ?? null}
-          onSelectFlight={(flight) => {
-            setSelectedFlight(flight);
-          }}
-          loading={loading}
-        />
-      )}
-
-      {/* 4. Interactive Airspace Map (Primary visual surface) */}
-      <main className="flex-1 h-full relative overflow-hidden">
-        <DynamicFlightMap
-          flights={flights}
-          airports={airports}
-          selectedFlightId={selectedFlight?.id ?? null}
-          onSelectFlight={handleSelectFlight}
-          onBoundsChange={handleBoundsChange}
+      {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
+      <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
+        {/* Left Application Sidebar / App Drawer */}
+        <AppSidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(false)}
+          isSearchOpen={isSearchOpen}
+          onToggleSearch={() => setIsSearchOpen((prev) => !prev)}
+          flightCount={flights.length}
           syncViewport={syncViewport}
           onToggleSyncViewport={handleToggleSyncViewport}
-          isSidebarOpen={isSidebarOpen}
-          onOpenSidebar={() => setIsSidebarOpen(true)}
         />
 
-        {/* Bottom Right Telemetry Drawer / Slider (No bulky icons, clean aviation numbers) */}
-        <BottomStatsSlider
-          totalFlights={stats.total}
-          nepalFlights={stats.nepalRegistered}
-          countdown={countdown}
-          refreshing={refreshing}
-          onRefresh={refetch}
-          cacheAge={cacheAge}
-          rateLimitRemaining={rateLimitRemaining}
-        />
-
-        {/* Connection Notice Pill (Positioned top-center so it never overlaps map buttons or toggles) */}
-        {error && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 glass-panel-floating px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            <span>Connection notice: {error}</span>
-            <button
-              onClick={() => refetch()}
-              className="px-2 py-0.5 rounded bg-amber-900/60 hover:bg-amber-850 text-amber-200 text-[10px] font-semibold transition-colors cursor-pointer"
-            >
-              Retry
-            </button>
-          </div>
+        {/* Selected Aircraft / Flight Details Panel (Immediately next to sidebar) */}
+        {selectedFlight && (
+          <FlightDetailsPanel
+            flight={selectedFlight}
+            onClose={() => setSelectedFlight(null)}
+          />
         )}
 
-        {/* Mobile View Directory Toggle Button */}
-        <div className="absolute bottom-4 left-4 z-20 md:hidden">
-          <button
-            onClick={() => setIsSearchOpen((prev) => !prev)}
-            className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-900/95 border border-white/10 text-xs font-bold text-slate-200 shadow-2xl backdrop-blur-lg cursor-pointer"
-          >
-            <List className="w-4 h-4 text-cyan-400" />
-            <span>Flights ({flights.length})</span>
-          </button>
-        </div>
-      </main>
+        {/* Flight Explorer & Search Drawer (When requested via sidebar) */}
+        {isSearchOpen && (
+          <FlightSearchDrawer
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            flights={flights}
+            selectedFlightId={selectedFlight?.id ?? null}
+            onSelectFlight={(flight) => {
+              setSelectedFlight(flight);
+            }}
+            loading={loading}
+          />
+        )}
+
+        {/* Interactive Airspace Map (Primary visual surface) */}
+        <main className="flex-1 h-full relative overflow-hidden">
+          <DynamicFlightMap
+            flights={flights}
+            airports={airports}
+            selectedFlightId={selectedFlight?.id ?? null}
+            onSelectFlight={handleSelectFlight}
+            onBoundsChange={handleBoundsChange}
+            syncViewport={syncViewport}
+            onToggleSyncViewport={handleToggleSyncViewport}
+            isSidebarOpen={isSidebarOpen}
+            onOpenSidebar={() => setIsSidebarOpen(true)}
+          />
+
+          {/* Bottom Right Telemetry Drawer / Slider */}
+          <BottomStatsSlider
+            totalFlights={stats.total}
+            nepalFlights={stats.nepalRegistered}
+            countdown={countdown}
+            refreshing={refreshing}
+            onRefresh={refetch}
+            cacheAge={cacheAge}
+            rateLimitRemaining={rateLimitRemaining}
+          />
+
+          {/* Connection Notice Pill */}
+          {error && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-[#12151c]/90 px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              <span>Connection notice: {error}</span>
+              <button
+                onClick={() => refetch()}
+                className="px-2 py-0.5 rounded bg-amber-900/60 hover:bg-amber-800 text-amber-200 text-[10px] font-semibold transition-colors cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Mobile View Directory Toggle Button */}
+          <div className="absolute bottom-4 left-4 z-20 md:hidden">
+            <button
+              onClick={() => setIsSearchOpen((prev) => !prev)}
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl bg-[#12151c] border border-white/10 text-xs font-bold text-slate-200 shadow-2xl cursor-pointer"
+            >
+              <List className="w-4 h-4 text-sky-400" />
+              <span>Flights ({flights.length})</span>
+            </button>
+          </div>
+        </main>
+      </div>
 
       {/* Global HeroUI Authentication Modal */}
       <AuthModal />

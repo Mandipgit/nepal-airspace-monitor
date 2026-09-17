@@ -113,22 +113,22 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md border border-slate-800 bg-slate-950/90 text-slate-100 shadow-2xl backdrop-blur-2xl rounded-2xl overflow-hidden">
+    <Card className="w-full max-w-md border border-white/8 bg-[#11141b] text-slate-100 shadow-2xl rounded-2xl overflow-hidden">
       {/* Header */}
-      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-slate-900/60 bg-gradient-to-b from-slate-900/50 to-transparent">
-        <div className="flex items-center space-x-2 text-emerald-400 mb-1">
-          <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
-            <UserPlus className="w-5 h-5 text-emerald-400" />
+      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-white/7 bg-[#0d1017]">
+        <div className="flex items-center space-x-2 text-slate-300 mb-1">
+          <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+            <UserPlus className="w-4 h-4 text-slate-300" />
           </div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-emerald-400">
+          <span className="text-xs font-semibold tracking-wider uppercase font-mono-avionics text-slate-400">
             Nepal Airspace Monitor
           </span>
         </div>
         <Card.Title className="text-xl font-bold tracking-tight text-white">
-          Create Radar Account
+          Create Account
         </Card.Title>
-        <Card.Description className="text-xs text-slate-400">
-          Join the Nepalese aviation monitoring community to track flights, inspect avionics, and log operations.
+        <Card.Description className="text-xs text-slate-400 leading-relaxed">
+          Join the Nepalese aviation monitoring community to track flights and inspect avionics.
         </Card.Description>
       </Card.Header>
 
@@ -164,7 +164,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <Label className="text-xs font-medium text-slate-300">
                 First Name
               </Label>
-              <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+              <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-1.5 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
                 <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                   <UserIcon className="w-3.5 h-3.5" />
                 </InputGroup.Prefix>
@@ -198,7 +198,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <Label className="text-xs font-medium text-slate-300">
                 Last Name
               </Label>
-              <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+              <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-1.5 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
                 <InputGroup.Input
                   type="text"
                   name="last_name"
@@ -231,7 +231,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <Label className="text-xs font-medium text-slate-300">
               Email Address
             </Label>
-            <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+            <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-1.5 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
               <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                 <Mail className="w-4 h-4" />
               </InputGroup.Prefix>
@@ -268,9 +268,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
               <Label className="text-xs font-medium text-slate-300">
                 Password
               </Label>
-              <span className="text-[10px] text-slate-400">Min. 8 characters</span>
+              <span className="text-[10px] text-slate-500">Min. 8 chars</span>
             </div>
-            <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+            <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-1.5 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
               <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                 <Lock className="w-4 h-4" />
               </InputGroup.Prefix>
@@ -320,7 +320,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             <Label className="text-xs font-medium text-slate-300">
               Confirm Password
             </Label>
-            <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500/50 transition-all">
+            <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-1.5 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
               <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                 <Lock className="w-4 h-4" />
               </InputGroup.Prefix>
@@ -369,7 +369,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
             type="submit"
             isDisabled={isSubmitting}
             fullWidth
-            className="mt-3 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-3 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-white hover:bg-slate-200 text-slate-950 shadow-md active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
@@ -387,22 +387,22 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
       </Card.Content>
 
       {/* Footer / Navigation */}
-      <Card.Footer className="px-7 py-4 border-t border-slate-900 bg-slate-950/60 flex flex-col items-center justify-center gap-3">
-        <Separator orientation="horizontal" className="w-full bg-slate-800/60" />
+      <Card.Footer className="px-7 py-4 border-t border-white/7 bg-[#0d1017] flex flex-col items-center justify-center gap-3">
+        <Separator orientation="horizontal" className="w-full bg-white/5" />
         <div className="text-xs text-slate-400 flex items-center gap-1.5">
           <span>Already have an account?</span>
           {onSwitchToLogin ? (
             <button
               type="button"
               onClick={onSwitchToLogin}
-              className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors cursor-pointer"
+              className="text-slate-200 hover:text-white font-semibold underline underline-offset-4 transition-colors cursor-pointer"
             >
               Sign in
             </button>
           ) : (
             <Link
               href="/login"
-              className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+              className="text-slate-200 hover:text-white font-semibold underline underline-offset-4 transition-colors"
             >
               Sign in
             </Link>

@@ -77,22 +77,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md border border-slate-800 bg-slate-950/90 text-slate-100 shadow-2xl backdrop-blur-2xl rounded-2xl overflow-hidden">
+    <Card className="w-full max-w-md border border-white/8 bg-[#11141b] text-slate-100 shadow-2xl rounded-2xl overflow-hidden">
       {/* Header */}
-      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-slate-900/60 bg-gradient-to-b from-slate-900/50 to-transparent">
-        <div className="flex items-center space-x-2 text-cyan-400 mb-1">
-          <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-            <ShieldCheck className="w-5 h-5 text-cyan-400" />
+      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-white/7 bg-[#0d1017]">
+        <div className="flex items-center space-x-2 text-slate-300 mb-1">
+          <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+            <ShieldCheck className="w-4 h-4 text-slate-300" />
           </div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-cyan-400">
+          <span className="text-xs font-semibold tracking-wider uppercase font-mono-avionics text-slate-400">
             Nepal Airspace Monitor
           </span>
         </div>
         <Card.Title className="text-xl font-bold tracking-tight text-white">
-          Sign In to Radar
+          Sign In
         </Card.Title>
-        <Card.Description className="text-xs text-slate-400">
-          Enter your credentials to access live ADS-B flight feeds, avionics telemetry, and fleet analytics.
+        <Card.Description className="text-xs text-slate-400 leading-relaxed">
+          Access real-time Kathmandu FIR tracking, ADS-B telemetry, and fleet analytics.
         </Card.Description>
       </Card.Header>
 
@@ -124,7 +124,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             <Label className="text-xs font-medium text-slate-300">
               Email Address
             </Label>
-            <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all">
+            <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-2 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
               <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                 <Mail className="w-4 h-4" />
               </InputGroup.Prefix>
@@ -162,7 +162,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 Password
               </Label>
             </div>
-            <InputGroup className="flex items-center rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-sm focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all">
+            <InputGroup className="flex items-center rounded-xl border border-white/8 bg-[#181c26] px-3 py-2 text-sm focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/10 transition-all">
               <InputGroup.Prefix className="mr-2 text-slate-400 shrink-0">
                 <Lock className="w-4 h-4" />
               </InputGroup.Prefix>
@@ -208,7 +208,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
             type="submit"
             isDisabled={isSubmitting}
             fullWidth
-            className="mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-cyan-500/20 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-xl font-semibold text-sm bg-white hover:bg-slate-200 text-slate-950 shadow-md active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
@@ -226,22 +226,22 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       </Card.Content>
 
       {/* Footer / Navigation */}
-      <Card.Footer className="px-7 py-4 border-t border-slate-900 bg-slate-950/60 flex flex-col items-center justify-center gap-3">
-        <Separator orientation="horizontal" className="w-full bg-slate-800/60" />
+      <Card.Footer className="px-7 py-4 border-t border-white/7 bg-[#0d1017] flex flex-col items-center justify-center gap-3">
+        <Separator orientation="horizontal" className="w-full bg-white/5" />
         <div className="text-xs text-slate-400 flex items-center gap-1.5">
           <span>Don&apos;t have an account?</span>
           {onSwitchToRegister ? (
             <button
               type="button"
               onClick={onSwitchToRegister}
-              className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors cursor-pointer"
+              className="text-slate-200 hover:text-white font-semibold underline underline-offset-4 transition-colors cursor-pointer"
             >
               Create an account
             </button>
           ) : (
             <Link
               href="/register"
-              className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+              className="text-slate-200 hover:text-white font-semibold underline underline-offset-4 transition-colors"
             >
               Create an account
             </Link>
