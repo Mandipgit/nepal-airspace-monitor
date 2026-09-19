@@ -27,10 +27,10 @@ export const TopBar: React.FC<TopBarProps> = ({
     : "Guest Mode";
 
   return (
-    <header className="h-14 w-full bg-[#0d0e13] border-b border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.85)] px-4 flex items-center justify-between z-40 shrink-0 select-none">
+    <header className="h-14 w-full bg-[#0a0b0e] hover:bg-[#1a1c24] border-b border-white/15 shadow-[0_4px_24px_rgba(0,0,0,0.85)] px-4 flex items-center justify-between z-40 shrink-0 select-none transition-colors duration-300 group">
       {/* Left: User Identity / Guest Mode Avatar & Live Status */}
       <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-white/15 flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0 select-none">
+        <div className="w-8 h-8 rounded-full bg-neutral-800 group-hover:bg-neutral-700 border border-white/15 flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0 select-none transition-colors duration-300">
           {isAuthenticated ? userInitial : "G"}
         </div>
         <div className="flex items-center space-x-2.5">
@@ -46,7 +46,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Right: Controls strictly matching the reference screenshot */}
       <div className="flex items-center space-x-3">
         {/* Theme / Display Control Capsule [ ☼ ☾ ] */}
-        <div className="hidden sm:flex items-center bg-[#181a24] border border-white/15 rounded-full p-0.5 shadow-inner">
+        <div className="hidden sm:flex items-center bg-[#12141c] group-hover:bg-[#1e202c] border border-white/15 rounded-full p-0.5 shadow-inner transition-colors duration-300">
           <button
             type="button"
             onClick={() => onToggleDarkMode?.(false)}
@@ -83,7 +83,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             variant="ghost"
             onPress={() => setNotificationsOpen(!notificationsOpen)}
             aria-label="Airspace notifications"
-            className="w-9 h-9 rounded-full bg-[#111111] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-all p-0 flex items-center justify-center cursor-pointer shadow-sm relative active:scale-95"
+            className="w-9 h-9 rounded-full bg-[#12141c] group-hover:bg-[#1e202c] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white transition-colors duration-300 p-0 flex items-center justify-center cursor-pointer shadow-sm relative active:scale-95"
           >
             <Bell className="w-4 h-4" />
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-[#000000]" />
@@ -123,7 +123,7 @@ export const TopBar: React.FC<TopBarProps> = ({
               size="sm"
               variant="ghost"
               onPress={() => openAuthModal("login")}
-              className="h-9 px-3.5 rounded-full bg-[#111111] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer shadow-sm"
+              className="h-9 px-3.5 rounded-full bg-[#12141c] group-hover:bg-[#1e202c] hover:bg-white/10 border border-white/10 text-neutral-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors duration-300 cursor-pointer shadow-sm"
             >
               <UserIcon className="w-3.5 h-3.5 text-neutral-400" />
               <span>Sign In</span>

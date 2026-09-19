@@ -16,10 +16,24 @@ import { List } from "lucide-react";
 
 export default function Home() {
   const { isAuthenticated } = useAuth();
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [syncViewport, setSyncViewport] = useState<boolean>(true);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Automatic App Drawer reveal when cursor touches the leftmost boundary of the entire screen
+  // and smooth hide when mouse directs away into the map (> 270px)
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientX <= 8) {
+        setIsSidebarOpen(true);
+      } else if (e.clientX > 270) {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
   const [viewportBounds, setViewportBounds] = useState<{
     lamin?: number;
     lomin?: number;
@@ -114,10 +128,19 @@ export default function Home() {
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
       <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
+        {/* Leftmost Screen Boundary Hover Trigger Strip */}
+        <div
+          onMouseEnter={() => setIsSidebarOpen(true)}
+          className="fixed left-0 top-14 bottom-0 w-3 z-30 pointer-events-auto cursor-pointer"
+          aria-hidden="true"
+        />
+
         {/* Left Application Sidebar / App Drawer */}
         <AppSidebar
           isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen(false)}
+          onOpen={() => setIsSidebarOpen(true)}
+          onClose={() => setIsSidebarOpen(false)}
+          onToggle={() => setIsSidebarOpen((prev) => !prev)}
           isSearchOpen={isSearchOpen}
           onToggleSearch={() => setIsSearchOpen((prev) => !prev)}
           flightCount={flights.length}

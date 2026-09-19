@@ -26,12 +26,12 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
 
   return (
     <div className="absolute bottom-4 right-4 z-20 select-none flex flex-col items-end">
-      {/* Slider Container - Distinct Elevated Console */}
-      <div className="bg-[#111218] rounded-xl overflow-hidden border border-white/18 shadow-[0_12px_40px_rgba(0,0,0,0.95)] ring-1 ring-black/80 backdrop-blur-xl transition-all duration-300">
+      {/* Slider Container - Distinct Elevated Console with Hover Shade Transition */}
+      <div className="bg-[#0a0b0e] hover:bg-[#1a1c24] rounded-2xl overflow-hidden border border-white/18 shadow-[0_12px_40px_rgba(0,0,0,0.95)] ring-1 ring-black/80 backdrop-blur-xl transition-colors duration-300 group">
         {/* Toggle Bar / Header */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full px-3.5 py-2 bg-[#191b24] hover:bg-[#222430] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors border-b border-white/12 cursor-pointer"
+          className="w-full px-4 py-2.5 bg-[#12141c] group-hover:bg-[#1f212c] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors duration-300 border-b border-white/12 cursor-pointer"
         >
           <div className="flex items-center space-x-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -55,7 +55,7 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
 
         {/* Expanded Drawer Content - Clean Aviation Data Grid */}
         {isExpanded && (
-          <div className="p-3.5 bg-[#111218] flex items-center gap-4 divide-x divide-white/12 text-left">
+          <div className="p-3.5 bg-transparent flex items-center gap-4 divide-x divide-white/12 text-left transition-colors duration-300">
             {/* Live Flights */}
             <div className="pr-1">
               <div className="text-[9px] uppercase font-semibold text-neutral-400 tracking-wider">
@@ -106,7 +106,7 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
                 onPress={onRefresh}
                 isDisabled={refreshing}
                 aria-label="Refresh telemetry"
-                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white border border-white/8 transition-all p-1 cursor-pointer"
+                className="w-7 h-7 rounded-xl bg-white/5 hover:bg-white/15 group-hover:bg-white/10 text-neutral-300 hover:text-white border border-white/8 transition-all p-1 cursor-pointer"
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-white" : ""}`}

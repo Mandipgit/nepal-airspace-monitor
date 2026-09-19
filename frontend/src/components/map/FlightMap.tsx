@@ -11,7 +11,7 @@ import {
 import { NormalizedFlight } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
 import { fetchFlightTrajectory } from "@/lib/api";
-import { Layers, Scan, PanelLeftOpen } from "lucide-react";
+import { Layers, Scan } from "lucide-react";
 
 // Register MapLibre Web Worker from local public bundle (solves Next.js Turbopack missing vector tiles)
 if (typeof window !== "undefined") {
@@ -1161,7 +1161,63 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       // 1. Register Canvas Aircraft Icons
       registerAircraftIcons(map);
 
-      // 2. Airspace boundary features removed as requested (clean map view)
+      // 2. Nepal & Airspace Boundary Styling (Crisp white in Dark Mode, slate in Light Mode)
+      const boundaryLayers = [
+        "boundary_country_z5-",
+        "boundary_country_z0-4",
+        "boundary_country",
+        "boundary_state",
+        "boundary_country_inner",
+        "boundary_country_outer",
+      ];
+      boundaryLayers.forEach((layerId) => {
+        if (map.getLayer(layerId)) {
+          try {
+            map.setPaintProperty(layerId, "line-color", isDarkStyle ? "#ffffff" : "#475569");
+            map.setPaintProperty(layerId, "line-opacity", isDarkStyle ? 0.95 : 0.65);
+            map.setPaintProperty(layerId, "line-width", isDarkStyle ? 2.2 : 1.2);
+          } catch {
+            // safely ignore if layer has different paint spec
+          }
+        }
+      });
+
+      // Add ambient glowing aura beneath country boundary in dark mode
+      if (map.getSource("openmaptiles") && !map.getLayer("boundary_country_glow")) {
+        try {
+          const beforeLayer = map.getLayer("boundary_country_z0-4")
+            ? "boundary_country_z0-4"
+            : map.getLayer("boundary_country")
+            ? "boundary_country"
+            : undefined;
+
+          map.addLayer(
+            {
+              id: "boundary_country_glow",
+              type: "line",
+              source: "openmaptiles",
+              "source-layer": "boundary",
+              filter: ["==", "admin_level", 2],
+              paint: {
+                "line-color": isDarkStyle ? "#ffffff" : "#0284c7",
+                "line-width": isDarkStyle ? 4.5 : 2.5,
+                "line-opacity": isDarkStyle ? 0.4 : 0.2,
+                "line-blur": 3,
+              },
+            },
+            beforeLayer
+          );
+        } catch {
+          // ignore
+        }
+      } else if (map.getLayer("boundary_country_glow")) {
+        try {
+          map.setPaintProperty("boundary_country_glow", "line-color", isDarkStyle ? "#ffffff" : "#0284c7");
+          map.setPaintProperty("boundary_country_glow", "line-opacity", isDarkStyle ? 0.4 : 0.2);
+        } catch {
+          // ignore
+        }
+      }
 
       // 3. Airports GeoJSON
       const airportFeatures: GeoJSON.Feature[] = (airportList || [])
@@ -1473,6 +1529,25 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }),
       "top-right"
     );
+
+    // Provide clean fallback for any missing sprite icons (e.g. circle-11 in OpenFreeMap)
+    map.on("styleimagemissing", (e) => {
+      const id = e.id;
+      if (!map.hasImage(id)) {
+        const size = 16;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#888888";
+          ctx.fill();
+          map.addImage(id, ctx.getImageData(0, 0, size, size));
+        }
+      }
+    });
 
     // Initial load handler
     map.on("load", () => {
@@ -1837,22 +1912,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
       {/* Floating Map Controls */}
       <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
-        {/* Open Sidebar Menu Toggle (Appears when sidebar is closed) */}
-        {!isSidebarOpen && onOpenSidebar && (
-          <button
-            onClick={onOpenSidebar}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#111218]/95 hover:bg-[#1a1c26] border border-white/18 text-xs font-semibold text-neutral-200 shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-colors cursor-pointer"
-            title="Open Navigation Menu"
-          >
-            <PanelLeftOpen className="w-3.5 h-3.5 text-white" />
-            <span>Menu</span>
-          </button>
-        )}
-
         {/* OpenFreeMap Style Switcher (Dark removed from options) */}
         <button
           onClick={cycleTileLayer}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#111218]/95 hover:bg-[#1a1c26] border border-white/18 text-xs font-semibold text-neutral-200 shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-colors cursor-pointer"
+          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border border-white/18 text-xs font-semibold text-neutral-200 shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300 cursor-pointer"
           title="Switch map style (Bright, Liberty, Positron)"
         >
           <Layers className="w-3.5 h-3.5 text-white" />
@@ -1865,10 +1928,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         {onToggleSyncViewport && (
           <button
             onClick={onToggleSyncViewport}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-colors cursor-pointer ${
+            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl border text-xs font-semibold shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300 cursor-pointer ${
               syncViewport
-                ? "bg-[#1a1c26] hover:bg-[#222533] border-white/28 text-white"
-                : "bg-[#111218]/95 hover:bg-[#1a1c26] border-white/18 text-neutral-400"
+                ? "bg-[#181a24] hover:bg-[#222533] border-white/28 text-white"
+                : "bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border-white/18 text-neutral-400"
             }`}
             title={syncViewport ? "Dynamic viewport bounds active (updates as you pan/zoom)" : "Locked to Nepal FIR"}
           >
@@ -1879,7 +1942,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       </div>
 
       {/* Streamlined Minimal Floating Legend */}
-      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-3.5 py-1.5 rounded-xl bg-[#111218]/95 border border-white/18 text-[11px] shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl pointer-events-none select-none">
+      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-4 py-2 rounded-2xl bg-[#0a0b0e]/95 border border-white/18 text-[11px] shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl pointer-events-none select-none">
         <span className="font-semibold text-emerald-400">9N (Nepal)</span>
         <span className="font-semibold text-yellow-300">Other / Transit</span>
         <span className="font-semibold text-red-400">Selected & Trail</span>
