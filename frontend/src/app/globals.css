@@ -3,23 +3,145 @@
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  --bg-radar: #000000;
-  --bg-panel: rgba(12, 12, 12, 0.98);
-  --bg-panel-floating: rgba(18, 18, 18, 0.94);
-  --bg-card: rgba(22, 22, 22, 0.9);
+  --page-bg: #050505;
+  --surface-elevated: #111113;
+  --border-surface: rgba(255, 255, 255, 0.08);
+  --text-primary: #FAFAFA;
+  --text-secondary: #A1A1AA;
+  --text-tertiary: #71717A;
+  --primary-accent: #108AEF;
+  --success-text: #4ADE80;
+  --success-bg: rgba(34, 197, 94, 0.18);
+  --danger-text: #FB7185;
+  --danger-bg: rgba(244, 63, 94, 0.18);
+  --pill-active: rgba(255, 255, 255, 0.12);
+  --elevation-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 12px 32px rgba(0, 0, 0, 0.45);
+  --ease-heroui: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  /* Legacy variables maintained for untouched components */
+  --bg-radar: #050505;
+  --bg-panel: rgba(17, 17, 19, 0.98);
+  --bg-panel-floating: rgba(17, 17, 19, 0.95);
+  --bg-card: rgba(17, 17, 19, 0.9);
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-panel: rgba(255, 255, 255, 0.1);
+  --border-panel: rgba(255, 255, 255, 0.08);
   --accent-nepal: #10b981;
   --accent-airborne: #ffffff;
   --accent-alert: #f59e0b;
 }
 
+html.light, :root.light, [data-theme="light"] {
+  --page-bg: #FFFFFF;
+  --surface-elevated: #F4F4F5;
+  --border-surface: rgba(0, 0, 0, 0.08);
+  --text-primary: #18181B;
+  --text-secondary: #71717A;
+  --text-tertiary: #A1A1AA;
+  --primary-accent: #108AEF;
+  --success-text: #16A34A;
+  --success-bg: rgba(34, 197, 94, 0.18);
+  --danger-text: #E11D48;
+  --danger-bg: rgba(244, 63, 94, 0.18);
+  --pill-active: rgba(0, 0, 0, 0.08);
+  --elevation-shadow: 0 2px 10px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.12);
+
+  --bg-radar: #FFFFFF;
+  --bg-panel: rgba(244, 244, 245, 0.98);
+  --bg-panel-floating: rgba(244, 244, 245, 0.95);
+  --bg-card: rgba(244, 244, 245, 0.9);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-panel: rgba(0, 0, 0, 0.08);
+}
+
 body {
-  background-color: var(--bg-radar);
-  color: #f5f5f5;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--page-bg);
+  color: var(--text-primary);
+  font-family: var(--font-inter), Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   user-select: none;
+}
+
+/* Visible :focus-visible ring per HeroUI standard */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid #108AEF !important;
+  outline-offset: 2px !important;
+}
+
+/* One-time scale-in for notification unread dot */
+@keyframes scale-in-once {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-scale-in-once {
+  animation: scale-in-once 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* HeroUI Interactive Micro-interactions & Motion Utilities */
+.heroui-btn-solid {
+  background-color: #108AEF;
+  color: #FAFAFA;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: opacity 150ms ease-out, transform 100ms ease-out;
+}
+.heroui-btn-solid:hover {
+  opacity: 0.8;
+}
+.heroui-btn-solid:active {
+  transform: scale(0.97);
+}
+
+.heroui-btn-ghost {
+  background-color: transparent;
+  border: 1px solid var(--border-surface);
+  color: var(--text-secondary);
+  border-radius: 12px;
+  font-weight: 500;
+  transition: background-color 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out, transform 100ms ease-out;
+}
+.heroui-btn-ghost:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+html.light .heroui-btn-ghost:hover {
+  background-color: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+.heroui-btn-ghost:active {
+  transform: scale(0.97);
+}
+
+.heroui-btn-icon {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-surface);
+  color: var(--text-secondary);
+  border-radius: 9999px;
+  transition: background-color 150ms ease-out, color 150ms ease-out, transform 100ms ease-out;
+}
+html.light .heroui-btn-icon {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+.heroui-btn-icon:hover {
+  background-color: rgba(255, 255, 255, 0.10);
+  color: var(--text-primary);
+}
+html.light .heroui-btn-icon:hover {
+  background-color: rgba(0, 0, 0, 0.10);
+}
+.heroui-btn-icon:active {
+  transform: scale(0.97);
 }
 
 /* Monospace telemetry readout */

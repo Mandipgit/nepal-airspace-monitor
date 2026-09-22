@@ -27,14 +27,13 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
   return (
     <div className="absolute bottom-4 right-4 z-20 select-none flex flex-col items-end">
       {/* Slider Container - Distinct Elevated Console with Hover Shade Transition */}
-      <div className="bg-[#0a0b0e] hover:bg-[#1a1c24] rounded-2xl overflow-hidden border border-white/18 shadow-[0_12px_40px_rgba(0,0,0,0.95)] ring-1 ring-black/80 backdrop-blur-xl transition-colors duration-300 group">
+      <div className="bg-[#0a0b0e] hover:bg-[#1a1c24] rounded-2xl overflow-hidden border border-white/18 shadow-[0_6px_20px_rgba(0,0,0,0.48)] ring-1 ring-black/40 backdrop-blur-xl transition-colors duration-300 group">
         {/* Toggle Bar / Header */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full px-4 py-2.5 bg-[#12141c] group-hover:bg-[#1f212c] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors duration-300 border-b border-white/12 cursor-pointer"
         >
           <div className="flex items-center space-x-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-sans font-bold tracking-wider text-white text-[11px] uppercase">
               Live Status
             </span>

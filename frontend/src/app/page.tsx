@@ -22,12 +22,12 @@ export default function Home() {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
   // Automatic App Drawer reveal when cursor touches the leftmost boundary of the entire screen
-  // and smooth hide when mouse directs away into the map (> 270px)
+  // and smooth hide when mouse directs away into the map (> 275px)
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (e.clientX <= 8) {
+      if (e.clientX <= 12) {
         setIsSidebarOpen(true);
-      } else if (e.clientX > 270) {
+      } else if (e.clientX > 275) {
         setIsSidebarOpen(false);
       }
     };
@@ -118,7 +118,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-black text-neutral-100 relative">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans transition-colors duration-150 ease-out">
       {/* 1. Dedicated Top Navigation Bar Inspired by Reference Screenshot */}
       <TopBar
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
@@ -131,7 +131,7 @@ export default function Home() {
         {/* Leftmost Screen Boundary Hover Trigger Strip */}
         <div
           onMouseEnter={() => setIsSidebarOpen(true)}
-          className="fixed left-0 top-14 bottom-0 w-3 z-30 pointer-events-auto cursor-pointer"
+          className="fixed left-0 top-14 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
           aria-hidden="true"
         />
 

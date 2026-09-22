@@ -49,14 +49,14 @@ const NEPAL_FIR_BOUNDS: [[number, number], [number, number]] = [
 
 // Exact geographical center of the blue dotted FIR box
 const NEPAL_CENTER: [number, number] = [84.1500, 28.2250]; // [lng, lat]
-const NEPAL_INITIAL_ZOOM = 6.48;
-const MIN_ZOOM = 6.48; // Maximum zoom out point locked exactly to the blue dotted lines
+const NEPAL_INITIAL_ZOOM = 6.32;
+const MIN_ZOOM = 5.0; // Allow comfortable zoom out
 const MAX_ZOOM = 15.0;
 
-// Maximum geographical bounds for panning (strict containment to blue dotted FIR corridor)
+// Maximum geographical bounds for panning (with breathing room for slight zoom out)
 const NEPAL_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [79.50, 25.50], // Southwest [lng, lat]
-  [88.80, 30.95], // Northeast [lng, lat]
+  [78.50, 24.50], // Southwest [lng, lat]
+  [89.80, 31.80], // Northeast [lng, lat]
 ];
 
 type TileStyle = "liberty" | "dark" | "positron" | "bright";
@@ -504,10 +504,10 @@ function registerAircraftIcons(map: MapLibreMap) {
     stroke: string;
     isSelected?: boolean;
   }[] = [
-    { colorKey: "green", fill: "#22c55e", stroke: "#000000" },
-    { colorKey: "yellow", fill: "#facc15", stroke: "#000000" },
-    { colorKey: "selected", fill: "#ef4444", stroke: "#000000", isSelected: true },
-  ];
+      { colorKey: "green", fill: "#22c55e", stroke: "#000000" },
+      { colorKey: "yellow", fill: "#facc15", stroke: "#000000" },
+      { colorKey: "selected", fill: "#ef4444", stroke: "#000000", isSelected: true },
+    ];
 
   const size = 96;
 
@@ -937,13 +937,13 @@ function buildTrajectoryGeoJSON(
     altitude_ft?: number | null;
     groundspeed_kts?: number | null;
   }> = [
-    {
-      longitude: startPoint[0],
-      latitude: startPoint[1],
-      altitude_ft: curAlt,
-      groundspeed_kts: curSpd,
-    },
-  ];
+      {
+        longitude: startPoint[0],
+        latitude: startPoint[1],
+        altitude_ft: curAlt,
+        groundspeed_kts: curSpd,
+      },
+    ];
 
   // 4. Incorporate server points if provided and has valid breadcrumbs
   if (serverPoints && serverPoints.length >= 2) {
@@ -1161,59 +1161,93 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       // 1. Register Canvas Aircraft Icons
       registerAircraftIcons(map);
 
-      // 2. Nepal & Airspace Boundary Styling (Crisp white in Dark Mode, slate in Light Mode)
+      // 2. Nepal Geographic Border & Airspace Styling
+      // Hide internal state/province dashed lines (small dots) completely so the interior of Nepal is clean
+      if (map.getLayer("boundary_state")) {
+        try {
+          map.setLayoutProperty("boundary_state", "visibility", "none");
+        } catch {
+          // ignore
+        }
+      }
+
+      // Keep regional basemap boundaries subtle so surrounding countries/states remain dark and unhighlighted
       const boundaryLayers = [
         "boundary_country_z5-",
         "boundary_country_z0-4",
         "boundary_country",
-        "boundary_state",
         "boundary_country_inner",
         "boundary_country_outer",
       ];
       boundaryLayers.forEach((layerId) => {
         if (map.getLayer(layerId)) {
           try {
-            map.setPaintProperty(layerId, "line-color", isDarkStyle ? "#ffffff" : "#475569");
-            map.setPaintProperty(layerId, "line-opacity", isDarkStyle ? 0.95 : 0.65);
-            map.setPaintProperty(layerId, "line-width", isDarkStyle ? 2.2 : 1.2);
+            map.setPaintProperty(layerId, "line-color", isDarkStyle ? "#334155" : "#475569");
+            map.setPaintProperty(layerId, "line-opacity", isDarkStyle ? 0.35 : 0.65);
+            map.setPaintProperty(layerId, "line-width", 1.0);
           } catch {
             // safely ignore if layer has different paint spec
           }
         }
       });
 
-      // Add ambient glowing aura beneath country boundary in dark mode
-      if (map.getSource("openmaptiles") && !map.getLayer("boundary_country_glow")) {
+      // Remove global OpenMapTiles country glow so surrounding regions do not glow
+      if (map.getLayer("boundary_country_glow")) {
         try {
-          const beforeLayer = map.getLayer("boundary_country_z0-4")
-            ? "boundary_country_z0-4"
-            : map.getLayer("boundary_country")
-            ? "boundary_country"
-            : undefined;
-
-          map.addLayer(
-            {
-              id: "boundary_country_glow",
-              type: "line",
-              source: "openmaptiles",
-              "source-layer": "boundary",
-              filter: ["==", "admin_level", 2],
-              paint: {
-                "line-color": isDarkStyle ? "#ffffff" : "#0284c7",
-                "line-width": isDarkStyle ? 4.5 : 2.5,
-                "line-opacity": isDarkStyle ? 0.4 : 0.2,
-                "line-blur": 3,
-              },
-            },
-            beforeLayer
-          );
+          map.removeLayer("boundary_country_glow");
         } catch {
           // ignore
         }
-      } else if (map.getLayer("boundary_country_glow")) {
+      }
+
+      // Add/update dedicated Nepal boundary GeoJSON source and layers strictly along Nepal's actual border
+      if (!map.getSource("nepal-boundary")) {
         try {
-          map.setPaintProperty("boundary_country_glow", "line-color", isDarkStyle ? "#ffffff" : "#0284c7");
-          map.setPaintProperty("boundary_country_glow", "line-opacity", isDarkStyle ? 0.4 : 0.2);
+          map.addSource("nepal-boundary", {
+            type: "geojson",
+            data: "/nepal-boundary.geojson",
+          });
+
+          // Glow effect strictly along Nepal's actual geographic border
+          map.addLayer({
+            id: "nepal-boundary-glow",
+            type: "line",
+            source: "nepal-boundary",
+            paint: {
+              "line-color": isDarkStyle ? "#ffffff" : "#0284c7",
+              "line-width": isDarkStyle ? 4.5 : 2.5,
+              "line-opacity": isDarkStyle ? 0.35 : 0.2,
+              "line-blur": 3,
+            },
+          });
+
+          // Crisp white boundary line strictly along Nepal's actual geographic border in Dark Mode
+          map.addLayer({
+            id: "nepal-boundary-line",
+            type: "line",
+            source: "nepal-boundary",
+            paint: {
+              "line-color": isDarkStyle ? "#ffffff" : "#475569",
+              "line-width": isDarkStyle ? 2.2 : 1.4,
+              "line-opacity": isDarkStyle ? 0.95 : 0.7,
+            },
+          });
+        } catch (err) {
+          console.error("Error setting up nepal-boundary layers:", err);
+        }
+      } else {
+        // Update paint properties on theme/style change
+        try {
+          if (map.getLayer("nepal-boundary-glow")) {
+            map.setPaintProperty("nepal-boundary-glow", "line-color", isDarkStyle ? "#ffffff" : "#0284c7");
+            map.setPaintProperty("nepal-boundary-glow", "line-opacity", isDarkStyle ? 0.35 : 0.2);
+            map.setPaintProperty("nepal-boundary-glow", "line-width", isDarkStyle ? 4.5 : 2.5);
+          }
+          if (map.getLayer("nepal-boundary-line")) {
+            map.setPaintProperty("nepal-boundary-line", "line-color", isDarkStyle ? "#ffffff" : "#475569");
+            map.setPaintProperty("nepal-boundary-line", "line-opacity", isDarkStyle ? 0.95 : 0.7);
+            map.setPaintProperty("nepal-boundary-line", "line-width", isDarkStyle ? 2.2 : 1.4);
+          }
         } catch {
           // ignore
         }
@@ -1553,15 +1587,56 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     map.on("load", () => {
       setupMapLayers(map, airportsRef.current, initialStyleDef.isDark);
 
-      // Fit map camera EXACTLY to the FIR bounding box (0 padding)
+      // Fit map camera to the FIR bounding box with balanced intermediate padding
       map.fitBounds(NEPAL_FIR_BOUNDS, {
-        padding: 0,
+        padding: 18,
         duration: 0,
       });
 
       const fitZoom = Math.round(map.getZoom() * 100) / 100;
       map.setMinZoom(fitZoom);
       minZoomRef.current = fitZoom;
+
+      // At the initial/max zoomed overview state, lock panning so the map is completely unscrollable in all directions
+      map.dragPan.disable();
+
+      // Dynamically toggle dragPan: unscrollable at base zoom, pannable when zoomed in
+      const handleZoomPanLock = () => {
+        const currentZoom = map.getZoom();
+        const baseZoom = minZoomRef.current || fitZoom;
+        if (currentZoom <= baseZoom + 0.05) {
+          if (map.dragPan.isEnabled()) {
+            map.dragPan.disable();
+          }
+        } else {
+          if (!map.dragPan.isEnabled()) {
+            map.dragPan.enable();
+          }
+        }
+      };
+
+      map.on("zoom", handleZoomPanLock);
+
+      // When zooming back out to the base overview, snap cleanly back to the centered FIR view and lock panning
+      let isSnapping = false;
+      map.on("zoomend", () => {
+        if (isSnapping) return;
+        const currentZoom = map.getZoom();
+        const baseZoom = minZoomRef.current || fitZoom;
+        if (currentZoom <= baseZoom + 0.05) {
+          if (map.dragPan.isEnabled()) {
+            map.dragPan.disable();
+          }
+          isSnapping = true;
+          map.fitBounds(NEPAL_FIR_BOUNDS, {
+            padding: 18,
+            duration: 0,
+          });
+          requestAnimationFrame(() => {
+            isSnapping = false;
+          });
+        }
+      });
 
       // Trigger initial bounds calculation
       const b = map.getBounds();
@@ -1578,11 +1653,12 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     // Re-fit on container resize (e.g. sidebar toggle)
     map.on("resize", () => {
       const baseZoom = minZoomRef.current || MIN_ZOOM;
-      if (map.getZoom() <= baseZoom + 0.1) {
-        map.fitBounds(NEPAL_FIR_BOUNDS, { padding: 0, duration: 0 });
+      if (map.getZoom() <= baseZoom + 0.05) {
+        map.fitBounds(NEPAL_FIR_BOUNDS, { padding: 18, duration: 0 });
         const fitZoom = Math.round(map.getZoom() * 100) / 100;
         map.setMinZoom(fitZoom);
         minZoomRef.current = fitZoom;
+        map.dragPan.disable();
       }
     });
 
@@ -1790,6 +1866,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         map.setStyle(OPENFREEMAP_STYLES.dark.url);
         map.once("style.load", () => {
           setupMapLayers(map, airportsRef.current, true);
+          const currentZoom = map.getZoom();
+          const baseZoom = minZoomRef.current || MIN_ZOOM;
+          if (currentZoom <= baseZoom + 0.05) {
+            map.dragPan.disable();
+          }
         });
       }
     } else {
@@ -1798,6 +1879,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         map.setStyle(OPENFREEMAP_STYLES.bright.url);
         map.once("style.load", () => {
           setupMapLayers(map, airportsRef.current, false);
+          const currentZoom = map.getZoom();
+          const baseZoom = minZoomRef.current || MIN_ZOOM;
+          if (currentZoom <= baseZoom + 0.05) {
+            map.dragPan.disable();
+          }
         });
       }
     }
@@ -1820,6 +1906,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     map.setStyle(OPENFREEMAP_STYLES[nextStyle].url);
     map.once("style.load", () => {
       setupMapLayers(map, airportsRef.current, OPENFREEMAP_STYLES[nextStyle].isDark);
+      const currentZoom = map.getZoom();
+      const baseZoom = minZoomRef.current || MIN_ZOOM;
+      if (currentZoom <= baseZoom + 0.05) {
+        map.dragPan.disable();
+      }
     });
   };
 
@@ -1829,9 +1920,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     if (!map) return;
 
     map.fitBounds(NEPAL_FIR_BOUNDS, {
-      padding: 0,
+      padding: 18,
       duration: 600,
     });
+    map.dragPan.disable();
   };
 
   // Smoothly fly to selected flight ONLY when selection actually changes
@@ -1911,11 +2003,20 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* Floating Map Controls */}
-      <div className="absolute top-4 left-4 z-20 flex items-center space-x-2">
+      <div
+        style={{
+          willChange: "transform",
+          transform: isSidebarOpen ? "translateX(268px)" : "translateX(0px)",
+          transition: isSidebarOpen
+            ? "transform 180ms cubic-bezier(0.05, 0.9, 0.2, 1)"
+            : "transform 150ms cubic-bezier(0.4, 0, 0.9, 1)",
+        }}
+        className="absolute top-4 left-4 z-20 flex items-center space-x-2 pointer-events-auto"
+      >
         {/* OpenFreeMap Style Switcher (Dark removed from options) */}
         <button
           onClick={cycleTileLayer}
-          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border border-white/18 text-xs font-semibold text-neutral-200 shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300 cursor-pointer"
+          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border border-white/18 text-xs font-semibold text-neutral-200 shadow-[0_4px_15px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 cursor-pointer"
           title="Switch map style (Bright, Liberty, Positron)"
         >
           <Layers className="w-3.5 h-3.5 text-white" />
@@ -1928,11 +2029,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         {onToggleSyncViewport && (
           <button
             onClick={onToggleSyncViewport}
-            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl border text-xs font-semibold shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl transition-all duration-300 cursor-pointer ${
-              syncViewport
-                ? "bg-[#181a24] hover:bg-[#222533] border-white/28 text-white"
-                : "bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border-white/18 text-neutral-400"
-            }`}
+            className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-2xl border text-xs font-semibold shadow-[0_4px_15px_rgba(0,0,0,0.45)] backdrop-blur-xl transition-all duration-300 cursor-pointer ${syncViewport
+              ? "bg-[#181a24] hover:bg-[#222533] border-white/28 text-white"
+              : "bg-[#0a0b0e]/95 hover:bg-[#1a1c24] border-white/18 text-neutral-400"
+              }`}
             title={syncViewport ? "Dynamic viewport bounds active (updates as you pan/zoom)" : "Locked to Nepal FIR"}
           >
             <Scan className="w-3.5 h-3.5 text-neutral-200" />
@@ -1942,7 +2042,16 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       </div>
 
       {/* Streamlined Minimal Floating Legend */}
-      <div className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-4 py-2 rounded-2xl bg-[#0a0b0e]/95 border border-white/18 text-[11px] shadow-[0_8px_30px_rgba(0,0,0,0.85)] backdrop-blur-xl pointer-events-none select-none">
+      <div
+        style={{
+          willChange: "transform",
+          transform: isSidebarOpen ? "translateX(268px)" : "translateX(0px)",
+          transition: isSidebarOpen
+            ? "transform 180ms cubic-bezier(0.05, 0.9, 0.2, 1)"
+            : "transform 150ms cubic-bezier(0.4, 0, 0.9, 1)",
+        }}
+        className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-4 py-2 rounded-2xl bg-[#0a0b0e]/95 border border-white/18 text-[11px] shadow-[0_4px_15px_rgba(0,0,0,0.45)] backdrop-blur-xl pointer-events-none select-none"
+      >
         <span className="font-semibold text-emerald-400">9N (Nepal)</span>
         <span className="font-semibold text-yellow-300">Other / Transit</span>
         <span className="font-semibold text-red-400">Selected & Trail</span>
