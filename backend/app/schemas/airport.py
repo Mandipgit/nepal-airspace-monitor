@@ -11,6 +11,8 @@ class RunwaySchema(BaseModel):
     airport_ident: str
     length_ft: Optional[int] = None
     width_ft: Optional[int] = None
+    length_m: Optional[float] = None
+    width_m: Optional[float] = None
     surface: Optional[str] = None
     lighted: bool = False
     closed: bool = False

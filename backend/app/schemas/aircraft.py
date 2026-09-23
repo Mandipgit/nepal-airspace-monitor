@@ -28,6 +28,7 @@ class AircraftSpecificationSchema(BaseModel):
     nominal_range_nm: Optional[int] = Field(default=None, description="Nominal range in Nautical Miles")
     approach_speed_kts: Optional[int] = Field(default=None, description="Approach speed in Knots IAS")
     takeoff_field_length_m: Optional[int] = Field(default=None, description="Takeoff field length in meters")
+    landing_field_length_m: Optional[int] = Field(default=None, description="Landing field length in meters")
 
 class AircraftSpecificationListResponse(BaseModel):
     """Envelope for aircraft specifications query."""

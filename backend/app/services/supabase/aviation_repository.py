@@ -216,7 +216,8 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "max_speed_kts": 470,
         "nominal_range_nm": 3500,
         "approach_speed_kts": 135,
-        "takeoff_field_length_m": 1950
+        "takeoff_field_length_m": 1950,
+        "landing_field_length_m": 1500
     },
     {
         "id": 2,
@@ -234,7 +235,8 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "max_speed_kts": 475,
         "nominal_range_nm": 2935,
         "approach_speed_kts": 142,
-        "takeoff_field_length_m": 2300
+        "takeoff_field_length_m": 2300,
+        "landing_field_length_m": 1400
     },
     {
         "id": 3,
@@ -252,7 +254,8 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "max_speed_kts": 285,
         "nominal_range_nm": 825,
         "approach_speed_kts": 115,
-        "takeoff_field_length_m": 1220
+        "takeoff_field_length_m": 1220,
+        "landing_field_length_m": 1050
     }
 ]
 
@@ -339,16 +342,33 @@ class AviationRepository:
                         if not ident:
                             continue
                         try:
+                            l_ft = int(float(row["length_ft"])) if row.get("length_ft") else None
+                            w_ft = int(float(row["width_ft"])) if row.get("width_ft") else None
+                            l_m = float(row["runway_length_m"]) if row.get("runway_length_m") else (round(l_ft * 0.3048, 1) if l_ft else None)
+                            w_m = round(w_ft * 0.3048, 1) if w_ft else None
+
                             rw = RunwaySchema(
                                 id=idx,
                                 airport_ident=ident,
-                                length_ft=int(float(row["length_ft"])) if row.get("length_ft") else None,
-                                width_ft=int(float(row["width_ft"])) if row.get("width_ft") else None,
+                                length_ft=l_ft,
+                                width_ft=w_ft,
+                                length_m=l_m,
+                                width_m=w_m,
                                 surface=row.get("surface"),
                                 lighted=str(row.get("lighted", "")).lower() in ["1", "true", "yes"],
                                 closed=str(row.get("closed", "")).lower() in ["1", "true", "yes"],
                                 le_ident=row.get("le_ident"),
-                                he_ident=row.get("he_ident")
+                                le_latitude_deg=float(row["le_latitude_deg"]) if row.get("le_latitude_deg") else None,
+                                le_longitude_deg=float(row["le_longitude_deg"]) if row.get("le_longitude_deg") else None,
+                                le_elevation_ft=int(float(row["le_elevation_ft"])) if row.get("le_elevation_ft") else None,
+                                le_heading_degt=float(row["le_heading_degT"]) if row.get("le_heading_degT") else None,
+                                le_displaced_threshold_ft=int(float(row["le_displaced_threshold_ft"])) if row.get("le_displaced_threshold_ft") else None,
+                                he_ident=row.get("he_ident"),
+                                he_latitude_deg=float(row["he_latitude_deg"]) if row.get("he_latitude_deg") else None,
+                                he_longitude_deg=float(row["he_longitude_deg"]) if row.get("he_longitude_deg") else None,
+                                he_elevation_ft=int(float(row["he_elevation_ft"])) if row.get("he_elevation_ft") else None,
+                                he_heading_degt=float(row["he_heading_degT"]) if row.get("he_heading_degT") else None,
+                                he_displaced_threshold_ft=int(float(row["he_displaced_threshold_ft"])) if row.get("he_displaced_threshold_ft") else None
                             )
                             runway_map.setdefault(ident, []).append(rw)
                         except Exception:
@@ -364,11 +384,21 @@ class AviationRepository:
                     airport_ident="VNKT",
                     length_ft=10991,
                     width_ft=148,
+                    length_m=3350.1,
+                    width_m=45.1,
                     surface="ASP",
                     lighted=True,
                     closed=False,
                     le_ident="02",
-                    he_ident="20"
+                    le_latitude_deg=27.6841,
+                    le_longitude_deg=85.3567,
+                    le_elevation_ft=4390,
+                    le_heading_degt=21.0,
+                    he_ident="20",
+                    he_latitude_deg=27.7122,
+                    he_longitude_deg=85.3683,
+                    he_elevation_ft=4340,
+                    he_heading_degt=201.0
                 )
             ]
 
@@ -388,24 +418,34 @@ class AviationRepository:
                     for idx, row in enumerate(csv.DictReader(f), 1):
                         try:
                             model_name = row.get("name") or f"Model-{idx}"
+                            raw_cruise = float(row.get("cruise_speed_kmh") or row.get("cruise_speed") or 0)
+                            if 0 < raw_cruise < 2.0:
+                                raw_cruise = raw_cruise * 1062.0
+                            cruise_kts = int(raw_cruise / 1.852) if raw_cruise > 0 else None
+                            max_speed_val = float(row.get("max_speed_kmh") or row.get("max_speed") or 0)
+                            if 0 < max_speed_val < 2.0:
+                                max_speed_val = max_speed_val * 1062.0
+                            max_kts = int(max_speed_val / 1.852) if max_speed_val > 0 else None
+
                             loaded.append(AircraftSpecificationSchema(
-                                id=idx,
-                                model=model_name,
-                                icao_type=row.get("iata_code") or row.get("airplane_type") or "GEN",
-                                category=row.get("airplane_type") or "commercial",
-                                engine_type=row.get("engine_type"),
-                                engine_model=row.get("powerplant"),
-                                number_of_engines=int(float(row["n_engine"])) if row.get("n_engine") else 2,
-                                passenger_capacity=int(float(row["n_pax"])) if row.get("n_pax") else None,
-                                oew_kg=float(row["owe"]) if row.get("owe") else None,
-                                mtow_kg=float(row["mtow"]) if row.get("mtow") else None,
-                                mlw_kg=float(row["mlw"]) if row.get("mlw") else None,
-                                cruise_speed_kts=int(float(row["cruise_speed"]) / 1.852) if row.get("cruise_speed") else None,
-                                max_speed_kts=int(float(row["max_speed"]) / 1.852) if row.get("max_speed") else None,
-                                nominal_range_nm=int(float(row["nominal_range"])) if row.get("nominal_range") else None,
-                                approach_speed_kts=int(float(row["approach_speed"]) / 1.852) if row.get("approach_speed") else None,
-                                takeoff_field_length_m=int(float(row["tofl"])) if row.get("tofl") else None
-                            ))
+                                    id=idx,
+                                    model=model_name,
+                                    icao_type=row.get("iata_code") or row.get("airplane_type") or "GEN",
+                                    category=row.get("airplane_type") or "commercial",
+                                    engine_type=row.get("engine_type"),
+                                    engine_model=row.get("powerplant"),
+                                    number_of_engines=int(float(row["n_engine"])) if row.get("n_engine") else 2,
+                                    passenger_capacity=int(float(row["n_pax"])) if row.get("n_pax") else None,
+                                    oew_kg=float(row["owe"]) if row.get("owe") else None,
+                                    mtow_kg=float(row["mtow"]) if row.get("mtow") else None,
+                                    mlw_kg=float(row["mlw"]) if row.get("mlw") else None,
+                                    cruise_speed_kts=cruise_kts,
+                                    max_speed_kts=max_kts,
+                                    nominal_range_nm=int(float(row["nominal_range"])) if row.get("nominal_range") else None,
+                                    approach_speed_kts=int(float(row["approach_speed"]) / 1.852) if row.get("approach_speed") else None,
+                                    takeoff_field_length_m=int(float(row["tofl"])) if row.get("tofl") else None,
+                                    landing_field_length_m=int(float(row["lfl"])) if row.get("lfl") else None
+                                ))
                         except Exception:
                             continue
             except Exception as e:
@@ -523,6 +563,96 @@ class AviationRepository:
 
         return None
 
+    async def find_nepal_airport(self, query: str) -> Optional[AirportDetailSchema]:
+        """
+        Find an airport in Nepal by ICAO ident, IATA code, GPS/local code,
+        municipality/city, or full airport name.
+        """
+        raw_q = query.strip()
+        if not raw_q:
+            return None
+        q = raw_q.upper()
+
+        # Direct in-memory cache hit if ident is already cached
+        if q in self._airport_cache and (
+            (self._airport_cache[q].iso_country or "").upper() == "NP" or
+            self._airport_cache[q].ident.upper().startswith("VN")
+        ):
+            return self._airport_cache[q]
+
+        # 1. Supabase attempt if configured and reachable
+        try:
+            client = self._get_client()
+            res = client.table("airports").select("ident").eq("iso_country", "NP").or_(
+                f"ident.eq.{q},iata_code.eq.{q},gps_code.eq.{q},local_code.eq.{q}"
+            ).limit(1).execute()
+            if res.data:
+                return await self.get_airport_by_ident(res.data[0]["ident"])
+
+            res_name = client.table("airports").select("ident").eq("iso_country", "NP").or_(
+                f"name.ilike.%{raw_q}%,municipality.ilike.%{raw_q}%"
+            ).order("scheduled_service", desc=True).limit(1).execute()
+            if res_name.data:
+                return await self.get_airport_by_ident(res_name.data[0]["ident"])
+        except Exception as e:
+            logger.debug(f"Supabase find_nepal_airport lookup fallback: {e}")
+
+        # 2. Local offline Nepal catalog search
+        catalog = self._load_fallback_airports()
+        nepal_airports = [
+            a for a in catalog 
+            if (a.iso_country or "").upper() == "NP" or (a.ident or "").upper().startswith("VN")
+        ]
+
+        # Priority 1: Exact matches on ident, iata_code, gps_code, local_code
+        for a in nepal_airports:
+            if (a.ident or "").upper() == q:
+                return await self.get_airport_by_ident(a.ident)
+        for a in nepal_airports:
+            if (a.iata_code or "").upper() == q:
+                return await self.get_airport_by_ident(a.ident)
+        for a in nepal_airports:
+            if (a.gps_code or "").upper() == q or (a.local_code or "").upper() == q:
+                return await self.get_airport_by_ident(a.ident)
+
+        # Priority 2: Exact matches on name or municipality
+        for a in nepal_airports:
+            if (a.name or "").upper() == q:
+                return await self.get_airport_by_ident(a.ident)
+        for a in nepal_airports:
+            if (a.municipality or "").upper() == q:
+                return await self.get_airport_by_ident(a.ident)
+
+        # Priority 3: Substring matches in name or municipality
+        for a in nepal_airports:
+            if q in (a.name or "").upper():
+                return await self.get_airport_by_ident(a.ident)
+        for a in nepal_airports:
+            if a.municipality and q in a.municipality.upper():
+                return await self.get_airport_by_ident(a.ident)
+
+        # Priority 4: Distinctive word token match (e.g. "Tribhuvan", "Pokhara", "Lukla")
+        tokens = [
+            w for w in re.split(r"[^A-Z0-9]+", q)
+            if len(w) >= 3 and w not in ["AIRPORT", "INTL", "INTERNATIONAL", "DOMESTIC", "THE"]
+        ]
+        if tokens:
+            best_match = None
+            best_score = 0
+            for a in nepal_airports:
+                name_upper = (a.name or "").upper()
+                muni_upper = (a.municipality or "").upper()
+                score = sum(1 for t in tokens if t in name_upper or t in muni_upper)
+                if a.scheduled_service:
+                    score += 0.5
+                if score > best_score:
+                    best_score = score
+                    best_match = a
+            if best_match and best_score >= 1:
+                return await self.get_airport_by_ident(best_match.ident)
+
+        return None
+
     async def get_aircraft_spec(self, identifier: str) -> Optional[AircraftSpecificationSchema]:
         """Fetch specifications by aircraft model name or ICAO type code."""
         key = identifier.upper().strip()
@@ -551,6 +681,31 @@ class AviationRepository:
                 return s
 
         return None
+
+    async def get_aircraft_specs_bulk(self, identifiers: List[str]) -> Dict[str, AircraftSpecificationSchema]:
+        """Bulk fetch aircraft specifications by identifiers, caching and deduplicating queries."""
+        results: Dict[str, AircraftSpecificationSchema] = {}
+        missing_keys: List[str] = []
+
+        for ident in identifiers:
+            key = ident.strip()
+            if not key:
+                continue
+            cache_key = key.upper()
+            if cache_key in self._aircraft_cache:
+                results[key] = self._aircraft_cache[cache_key]
+            else:
+                missing_keys.append(key)
+
+        if not missing_keys:
+            return results
+
+        for key in missing_keys:
+            spec = await self.get_aircraft_spec(key)
+            if spec:
+                results[key] = spec
+
+        return results
 
     async def search_aircraft_specs(
         self,

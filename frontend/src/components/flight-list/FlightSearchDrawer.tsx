@@ -66,7 +66,6 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
       const flightNum = (flight.identification.flight_number || "").toLowerCase();
       const operatorName = (flight.identification.operator_name || "").toLowerCase();
       const operatorIcao = (flight.identification.operator_icao || "").toLowerCase();
-      const operatorIata = (flight.identification.operator_iata || "").toLowerCase();
       const icaoHex = (flight.identification.icao24 || "").toLowerCase();
       const reg = (flight.identification.registration || "").toLowerCase();
       const regNoDash = reg.replace(/[-\s]/g, "");
@@ -82,7 +81,6 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
         flightNum.includes(q) ||
         operatorName.includes(q) ||
         operatorIcao.includes(q) ||
-        operatorIata.includes(q) ||
         icaoHex.includes(q) ||
         reg.includes(q) ||
         regNoDash.includes(qNoDash) ||
