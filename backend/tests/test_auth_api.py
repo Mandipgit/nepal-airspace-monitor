@@ -245,6 +245,23 @@ class AuthAPITestCase(unittest.TestCase):
         self.assertEqual(me_res.status_code, 200)
         self.assertEqual(me_res.json()["email"], email_v1)
 
+    def test_guest_session(self):
+        """Verify anonymous visitors can obtain a guest session token and query protected endpoints."""
+        res = self.client.post("/api/auth/guest")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("access_token", data)
+        self.assertEqual(data["token_type"], "bearer")
+        guest_token = data["access_token"]
+
+        # Guest token should grant access to protected aircraft endpoint
+        aircraft_res = self.client.get(
+            "/api/v1/aircraft?limit=5",
+            headers={"Authorization": f"Bearer {guest_token}"}
+        )
+        self.assertEqual(aircraft_res.status_code, 200)
+        self.assertIn("specifications", aircraft_res.json())
+
 
 if __name__ == "__main__":
     unittest.main()

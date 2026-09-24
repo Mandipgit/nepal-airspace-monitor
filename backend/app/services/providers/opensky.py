@@ -148,6 +148,51 @@ class OpenSkyProvider(BaseFlightProvider):
             logger.warning(f"Failed to obtain OpenSky OAuth2 token: {e}")
             return None
 
+    async def get_route_by_callsign(
+        self,
+        callsign: str,
+        http_client: Optional[httpx.AsyncClient] = None
+    ) -> Optional[Tuple[str, str]]:
+        """
+        Query OpenSky /api/routes?callsign={callsign} for official flight route.
+        Returns (origin_icao, destination_icao) or None if not found/unavailable.
+        """
+        if not callsign:
+            return None
+        cs = callsign.strip().upper()
+        url = f"{self.settings.OPENSKY_BASE_URL}/routes"
+        headers = {"User-Agent": "NepalFlightTracker/1.0"}
+        
+        client = http_client or self._client
+        close_client_at_end = False
+        if client is None:
+            client = httpx.AsyncClient(timeout=6.0)
+            close_client_at_end = True
+            
+        try:
+            token = await self._get_auth_token(client)
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+            elif self.settings.OPENSKY_USERNAME and self.settings.OPENSKY_PASSWORD:
+                creds = base64.b64encode(
+                    f"{self.settings.OPENSKY_USERNAME}:{self.settings.OPENSKY_PASSWORD}".encode()
+                ).decode()
+                headers["Authorization"] = f"Basic {creds}"
+                
+            resp = await client.get(url, params={"callsign": cs}, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                route = data.get("route")
+                if route and len(route) >= 2:
+                    return (route[0].upper().strip(), route[-1].upper().strip())
+        except Exception as e:
+            logger.debug(f"OpenSky route lookup failed for {cs}: {e}")
+        finally:
+            if close_client_at_end:
+                await client.aclose()
+                
+        return None
+
     def _normalize_state_vector(self, state: list) -> Optional[NormalizedFlight]:
         """
         Convert a raw 18-element OpenSky state vector array into a NormalizedFlight model.

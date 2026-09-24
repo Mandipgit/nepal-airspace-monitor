@@ -3,18 +3,26 @@
 import React, { useState } from "react";
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { Bell, Sun, Moon, LogOut, User as UserIcon } from "lucide-react";
+import { Bell, Sun, Moon, LogOut, User as UserIcon, Layers, Scan } from "lucide-react";
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: (dark: boolean) => void;
+  mapStyle?: string;
+  onCycleMapStyle?: () => void;
+  syncViewport?: boolean;
+  onToggleSyncViewport?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
   onToggleSidebar,
   isDarkMode = true,
   onToggleDarkMode,
+  mapStyle,
+  onCycleMapStyle,
+  syncViewport,
+  onToggleSyncViewport,
 }) => {
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
@@ -44,7 +52,39 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       {/* Right: Controls - Permanently Dark Shell */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2.5">
+        {/* OpenFreeMap Style Switcher */}
+        {onCycleMapStyle && (
+          <button
+            type="button"
+            onClick={onCycleMapStyle}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] text-xs font-semibold text-neutral-200 transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm"
+            title="Switch map style (Positron, Bright, Liberty)"
+          >
+            <Layers className="w-3.5 h-3.5 text-neutral-300" />
+            <span>
+              Map Style: {mapStyle === "dark" ? "Bright" : (mapStyle ? mapStyle.charAt(0).toUpperCase() + mapStyle.slice(1) : "Bright")}
+            </span>
+          </button>
+        )}
+
+        {/* Viewport Sync Toggle */}
+        {onToggleSyncViewport && (
+          <button
+            type="button"
+            onClick={onToggleSyncViewport}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm ${
+              syncViewport
+                ? "bg-[#181a24] hover:bg-[#222533] border-white/28 text-white"
+                : "bg-white/[0.05] hover:bg-white/[0.10] border-white/[0.08] text-neutral-400"
+            }`}
+            title={syncViewport ? "Dynamic viewport bounds active (updates as you pan/zoom)" : "Locked to Nepal FIR"}
+          >
+            <Scan className="w-3.5 h-3.5 text-neutral-300" />
+            <span>{syncViewport ? "Viewport Bounds ON" : "Lock FIR"}</span>
+          </button>
+        )}
+
         {/* Theme Toggle: rounded-full pill with sliding active thumb */}
         <div className="relative flex items-center p-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] shadow-inner">
           {/* Sliding Thumb */}

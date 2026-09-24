@@ -87,6 +87,21 @@ class AuthService:
 
         return await self._build_token_response(user_record)
 
+    async def guest_session(self) -> TokenResponseSchema:
+        """Issue an anonymous guest session token for visitors."""
+        guest_email = "guest@flighttracking.local"
+        guest_user = await self.repo.get_by_email(guest_email)
+        if not guest_user:
+            guest_user = {
+                "id": "guest_session_user",
+                "email": guest_email,
+                "first_name": "Guest",
+                "last_name": "User",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        return await self._build_token_response(guest_user)
+
     async def refresh(self, raw_refresh_token: str) -> TokenResponseSchema:
         """Validate an active refresh token and issue a new access token."""
         token_hash = hash_token(raw_refresh_token.strip())

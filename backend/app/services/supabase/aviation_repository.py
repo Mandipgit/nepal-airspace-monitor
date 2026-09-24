@@ -212,6 +212,7 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "oew_kg": 44300.0,
         "mtow_kg": 79000.0,
         "mlw_kg": 67400.0,
+        "fuel_capacity_liters": 26730.0,
         "cruise_speed_kts": 450,
         "max_speed_kts": 470,
         "nominal_range_nm": 3500,
@@ -231,6 +232,7 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "oew_kg": 41413.0,
         "mtow_kg": 79010.0,
         "mlw_kg": 66360.0,
+        "fuel_capacity_liters": 26020.0,
         "cruise_speed_kts": 453,
         "max_speed_kts": 475,
         "nominal_range_nm": 2935,
@@ -250,12 +252,113 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "oew_kg": 13311.0,
         "mtow_kg": 22800.0,
         "mlw_kg": 22350.0,
+        "fuel_capacity_liters": 6400.0,
         "cruise_speed_kts": 276,
         "max_speed_kts": 285,
         "nominal_range_nm": 825,
         "approach_speed_kts": 115,
         "takeoff_field_length_m": 1220,
         "landing_field_length_m": 1050
+    },
+    {
+        "id": 4,
+        "model": "Airbus A321-200",
+        "icao_type": "A321",
+        "category": "commercial",
+        "engine_type": "turbofan",
+        "engine_model": "CFM56-5B / V2500",
+        "number_of_engines": 2,
+        "passenger_capacity": 220,
+        "oew_kg": 48500.0,
+        "mtow_kg": 93500.0,
+        "mlw_kg": 77800.0,
+        "fuel_capacity_liters": 29680.0,
+        "cruise_speed_kts": 454,
+        "max_speed_kts": 473,
+        "nominal_range_nm": 3200,
+        "approach_speed_kts": 138,
+        "takeoff_field_length_m": 2180,
+        "landing_field_length_m": 1580
+    },
+    {
+        "id": 5,
+        "model": "Airbus A320-200",
+        "icao_type": "A320",
+        "category": "commercial",
+        "engine_type": "turbofan",
+        "engine_model": "CFM56-5B / IAE V2500",
+        "number_of_engines": 2,
+        "passenger_capacity": 180,
+        "oew_kg": 42600.0,
+        "mtow_kg": 78000.0,
+        "mlw_kg": 66000.0,
+        "fuel_capacity_liters": 24210.0,
+        "cruise_speed_kts": 447,
+        "max_speed_kts": 470,
+        "nominal_range_nm": 3300,
+        "approach_speed_kts": 135,
+        "takeoff_field_length_m": 2090,
+        "landing_field_length_m": 1530
+    },
+    {
+        "id": 6,
+        "model": "ATR 42-500",
+        "icao_type": "AT45",
+        "category": "regional",
+        "engine_type": "turboprop",
+        "engine_model": "PW127E",
+        "number_of_engines": 2,
+        "passenger_capacity": 48,
+        "oew_kg": 11250.0,
+        "mtow_kg": 18600.0,
+        "mlw_kg": 18300.0,
+        "fuel_capacity_liters": 5700.0,
+        "cruise_speed_kts": 285,
+        "max_speed_kts": 300,
+        "nominal_range_nm": 715,
+        "approach_speed_kts": 110,
+        "takeoff_field_length_m": 1165,
+        "landing_field_length_m": 1025
+    },
+    {
+        "id": 7,
+        "model": "De Havilland Dash 8 Q400",
+        "icao_type": "DH8D",
+        "category": "regional",
+        "engine_type": "turboprop",
+        "engine_model": "PW150A",
+        "number_of_engines": 2,
+        "passenger_capacity": 78,
+        "oew_kg": 17819.0,
+        "mtow_kg": 29257.0,
+        "mlw_kg": 28009.0,
+        "fuel_capacity_liters": 6526.0,
+        "cruise_speed_kts": 360,
+        "max_speed_kts": 367,
+        "nominal_range_nm": 1100,
+        "approach_speed_kts": 125,
+        "takeoff_field_length_m": 1402,
+        "landing_field_length_m": 1280
+    },
+    {
+        "id": 8,
+        "model": "DHC-6 Twin Otter",
+        "icao_type": "DHC6",
+        "category": "commuter",
+        "engine_type": "turboprop",
+        "engine_model": "PT6A-27",
+        "number_of_engines": 2,
+        "passenger_capacity": 19,
+        "oew_kg": 3363.0,
+        "mtow_kg": 5670.0,
+        "mlw_kg": 5579.0,
+        "fuel_capacity_liters": 1446.0,
+        "cruise_speed_kts": 150,
+        "max_speed_kts": 180,
+        "nominal_range_nm": 775,
+        "approach_speed_kts": 75,
+        "takeoff_field_length_m": 366,
+        "landing_field_length_m": 320
     }
 ]
 
@@ -406,11 +509,16 @@ class AviationRepository:
         return self._fallback_runways
 
     def _load_fallback_aircraft_specs(self) -> List[AircraftSpecificationSchema]:
-        """Lazy load aircraft specifications from local data/raw/aircraft_df.xls or static fallback."""
+        """Lazy load aircraft specifications from local data/raw/aircraft_df.xls or root aircraft_df.xls or static fallback."""
         if self._fallback_aircraft_specs is not None:
             return self._fallback_aircraft_specs
 
         ac_file = self._get_raw_data_dir() / "aircraft_df.xls"
+        if not ac_file.exists():
+            root_file = Path(__file__).resolve().parent.parent.parent.parent.parent / "aircraft_df.xls"
+            if root_file.exists():
+                ac_file = root_file
+
         loaded: List[AircraftSpecificationSchema] = []
         if ac_file.exists():
             try:
@@ -427,24 +535,87 @@ class AviationRepository:
                                 max_speed_val = max_speed_val * 1062.0
                             max_kts = int(max_speed_val / 1.852) if max_speed_val > 0 else None
 
+                            nominal_km = float(row.get("nominal_range") or 0)
+                            range_nm = round(nominal_km / 1.852) if nominal_km > 0 else None
+
+                            app_kmh = float(row.get("approach_speed") or 0)
+                            app_kts = round(app_kmh / 1.852) if app_kmh > 0 else None
+
+                            # Dimensions (m, deg, m2)
+                            f_width = float(row["fuselage_width"]) if row.get("fuselage_width") else None
+                            w_span = float(row["wing_span"]) if row.get("wing_span") else None
+                            w_sweep = float(row["wing_sweep25"]) if row.get("wing_sweep25") else None
+                            w_area = float(row["wing_area"]) if row.get("wing_area") else None
+                            w_pos = row.get("wing_position") or None
+                            h_area = float(row["htp_area"]) if row.get("htp_area") else None
+                            v_area = float(row["vtp_area"]) if row.get("vtp_area") else None
+                            t_len = float(row["total_length"]) if row.get("total_length") else None
+                            t_height = float(row["total_height"]) if row.get("total_height") else None
+
+                            # Propulsion & Powerplant
+                            thruster = row.get("thruster_type") or None
+                            p_plant = row.get("powerplant") or None
+                            bpr_val = float(row["bpr"]) if row.get("bpr") else None
+                            e_type = row.get("energy_type") or None
+                            e_pos = row.get("engine_position") or None
+                            e_arm = float(row["engine_y_arm"]) if row.get("engine_y_arm") else None
+                            r_diam = float(row["rotor_diameter"]) if row.get("rotor_diameter") else None
+                            m_pow = float(row["max_power"]) if row.get("max_power") else None
+                            m_pow2 = float(row["max_power_2"]) if row.get("max_power_2") else None
+                            m_thrust = float(row["max_thrust"]) if row.get("max_thrust") else None
+
+                            # Altitudes & weights
+                            c_alt = float(row["cruise_altitude"]) if row.get("cruise_altitude") else None
+                            owe_val = float(row["owe"]) if row.get("owe") else None
+                            mtow_val = float(row["mtow"]) if row.get("mtow") else None
+                            mlw_val = float(row["mlw"]) if row.get("mlw") else None
+                            fuel_val = float(row["max_fuel"]) if row.get("max_fuel") else None
+                            n_eng = int(float(row["n_engine"])) if row.get("n_engine") else 2
+
                             loaded.append(AircraftSpecificationSchema(
                                     id=idx,
                                     model=model_name,
                                     icao_type=row.get("iata_code") or row.get("airplane_type") or "GEN",
                                     category=row.get("airplane_type") or "commercial",
                                     engine_type=row.get("engine_type"),
-                                    engine_model=row.get("powerplant"),
-                                    number_of_engines=int(float(row["n_engine"])) if row.get("n_engine") else 2,
+                                    engine_model=p_plant,
+                                    powerplant=p_plant,
+                                    number_of_engines=n_eng,
+                                    n_engine=n_eng,
                                     passenger_capacity=int(float(row["n_pax"])) if row.get("n_pax") else None,
-                                    oew_kg=float(row["owe"]) if row.get("owe") else None,
-                                    mtow_kg=float(row["mtow"]) if row.get("mtow") else None,
-                                    mlw_kg=float(row["mlw"]) if row.get("mlw") else None,
+                                    oew_kg=owe_val,
+                                    owe=owe_val,
+                                    mtow_kg=mtow_val,
+                                    mtow=mtow_val,
+                                    mlw_kg=mlw_val,
+                                    mlw=mlw_val,
+                                    fuel_capacity_liters=fuel_val,
+                                    max_fuel=fuel_val,
                                     cruise_speed_kts=cruise_kts,
                                     max_speed_kts=max_kts,
-                                    nominal_range_nm=int(float(row["nominal_range"])) if row.get("nominal_range") else None,
-                                    approach_speed_kts=int(float(row["approach_speed"]) / 1.852) if row.get("approach_speed") else None,
+                                    cruise_altitude=c_alt,
+                                    nominal_range_nm=range_nm,
+                                    approach_speed_kts=app_kts,
                                     takeoff_field_length_m=int(float(row["tofl"])) if row.get("tofl") else None,
-                                    landing_field_length_m=int(float(row["lfl"])) if row.get("lfl") else None
+                                    landing_field_length_m=int(float(row["lfl"])) if row.get("lfl") else None,
+                                    fuselage_width=f_width,
+                                    wing_span=w_span,
+                                    wing_sweep25=w_sweep,
+                                    wing_area=w_area,
+                                    wing_position=w_pos,
+                                    htp_area=h_area,
+                                    vtp_area=v_area,
+                                    total_length=t_len,
+                                    total_height=t_height,
+                                    thruster_type=thruster,
+                                    bpr=bpr_val,
+                                    energy_type=e_type,
+                                    engine_position=e_pos,
+                                    engine_y_arm=e_arm,
+                                    rotor_diameter=r_diam,
+                                    max_power=m_pow,
+                                    max_power_2=m_pow2,
+                                    max_thrust=m_thrust
                                 ))
                         except Exception:
                             continue
@@ -456,6 +627,19 @@ class AviationRepository:
 
         self._fallback_aircraft_specs = loaded
         return self._fallback_aircraft_specs
+
+    def _find_fallback_spec(self, identifier: str) -> Optional[AircraftSpecificationSchema]:
+        """Find matching spec in offline catalog by model or ICAO code."""
+        specs = self._load_fallback_aircraft_specs()
+        clean_key = re.sub(r"[^A-Z0-9]", "", identifier.upper().strip())
+        if not clean_key:
+            return None
+        for s in specs:
+            clean_model = re.sub(r"[^A-Z0-9]", "", s.model.upper())
+            clean_icao = re.sub(r"[^A-Z0-9]", "", (s.icao_type or "").upper())
+            if clean_key in clean_model or clean_key in clean_icao or (clean_icao and clean_icao in clean_key):
+                return s
+        return None
 
     async def get_airports(
         self,
@@ -663,22 +847,23 @@ class AviationRepository:
             client = self._get_client()
             res = client.table("aircraft_specifications").select("*").or_(f"model.ilike.%{key}%,icao_type.eq.{key}").limit(1).execute()
             if res.data:
-                spec = AircraftSpecificationSchema(**res.data[0])
+                data = dict(res.data[0])
+                fb = self._find_fallback_spec(data.get("model", "") or key)
+                if fb:
+                    for k, v in fb.model_dump().items():
+                        if data.get(k) is None and v is not None:
+                            data[k] = v
+                spec = AircraftSpecificationSchema(**data)
                 self._aircraft_cache[key] = spec
                 return spec
         except Exception as e:
             logger.debug(f"Supabase get_aircraft_spec lookup failed for {key}: {e}")
 
         # Fallback check against offline catalog
-        specs = self._load_fallback_aircraft_specs()
-        clean_key = re.sub(r"[^A-Z0-9]", "", key)
-
-        for s in specs:
-            clean_model = re.sub(r"[^A-Z0-9]", "", s.model.upper())
-            clean_icao = re.sub(r"[^A-Z0-9]", "", (s.icao_type or "").upper())
-            if (clean_key and clean_key in clean_model) or (clean_icao and (clean_key in clean_icao or clean_icao in clean_key)):
-                self._aircraft_cache[key] = s
-                return s
+        fb_spec = self._find_fallback_spec(key)
+        if fb_spec:
+            self._aircraft_cache[key] = fb_spec
+            return fb_spec
 
         return None
 
@@ -728,7 +913,17 @@ class AviationRepository:
             builder = builder.order("model").range(offset, offset + limit - 1)
             res = builder.execute()
 
-            specs = [AircraftSpecificationSchema(**item) for item in res.data]
+            data_items = []
+            for item in res.data:
+                d = dict(item)
+                fb = self._find_fallback_spec(d.get("model", "") or d.get("icao_type", ""))
+                if fb:
+                    for k, v in fb.model_dump().items():
+                        if d.get(k) is None and v is not None:
+                            d[k] = v
+                data_items.append(d)
+
+            specs = [AircraftSpecificationSchema(**item) for item in data_items]
             total = res.count if res.count is not None else len(specs)
             if specs:
                 return AircraftSpecificationListResponse(total=total, specifications=specs)

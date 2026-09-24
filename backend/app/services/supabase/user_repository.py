@@ -88,11 +88,34 @@ class UserRepository:
         if user_id and user_id in self._in_memory_users:
             return self._in_memory_users[user_id]
 
+        if clean_email == "guest@flighttracking.local":
+            guest = {
+                "id": "guest_session_user",
+                "email": "guest@flighttracking.local",
+                "first_name": "Guest",
+                "last_name": "User",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            self._in_memory_users[guest["id"]] = guest
+            self._in_memory_by_email[clean_email] = guest["id"]
+            return guest
+
         return None
 
     async def get_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve user by primary key UUID."""
         target_id = str(user_id).strip()
+
+        if target_id == "guest_session_user":
+            return {
+                "id": "guest_session_user",
+                "email": "guest@flighttracking.local",
+                "first_name": "Guest",
+                "last_name": "User",
+                "is_active": True,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
 
         # Check Supabase first
         try:

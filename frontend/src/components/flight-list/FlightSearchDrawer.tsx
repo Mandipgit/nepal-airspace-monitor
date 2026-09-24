@@ -144,11 +144,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("all")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "all"
-                ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "all"
+              ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             All ({flights.length})
           </button>
@@ -157,11 +156,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("nepal")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "nepal"
-                ? "bg-[rgba(34,197,94,0.18)] text-[#4ADE80] border border-[rgba(34,197,94,0.30)] font-semibold shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "nepal"
+              ? "bg-[rgba(34,197,94,0.18)] text-[#4ADE80] border border-[rgba(34,197,94,0.30)] font-semibold shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             Nepal ({nepalCount})
           </button>
@@ -169,11 +167,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("adsb")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "adsb"
-                ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "adsb"
+              ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             ADS-B
           </button>
@@ -181,11 +178,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("mlat")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "mlat"
-                ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "mlat"
+              ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             MLAT
           </button>
@@ -193,11 +189,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("airborne")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "airborne"
-                ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "airborne"
+              ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             Airborne ({airborneCount})
           </button>
@@ -205,11 +200,10 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
           <button
             type="button"
             onClick={() => setActiveCategory("ground")}
-            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${
-              activeCategory === "ground"
-                ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
-                : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
-            }`}
+            className={`px-3 py-1.5 rounded-xl transition-all duration-150 ease-out whitespace-nowrap cursor-pointer text-xs active:scale-[0.97] ${activeCategory === "ground"
+              ? "bg-white/[0.12] text-[#FAFAFA] font-semibold border border-white/[0.10] shadow-sm"
+              : "bg-white/[0.05] text-[#A1A1AA] hover:bg-white/[0.08] hover:text-[#FAFAFA] border border-white/[0.06] font-medium"
+              }`}
           >
             Ground ({groundCount})
           </button>
@@ -252,23 +246,21 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
               <div
                 key={flight.id}
                 onClick={() => onSelectFlight(flight)}
-                className={`p-3 rounded-xl border transition-all duration-150 ease-out cursor-pointer select-none font-sans active:scale-[0.98] ${
-                  isSelected
-                    ? "bg-[#1f2025] border-[#108AEF]/60 ring-1 ring-[#108AEF]/40 shadow-md"
-                    : "bg-[#161618] hover:bg-[#1c1c20] border-white/[0.08] hover:border-white/[0.14]"
-                }`}
+                className={`p-3 rounded-xl border transition-all duration-150 ease-out cursor-pointer select-none font-sans active:scale-[0.98] ${isSelected
+                  ? "bg-[#1f2025] border-[#108AEF]/60 ring-1 ring-[#108AEF]/40 shadow-md"
+                  : "bg-[#161618] hover:bg-[#1c1c20] border-white/[0.08] hover:border-white/[0.14]"
+                  }`}
               >
                 {/* Card Top: Callsign, Reg, Origin country */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 min-w-0">
                     <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        isSelected
-                          ? "bg-[#FAFAFA] shadow-sm shadow-white/40"
-                          : isNepal
+                      className={`w-2 h-2 rounded-full shrink-0 ${isSelected
+                        ? "bg-[#FAFAFA] shadow-sm shadow-white/40"
+                        : isNepal
                           ? "bg-[#4ADE80]"
                           : "bg-[#FACC15]"
-                      }`}
+                        }`}
                     />
                     <span className="font-mono-avionics text-sm font-bold text-[#FAFAFA] tracking-wider truncate">
                       {flight.identification.callsign || flight.identification.icao24.toUpperCase()}
@@ -291,7 +283,7 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
                 {/* Card Middle: Airline / Aircraft Model */}
                 <div className="mt-1.5 flex items-center justify-between text-xs text-[#A1A1AA]">
                   <span className="truncate max-w-[180px] font-medium text-[#D4D4D8]">
-                    {flight.identification.operator_name || (isNepal ? "Domestic Nepal Carrier" : "Commercial Transit")}
+                    {flight.identification.operator_name || flight.identification.operator_icao || (isNepal ? "Nepalese Aviation" : "Unknown Operator")}
                   </span>
                   <span className="text-[11px] text-[#71717A] truncate max-w-[120px] font-mono-avionics">
                     {flight.aircraft_spec?.model || flight.identification.aircraft_type_icao || "Aircraft"}

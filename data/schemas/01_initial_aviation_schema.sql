@@ -88,23 +88,53 @@ CREATE TABLE IF NOT EXISTS public.aircraft_specifications (
     model TEXT NOT NULL,                             -- e.g. 'ATR 72-500', 'DHC-6 Twin Otter'
     icao_type VARCHAR(4) NOT NULL,                   -- ICAO designator e.g. 'AT75', 'AT76', 'DHC6', 'A320'
     category TEXT,                                   -- 'Regional', 'Commuter', 'Short/Medium', 'Business', 'General', 'Long Range'
-    engine_type TEXT,                                -- 'Turboprop', 'Turbofan', 'Piston'
-    engine_model TEXT,                               -- e.g. 'PW127F', 'PT6A-27'
-    number_of_engines INTEGER DEFAULT 2,
-    passenger_capacity INTEGER,
+    
+    -- Dimensions & Geometry (m, deg, m2)
+    fuselage_width NUMERIC(8, 3),                    -- Fuselage outer width (m)
+    wing_span NUMERIC(8, 3),                         -- Wing span (m)
+    wing_sweep25 NUMERIC(8, 3),                      -- Wing sweep at 25% chord (deg)
+    wing_area NUMERIC(8, 3),                         -- Wing reference area (m2)
+    wing_position TEXT,                              -- Wing configuration: 'low', 'high'
+    htp_area NUMERIC(8, 3),                          -- Horizontal tailplane area (m2)
+    vtp_area NUMERIC(8, 3),                          -- Vertical tailplane area (m2)
+    total_length NUMERIC(8, 3),                      -- Overall aircraft length (m)
+    total_height NUMERIC(8, 3),                      -- Overall aircraft height (m)
     
     -- Weights (in kg)
-    oew_kg NUMERIC(10, 2),                           -- Operating Empty Weight
-    mtow_kg NUMERIC(10, 2),                          -- Maximum Takeoff Weight
-    mlw_kg NUMERIC(10, 2),                           -- Maximum Landing Weight
-    fuel_capacity_liters NUMERIC(10, 2),
+    oew_kg NUMERIC(10, 2),                           -- Operating Empty Weight (kg)
+    owe NUMERIC(10, 2),                              -- OEW alias (kg)
+    mtow_kg NUMERIC(10, 2),                          -- Maximum Takeoff Weight (kg)
+    mtow NUMERIC(10, 2),                             -- MTOW alias (kg)
+    mlw_kg NUMERIC(10, 2),                           -- Maximum Landing Weight (kg)
+    mlw NUMERIC(10, 2),                              -- MLW alias (kg)
+    fuel_capacity_liters NUMERIC(10, 2),             -- Fuel capacity in liters
+    max_fuel NUMERIC(10, 2),                         -- Maximum fuel capacity (kg)
     
-    -- Performance
+    -- Engines & Propulsion
+    number_of_engines INTEGER DEFAULT 2,             -- Number of engines
+    n_engine INTEGER DEFAULT 2,                      -- Engine count alias
+    engine_y_arm NUMERIC(8, 3),                      -- Engine lateral moment arm from centerline (m)
+    engine_type TEXT,                                -- Propulsion type: 'Turboprop', 'Turbofan', 'Piston'
+    thruster_type TEXT,                              -- Thruster mechanism: 'propeller', 'turbofan'
+    engine_model TEXT,                               -- Engine model e.g. 'PW127F', 'PT6A-27'
+    powerplant TEXT,                                 -- Powerplant designation e.g. 'Con.TS10-360RB'
+    bpr NUMERIC(8, 3),                               -- Bypass ratio (dimensionless)
+    energy_type TEXT,                                -- Energy/fuel type: 'gasoline', 'kerosene'
+    engine_position TEXT,                            -- Mounting position: 'wing', 'fuselage'
+    rotor_diameter NUMERIC(8, 3),                    -- Rotor / propeller diameter (m)
+    max_power NUMERIC(10, 2),                        -- Maximum engine power (kW)
+    max_power_2 NUMERIC(10, 2),                      -- Secondary maximum engine power (kW)
+    max_thrust NUMERIC(12, 2),                       -- Maximum takeoff thrust (N)
+    
+    -- Capacity, Performance & Speeds
+    passenger_capacity INTEGER,                      -- Passenger seating capacity (n_pax)
     cruise_speed_kts INTEGER,                        -- Knots TAS
     max_speed_kts INTEGER,                           -- Knots TAS
+    cruise_altitude NUMERIC(10, 2),                  -- Design cruise altitude
     nominal_range_nm INTEGER,                        -- Nautical miles
     approach_speed_kts INTEGER,                      -- Knots IAS
-    takeoff_field_length_m INTEGER,                  -- Required takeoff distance in meters
+    takeoff_field_length_m INTEGER,                  -- Required takeoff distance in meters (tofl)
+    landing_field_length_m INTEGER,                  -- Required landing distance in meters (lfl)
     
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc', NOW()) NOT NULL

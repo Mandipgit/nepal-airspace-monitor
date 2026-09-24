@@ -1,28 +1,53 @@
 "use client";
 
 import React from "react";
-import { ListFilter } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ListFilter, Route } from "lucide-react";
 
 interface AppSidebarProps {
   isOpen: boolean;
   onToggle?: () => void;
   onClose?: () => void;
   onOpen?: () => void;
-  isSearchOpen: boolean;
-  onToggleSearch: () => void;
-  flightCount: number;
+  isSearchOpen?: boolean;
+  onToggleSearch?: () => void;
+  flightCount?: number;
   syncViewport?: boolean;
   onToggleSyncViewport?: () => void;
+  activeNav?: "directory" | "route-analyzer" | "dashboard";
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
   isOpen,
   onClose,
   onOpen,
-  isSearchOpen,
+  isSearchOpen = false,
   onToggleSearch,
-  flightCount,
+  flightCount = 0,
+  activeNav = "dashboard",
 }) => {
+  const router = useRouter();
+
+  const isRouteAnalyzerActive = activeNav === "route-analyzer";
+  const isDirectoryActive = !isRouteAnalyzerActive && (activeNav === "directory" || isSearchOpen);
+
+  const handleDirectoryClick = () => {
+    if (activeNav === "route-analyzer") {
+      router.push("/");
+    } else if (onToggleSearch) {
+      onToggleSearch();
+    }
+  };
+
+  const handleRouteAnalyzerClick = () => {
+    if (activeNav !== "route-analyzer") {
+      router.push("/route-analyzer");
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
     <aside
       onMouseEnter={onOpen}
@@ -48,12 +73,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
         {/* Navigation list with 4px gap between rows */}
         <div className="flex flex-col gap-1">
-          {/* Flight Directory Nav Row */}
+          {/* 1. Flight Directory Nav Row */}
           <button
             type="button"
-            onClick={onToggleSearch}
+            suppressHydrationWarning
+            onClick={handleDirectoryClick}
             className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
-              isSearchOpen
+              isDirectoryActive
                 ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
                 : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
             }`}
@@ -64,6 +90,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             </div>
             {/* Trailing badge */}
             <span
+              suppressHydrationWarning
               className={`rounded-full px-2 py-0.5 text-[11px] font-mono-avionics transition-all duration-150 ease-out ${
                 flightCount > 0
                   ? "text-[#4ADE80] bg-[rgba(34,197,94,0.18)] border border-[rgba(34,197,94,0.25)] font-bold"
@@ -73,8 +100,30 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               {flightCount}
             </span>
           </button>
+
+          {/* 2. Route Analyzer Nav Row (directly below Flight Directory) */}
+          <button
+            type="button"
+            suppressHydrationWarning
+            onClick={handleRouteAnalyzerClick}
+            className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+              isRouteAnalyzerActive
+                ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
+                : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
+            }`}
+          >
+            <div className="flex items-center space-x-2.5">
+              <Route className="w-5 h-5 shrink-0 transition-colors duration-150 ease-out text-[#108AEF]" />
+              <span className="leading-none">Route Analyzer</span>
+            </div>
+            {/* Context Badge */}
+            <span className="rounded-full px-2 py-0.5 text-[10px] font-mono tracking-wider text-[#108AEF] bg-[#108AEF]/10 border border-[#108AEF]/20 font-semibold uppercase">
+              Tool
+            </span>
+          </button>
         </div>
       </div>
     </aside>
   );
 };
+

@@ -288,7 +288,7 @@ export const FlightListSidebar: React.FC<FlightListSidebarProps> = ({
                 {/* Card Middle: Airline / Aircraft Model */}
                 <div className="mt-1 flex items-center justify-between text-xs text-neutral-400">
                   <span className="truncate max-w-[180px] font-medium text-neutral-300">
-                    {flight.identification.operator_name || (isNepal ? "Domestic Nepal Carrier" : "Commercial Transit")}
+                    {flight.identification.operator_name || flight.identification.operator_icao || (isNepal ? "Nepalese Aviation" : "Unknown Operator")}
                   </span>
                   <span className="text-[11px] text-neutral-400 truncate max-w-[120px]">
                     {flight.aircraft_spec?.model || flight.identification.aircraft_type_icao || "Aircraft"}

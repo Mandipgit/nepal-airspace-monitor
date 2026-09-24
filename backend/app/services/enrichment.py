@@ -6,26 +6,37 @@ Combines live ADS-B telemetry with aviation reference data:
 - Resolves operator identities and flight route destinations (origin and arrival)
 """
 
+import asyncio
 import math
+import time
 import logging
 from typing import List, Optional, Tuple, Dict, Any
+import httpx
 
 from app.models.flight import NormalizedFlight, FlightRoute
-from app.services.supabase.aviation_repository import aviation_repo
+from app.services.supabase.aviation_repository import aviation_repo, FALLBACK_NEPAL_AIRPORTS
 
 logger = logging.getLogger(__name__)
 
-# Key Nepalese Airports for Fast Proximity Calculation (lat, lon, IATA, Name)
-REFERENCE_AIRPORTS = [
-    {"ident": "VNKT", "iata": "KTM", "name": "Kathmandu (Tribhuvan)", "lat": 27.6966, "lon": 85.3591},
-    {"ident": "VNPK", "iata": "PKR", "name": "Pokhara International", "lat": 28.2009, "lon": 83.9821},
-    {"ident": "VNBW", "iata": "BWA", "name": "Bhairahawa (Gautam Buddha)", "lat": 27.5056, "lon": 83.4161},
-    {"ident": "VNLK", "iata": "LUA", "name": "Lukla (Tenzing-Hillary)", "lat": 27.6869, "lon": 86.7297},
-    {"ident": "VNVT", "iata": "BIR", "name": "Biratnagar", "lat": 26.4816, "lon": 87.2644},
-    {"ident": "VNNG", "iata": "KEP", "name": "Nepalgunj", "lat": 28.1054, "lon": 81.6669},
-    {"ident": "VNBJ", "iata": "BJH", "name": "Bajhang", "lat": 29.6372, "lon": 81.1856},
-    {"ident": "VNBL", "iata": "BGL", "name": "Baglung", "lat": 28.2144, "lon": 83.6664},
-    {"ident": "VNJS", "iata": "JMO", "name": "Jomsom", "lat": 28.7842, "lon": 83.7225},
+# Base Nepalese & International Reference Airports for Proximity Calculation
+REFERENCE_AIRPORTS: List[Dict[str, Any]] = [
+    {"ident": "VNKT", "iata": "KTM", "name": "Kathmandu (Tribhuvan)", "lat": 27.6966, "lon": 85.3591, "elevation_ft": 4390},
+    {"ident": "VNPK", "iata": "PKR", "name": "Pokhara International", "lat": 28.2009, "lon": 83.9821, "elevation_ft": 2712},
+    {"ident": "VNBW", "iata": "BWA", "name": "Bhairahawa (Gautam Buddha)", "lat": 27.5056, "lon": 83.4161, "elevation_ft": 358},
+    {"ident": "VNLK", "iata": "LUA", "name": "Lukla (Tenzing-Hillary)", "lat": 27.6869, "lon": 86.7297, "elevation_ft": 9334},
+    {"ident": "VNVT", "iata": "BIR", "name": "Biratnagar", "lat": 26.4816, "lon": 87.2644, "elevation_ft": 236},
+    {"ident": "VNNG", "iata": "KEP", "name": "Nepalgunj", "lat": 28.1054, "lon": 81.6669, "elevation_ft": 540},
+    {"ident": "VNCG", "iata": "BDP", "name": "Bhadrapur (Chandragadhi)", "lat": 26.5708, "lon": 88.0792, "elevation_ft": 300},
+    {"ident": "VNDH", "iata": "DHI", "name": "Dhangadhi", "lat": 28.7522, "lon": 80.5794, "elevation_ft": 690},
+    {"ident": "VNJP", "iata": "JKR", "name": "Janakpur", "lat": 26.7072, "lon": 85.9239, "elevation_ft": 256},
+    {"ident": "VNSI", "iata": "SIF", "name": "Simara", "lat": 27.1594, "lon": 84.9692, "elevation_ft": 450},
+    {"ident": "VNJS", "iata": "JMO", "name": "Jomsom", "lat": 28.7842, "lon": 83.7225, "elevation_ft": 8976},
+    {"ident": "VNBP", "iata": "BHR", "name": "Bharatpur", "lat": 27.6789, "lon": 84.4294, "elevation_ft": 650},
+    {"ident": "VNTR", "iata": "TMI", "name": "Tumlingtar", "lat": 27.3142, "lon": 87.1953, "elevation_ft": 1370},
+    {"ident": "VNSK", "iata": "SKH", "name": "Surkhet", "lat": 28.5861, "lon": 81.6369, "elevation_ft": 2375},
+    {"ident": "VNST", "iata": "IMK", "name": "Simikot", "lat": 29.9686, "lon": 81.8172, "elevation_ft": 9246},
+    {"ident": "VNBJ", "iata": "BJH", "name": "Bajhang", "lat": 29.6372, "lon": 81.1856, "elevation_ft": 4100},
+    {"ident": "VNBL", "iata": "BGL", "name": "Baglung", "lat": 28.2144, "lon": 83.6664, "elevation_ft": 3000},
 ]
 
 AIRPORT_REGISTRY: Dict[str, Dict[str, str]] = {
@@ -51,6 +62,11 @@ AIRPORT_REGISTRY: Dict[str, Dict[str, str]] = {
     "VABB": {"iata": "BOM", "icao": "VABB", "name": "Mumbai (Chhatrapati Shivaji)"},
     "VECC": {"iata": "CCU", "icao": "VECC", "name": "Kolkata (Netaji Subhash)"},
     "VEBD": {"iata": "IXB", "icao": "VEBD", "name": "Bagdogra"},
+    "VEGT": {"iata": "GAU", "icao": "VEGT", "name": "Guwahati (Lokpriya Gopinath Bordoloi)"},
+    "VOGO": {"iata": "GOI", "icao": "VOGO", "name": "Goa (Dabolim)"},
+    "VEIM": {"iata": "IMF", "icao": "VEIM", "name": "Imphal (Bir Tikendrajit)"},
+    "VEMR": {"iata": "IXS", "icao": "VEMR", "name": "Silchar (Kumbhirgram)"},
+    "VEAT": {"iata": "IXA", "icao": "VEAT", "name": "Agartala (Maharaja Bir Bikram)"},
     "VOBL": {"iata": "BLR", "icao": "VOBL", "name": "Bengaluru (Kempegowda)"},
     "VIAR": {"iata": "ATQ", "icao": "VIAR", "name": "Amritsar (Sri Guru Ram Dass)"},
     "VILK": {"iata": "LKO", "icao": "VILK", "name": "Lucknow (Chaudhary Charan Singh)"},
@@ -59,11 +75,13 @@ AIRPORT_REGISTRY: Dict[str, Dict[str, str]] = {
     "VEGK": {"iata": "GOP", "icao": "VEGK", "name": "Gorakhpur"},
     "VOMM": {"iata": "MAA", "icao": "VOMM", "name": "Chennai"},
     "VOHS": {"iata": "HYD", "icao": "VOHS", "name": "Hyderabad (Rajiv Gandhi)"},
+    "VAAH": {"iata": "AMD", "icao": "VAAH", "name": "Ahmedabad (Sardar Vallabhbhai Patel)"},
     "VGHS": {"iata": "DAC", "icao": "VGHS", "name": "Dhaka (Hazrat Shahjalal)"},
     "VQPR": {"iata": "PBH", "icao": "VQPR", "name": "Paro International"},
 
     # Middle East
     "OMDB": {"iata": "DXB", "icao": "OMDB", "name": "Dubai International"},
+    "OMDW": {"iata": "DWC", "icao": "OMDW", "name": "Dubai World Central (Al Maktoum)"},
     "OTHH": {"iata": "DOH", "icao": "OTHH", "name": "Doha (Hamad International)"},
     "OKBK": {"iata": "KWI", "icao": "OKBK", "name": "Kuwait International"},
     "OMSJ": {"iata": "SHJ", "icao": "OMSJ", "name": "Sharjah International"},
@@ -73,12 +91,20 @@ AIRPORT_REGISTRY: Dict[str, Dict[str, str]] = {
     "OERK": {"iata": "RUH", "icao": "OERK", "name": "Riyadh (King Khalid)"},
     "OOMS": {"iata": "MCT", "icao": "OOMS", "name": "Muscat International"},
 
+    # Europe & Global Hubs
+    "LOWW": {"iata": "VIE", "icao": "LOWW", "name": "Vienna International"},
+    "LTFM": {"iata": "IST", "icao": "LTFM", "name": "Istanbul Airport"},
+    "EGLL": {"iata": "LHR", "icao": "EGLL", "name": "London Heathrow"},
+    "LSZH": {"iata": "ZRH", "icao": "LSZH", "name": "Zurich Airport"},
+    "EDDF": {"iata": "FRA", "icao": "EDDF", "name": "Frankfurt Airport"},
+
     # Southeast & East Asia
     "VTBS": {"iata": "BKK", "icao": "VTBS", "name": "Bangkok (Suvarnabhumi)"},
     "VTBD": {"iata": "DMK", "icao": "VTBD", "name": "Bangkok (Don Mueang)"},
     "WMKK": {"iata": "KUL", "icao": "WMKK", "name": "Kuala Lumpur International"},
     "WSSS": {"iata": "SIN", "icao": "WSSS", "name": "Singapore Changi"},
     "VHHH": {"iata": "HKG", "icao": "VHHH", "name": "Hong Kong International"},
+    "RCTP": {"iata": "TPE", "icao": "RCTP", "name": "Taipei (Taoyuan)"},
     "RJAA": {"iata": "NRT", "icao": "RJAA", "name": "Tokyo (Narita)"},
     "ZUTF": {"iata": "TFU", "icao": "ZUTF", "name": "Chengdu Tianfu"},
     "ZGGG": {"iata": "CAN", "icao": "ZGGG", "name": "Guangzhou Baiyun"},
@@ -87,7 +113,6 @@ AIRPORT_REGISTRY: Dict[str, Dict[str, str]] = {
     "ZULS": {"iata": "LXA", "icao": "ZULS", "name": "Lhasa Gonggar"},
     "UTAA": {"iata": "ASB", "icao": "UTAA", "name": "Ashgabat"},
     "VVNB": {"iata": "HAN", "icao": "VVNB", "name": "Hanoi (Noi Bai)"},
-    "LTFM": {"iata": "IST", "icao": "LTFM", "name": "Istanbul Airport"},
 }
 
 # Airport coordinates for great-circle spherical bearing navigation calculations (lat, lon)
@@ -111,6 +136,9 @@ AIRPORT_COORDS: Dict[str, Tuple[float, float]] = {
     "VABB": (19.0896, 72.8656), # BOM
     "VECC": (22.6547, 88.4467), # CCU
     "VEBD": (26.6812, 88.3286), # IXB
+    "VEGT": (26.1061, 91.5859), # GAU
+    "VOGO": (15.3808, 73.8314), # GOI
+    "VEIM": (24.7600, 93.8967), # IMF
     "VOBL": (13.1986, 77.7066), # BLR
     "VIAR": (31.7096, 74.7973), # ATQ
     "VILK": (26.7606, 80.8893), # LKO
@@ -134,134 +162,17 @@ AIRPORT_COORDS: Dict[str, Tuple[float, float]] = {
     "VVNB": (21.2212, 105.8072), # HAN
 }
 
-# Verified commercial airline route mappings for flights operating in Nepal & transit airways
-KNOWN_SCHEDULED_ROUTES: Dict[str, Tuple[str, str]] = {
-    # Air India (AIC) - Real daily schedules into Kathmandu
-    "AIC211": ("VIDP", "VNKT"),  # DEL -> KTM (Flight in user report)
-    "AIC212": ("VNKT", "VIDP"),  # KTM -> DEL
-    "AIC213": ("VIDP", "VNKT"),  # DEL -> KTM
-    "AIC214": ("VNKT", "VIDP"),  # KTM -> DEL
-    "AIC215": ("VIDP", "VNKT"),  # DEL -> KTM
-    "AIC216": ("VNKT", "VIDP"),  # KTM -> DEL
-    "AIC217": ("VIDP", "VNKT"),  # DEL -> KTM
-    "AIC218": ("VNKT", "VIDP"),  # KTM -> DEL
-
-    # IndiGo (IGO)
-    "IGO6041": ("VIDP", "VNKT"), # DEL -> KTM
-    "IGO6042": ("VNKT", "VIDP"), # KTM -> DEL
-    "IGO31": ("VIDP", "VNKT"),   # DEL -> KTM
-    "IGO32": ("VNKT", "VIDP"),   # KTM -> DEL
-    "IGO1151": ("VIDP", "VNKT"), # DEL -> KTM
-    "IGO1152": ("VNKT", "VIDP"), # KTM -> DEL
-    "IGO1153": ("VIDP", "VNKT"), # DEL -> KTM
-    "IGO1154": ("VNKT", "VIDP"), # KTM -> DEL
-    "IGO1157": ("VABB", "VNKT"), # BOM -> KTM
-    "IGO1158": ("VNKT", "VABB"), # KTM -> BOM
-    "IGO493": ("VECC", "VIDP"),  # CCU -> DEL (Overflight transit)
-
-    # flydubai (FDB)
-    "FDB575": ("OMDB", "VNKT"),  # DXB -> KTM
-    "FDB576": ("VNKT", "OMDB"),  # KTM -> DXB
-    "FDB577": ("OMDB", "VNKT"),
-    "FDB578": ("VNKT", "OMDB"),
-    "FDB583": ("OMDB", "VNKT"),
-    "FDB584": ("VNKT", "OMDB"),
-    "FDB1595": ("OMDB", "VNKT"), # DXB -> KTM
-    "FDB1596": ("VNKT", "OMDB"), # KTM -> DXB
-
-    # Qatar Airways (QTR)
-    "QTR644": ("OTHH", "VNKT"),  # DOH -> KTM
-    "QTR645": ("VNKT", "OTHH"),  # KTM -> DOH
-    "QTR648": ("OTHH", "VNKT"),
-    "QTR649": ("VNKT", "OTHH"),
-    "QTR650": ("OTHH", "VNKT"),
-    "QTR651": ("VNKT", "OTHH"),
-    "QTR652": ("OTHH", "VNKT"),
-    "QTR653": ("VNKT", "OTHH"),
-
-    # Himalaya Airlines (HIM / HRA)
-    "HIM891": ("WMKK", "VNKT"),  # KUL -> KTM
-    "HRA891": ("WMKK", "VNKT"),
-    "HIM890": ("VNKT", "WMKK"),  # KTM -> KUL
-    "HRA890": ("VNKT", "WMKK"),
-    "HIM381": ("OMDB", "VNKT"),  # DXB -> KTM
-    "HRA381": ("OMDB", "VNKT"),
-    "HIM382": ("VNKT", "OMDB"),  # KTM -> DXB
-    "HRA382": ("VNKT", "OMDB"),
-    "HIM361": ("OEDF", "VNKT"),  # DMM -> KTM
-    "HRA361": ("OEDF", "VNKT"),
-    "HIM362": ("VNKT", "OEDF"),  # KTM -> DMM
-    "HRA362": ("VNKT", "OEDF"),
-    "HIM391": ("OKBK", "VNKT"),  # KWI -> KTM
-    "HRA391": ("OKBK", "VNKT"),
-    "HIM392": ("VNKT", "OKBK"),  # KTM -> KWI
-    "HRA392": ("VNKT", "OKBK"),
-    "HIM751": ("ZUTF", "VNKT"),  # TFU -> KTM
-    "HRA751": ("ZUTF", "VNKT"),
-    "HIM752": ("VNKT", "ZUTF"),  # KTM -> TFU
-    "HRA752": ("VNKT", "ZUTF"),
-
-    # Nepal Airlines (RNA)
-    "RNA205": ("VIDP", "VNKT"),  # DEL -> KTM
-    "RNA206": ("VNKT", "VIDP"),  # KTM -> DEL
-    "RNA207": ("VIDP", "VNKT"),
-    "RNA208": ("VNKT", "VIDP"),
-    "RNA217": ("VABB", "VNKT"),  # BOM -> KTM
-    "RNA218": ("VNKT", "VABB"),  # KTM -> BOM
-    "RNA231": ("OMDB", "VNKT"),  # DXB -> KTM
-    "RNA232": ("VNKT", "OMDB"),  # KTM -> DXB
-    "RNA239": ("OTHH", "VNKT"),  # DOH -> KTM
-    "RNA240": ("VNKT", "OTHH"),  # KTM -> DOH
-    "RNA401": ("VTBS", "VNKT"),  # BKK -> KTM
-    "RNA402": ("VNKT", "VTBS"),  # KTM -> BKK
-    "RNA415": ("WMKK", "VNKT"),  # KUL -> KTM
-    "RNA416": ("VNKT", "WMKK"),  # KTM -> KUL
-    "RNA701": ("RJAA", "VNKT"),  # NRT -> KTM
-    "RNA702": ("VNKT", "RJAA"),  # KTM -> NRT
-
-    # Singapore Airlines (SIA)
-    "SIA146": ("WSSS", "VNKT"),  # SIN -> KTM
-    "SIA145": ("VNKT", "WSSS"),  # KTM -> SIN
-    "SIA148": ("WSSS", "VNKT"),
-    "SIA147": ("VNKT", "WSSS"),
-
-    # Malaysia Airlines (MAS)
-    "MAS114": ("WMKK", "VNKT"),  # KUL -> KTM
-    "MAS113": ("VNKT", "WMKK"),  # KTM -> KUL
-
-    # Batik Air Malaysia (MXD / BAT)
-    "MXD814": ("WMKK", "VNKT"),  # KUL -> KTM
-    "BAT814": ("WMKK", "VNKT"),
-    "MXD813": ("VNKT", "WMKK"),  # KTM -> KUL
-    "BAT813": ("VNKT", "WMKK"),
-
-    # Drukair (DRK)
-    "DRK101": ("VQPR", "VNKT"),  # PBH -> KTM
-    "DRK102": ("VNKT", "VQPR"),  # KTM -> PBH
-
-    # Biman Bangladesh (BBC / BIM)
-    "BBC371": ("VGHS", "VNKT"),  # DAC -> KTM
-    "BBC372": ("VNKT", "VGHS"),  # KTM -> DAC
-
-    # Thai Airways (THA)
-    "THA319": ("VTBS", "VNKT"),  # BKK -> KTM
-    "THA320": ("VNKT", "VTBS"),  # KTM -> BKK
-
-    # Air Arabia (ABY / BPA)
-    "ABY535": ("OMSJ", "VNKT"),  # SHJ -> KTM
-    "ABY536": ("VNKT", "OMSJ"),  # KTM -> SHJ
-    "ABY537": ("OMSJ", "VNKT"),
-    "ABY538": ("VNKT", "OMSJ"),
-    "BPA511": ("OMAA", "VNKT"),  # AUH -> KTM
-    "BPA512": ("VNKT", "OMAA"),  # KTM -> AUH
-
-    # Overflights / Regional Transits Across Nepal Airspace Corridor
-    "CPA665": ("VHHH", "VIDP"),  # HKG -> DEL
-    "TUA698": ("VVNB", "UTAA"),  # HAN -> ASB
-    "SEJ2472": ("VEGK", "VIDP"), # GOP -> DEL
-    "AXB1408": ("VEBD", "VOBL"), # IXB -> BLR
-}
-
+# Dynamically populate all Nepalese airports from repository catalog into registry & coordinates
+for _apt in FALLBACK_NEPAL_AIRPORTS:
+    _ident = _apt["ident"]
+    _iata = _apt.get("iata_code") or _apt.get("local_code") or _ident
+    _name = _apt.get("name") or _ident
+    if _ident not in AIRPORT_REGISTRY:
+        AIRPORT_REGISTRY[_ident] = {"iata": _iata, "icao": _ident, "name": _name}
+    if _iata and _iata not in AIRPORT_REGISTRY:
+        AIRPORT_REGISTRY[_iata] = {"iata": _iata, "icao": _ident, "name": _name}
+    if _ident not in AIRPORT_COORDS and _apt.get("latitude_deg") and _apt.get("longitude_deg"):
+        AIRPORT_COORDS[_ident] = (_apt["latitude_deg"], _apt["longitude_deg"])
 
 def calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculate initial great-circle bearing in degrees from point 1 to point 2."""
@@ -272,348 +183,6 @@ def calculate_bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> flo
     x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlon)
     return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
 
-
-def is_heading_towards(cur_lat: Optional[float], cur_lon: Optional[float], heading: Optional[float], target_icao: str) -> Optional[bool]:
-    """
-    Checks if aircraft track is pointing towards target airport (within 85 degrees of true bearing).
-    Works accurately from any quadrant (North, South, East, West) and on runway approach turns.
-    """
-    if cur_lat is None or cur_lon is None or heading is None:
-        return None
-    target_coord = AIRPORT_COORDS.get(target_icao)
-    if not target_coord:
-        return None
-    
-    target_lat, target_lon = target_coord
-    bearing = calculate_bearing(cur_lat, cur_lon, target_lat, target_lon)
-    diff = abs(heading - bearing) % 360.0
-    if diff > 180.0:
-        diff = 360.0 - diff
-    return diff <= 85.0
-
-# Airline primary fleet mappings based on real commercial airline fleets in Nepal
-AIRLINE_FLEET_MAP: Dict[str, str] = {
-    "BHA": "AT72",                               # Buddha Air exclusively operates ATR 72/42 fleet
-    "NYT": "AT72",                               # Yeti Airlines operates ATR 72-500 fleet
-    "SHA": "DH8D",                               # Shree Airlines operates Bombardier Dash 8 Q400 / CRJ
-    "RNA": "A20N",                               # Nepal Airlines A320-200neo international fleet
-    "HRA": "A20N",                               # Himalaya Airlines A320 fleet
-    "TRA": "DHC6",                               # Tara Air STOL DHC-6 Twin Otter fleet
-    "SMT": "L410",                               # Summit Air Let L-410 Turbolet STOL fleet
-    "IGO": "A20N",                               # IndiGo A320neo fleet
-    "AIC": "A20N",                               # Air India A320neo fleet
-    "AXB": "B738",                               # Air India Express B737-800 fleet
-    "SEJ": "B738",                               # SpiceJet B737-800 fleet
-    "QTR": "A333",                               # Qatar Airways widebody fleet
-    "FDB": "B38M",                               # flydubai B737 MAX fleet
-    "SIA": "B38M",                               # Singapore Airlines B737 MAX fleet
-    "MAS": "B738",                               # Malaysia Airlines B737-800 fleet
-    "MXD": "B38M",                               # Batik Air Malaysia B737 MAX fleet
-    "JZR": "A20N",                               # Jazeera Airways A320neo fleet
-    "ABY": "A320",                               # Air Arabia A320 fleet
-}
-
-# Standard Commercial Aircraft Specifications Catalog
-STANDARD_AIRCRAFT_SPECS: Dict[str, Dict[str, Any]] = {
-    # Turboprops & STOL Utility
-    "AT72": {
-        "model": "ATR 72-500",
-        "icao_type": "AT72",
-        "category": "regional",
-        "engine_type": "turboprop",
-        "engine_model": "PW127F/M",
-        "number_of_engines": 2,
-        "passenger_capacity": 72,
-        "mtow_kg": 22800,
-        "cruise_speed_kts": 276,
-        "nominal_range_nm": 825,
-    },
-    "AT45": {
-        "model": "ATR 42-500",
-        "icao_type": "AT45",
-        "category": "regional",
-        "engine_type": "turboprop",
-        "engine_model": "PW127E",
-        "number_of_engines": 2,
-        "passenger_capacity": 48,
-        "mtow_kg": 18600,
-        "cruise_speed_kts": 285,
-        "nominal_range_nm": 715,
-    },
-    "DH8D": {
-        "model": "De Havilland Dash 8 Q400",
-        "icao_type": "DH8D",
-        "category": "regional",
-        "engine_type": "turboprop",
-        "engine_model": "PW150A",
-        "number_of_engines": 2,
-        "passenger_capacity": 78,
-        "mtow_kg": 29257,
-        "cruise_speed_kts": 360,
-        "nominal_range_nm": 1100,
-    },
-    "CRJ2": {
-        "model": "Bombardier CRJ-200",
-        "icao_type": "CRJ2",
-        "category": "regional",
-        "engine_type": "turbofan",
-        "engine_model": "GE CF34-3B1",
-        "number_of_engines": 2,
-        "passenger_capacity": 50,
-        "mtow_kg": 24040,
-        "cruise_speed_kts": 425,
-        "nominal_range_nm": 1700,
-    },
-    "CRJ7": {
-        "model": "Bombardier CRJ-700",
-        "icao_type": "CRJ7",
-        "category": "regional",
-        "engine_type": "turbofan",
-        "engine_model": "GE CF34-8C5",
-        "number_of_engines": 2,
-        "passenger_capacity": 70,
-        "mtow_kg": 34019,
-        "cruise_speed_kts": 447,
-        "nominal_range_nm": 1378,
-    },
-    "DHC6": {
-        "model": "DHC-6 Twin Otter 300/400",
-        "icao_type": "DHC6",
-        "category": "turboprop",
-        "engine_type": "turboprop",
-        "engine_model": "PT6A-34",
-        "number_of_engines": 2,
-        "passenger_capacity": 19,
-        "mtow_kg": 5670,
-        "cruise_speed_kts": 150,
-        "nominal_range_nm": 775,
-    },
-    "D228": {
-        "model": "Dornier 228-200",
-        "icao_type": "D228",
-        "category": "turboprop",
-        "engine_type": "turboprop",
-        "engine_model": "TPE331-5",
-        "number_of_engines": 2,
-        "passenger_capacity": 19,
-        "mtow_kg": 6400,
-        "cruise_speed_kts": 190,
-        "nominal_range_nm": 1000,
-    },
-    "L410": {
-        "model": "Let L-410 Turbolet",
-        "icao_type": "L410",
-        "category": "turboprop",
-        "engine_type": "turboprop",
-        "engine_model": "GE H80-200",
-        "number_of_engines": 2,
-        "passenger_capacity": 19,
-        "mtow_kg": 6600,
-        "cruise_speed_kts": 180,
-        "nominal_range_nm": 800,
-    },
-    "AS50": {
-        "model": "Airbus Helicopters H125 / AS350",
-        "icao_type": "AS50",
-        "category": "helicopter",
-        "engine_type": "turboshaft",
-        "engine_model": "Arriel 2D",
-        "number_of_engines": 1,
-        "passenger_capacity": 5,
-        "mtow_kg": 2250,
-        "cruise_speed_kts": 137,
-        "nominal_range_nm": 340,
-    },
-    "B407": {
-        "model": "Bell 407",
-        "icao_type": "B407",
-        "category": "helicopter",
-        "engine_type": "turboshaft",
-        "engine_model": "Rolls-Royce 250-C47B",
-        "number_of_engines": 1,
-        "passenger_capacity": 6,
-        "mtow_kg": 2381,
-        "cruise_speed_kts": 133,
-        "nominal_range_nm": 324,
-    },
-    # Commercial Narrowbody Airliners
-    "A20N": {
-        "model": "Airbus A320-200neo",
-        "icao_type": "A20N",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM LEAP-1A / PW1100G",
-        "number_of_engines": 2,
-        "passenger_capacity": 180,
-        "mtow_kg": 79000,
-        "cruise_speed_kts": 450,
-        "nominal_range_nm": 3500,
-    },
-    "A320": {
-        "model": "Airbus A320-200",
-        "icao_type": "A320",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM56-5B4 / V2527",
-        "number_of_engines": 2,
-        "passenger_capacity": 180,
-        "mtow_kg": 77000,
-        "cruise_speed_kts": 447,
-        "nominal_range_nm": 3300,
-    },
-    "A21N": {
-        "model": "Airbus A321-200neo",
-        "icao_type": "A21N",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM LEAP-1A",
-        "number_of_engines": 2,
-        "passenger_capacity": 220,
-        "mtow_kg": 97000,
-        "cruise_speed_kts": 454,
-        "nominal_range_nm": 4000,
-    },
-    "A321": {
-        "model": "Airbus A321-200",
-        "icao_type": "A321",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM56-5B3",
-        "number_of_engines": 2,
-        "passenger_capacity": 220,
-        "mtow_kg": 93500,
-        "cruise_speed_kts": 450,
-        "nominal_range_nm": 3200,
-    },
-    "A319": {
-        "model": "Airbus A319-100",
-        "icao_type": "A319",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM56-5B6",
-        "number_of_engines": 2,
-        "passenger_capacity": 144,
-        "mtow_kg": 75500,
-        "cruise_speed_kts": 447,
-        "nominal_range_nm": 3750,
-    },
-    "B738": {
-        "model": "Boeing 737-800",
-        "icao_type": "B738",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM56-7B",
-        "number_of_engines": 2,
-        "passenger_capacity": 186,
-        "mtow_kg": 79010,
-        "cruise_speed_kts": 453,
-        "nominal_range_nm": 2935,
-    },
-    "B38M": {
-        "model": "Boeing 737 MAX 8",
-        "icao_type": "B38M",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM LEAP-1B",
-        "number_of_engines": 2,
-        "passenger_capacity": 189,
-        "mtow_kg": 82190,
-        "cruise_speed_kts": 453,
-        "nominal_range_nm": 3550,
-    },
-    "B737": {
-        "model": "Boeing 737-700",
-        "icao_type": "B737",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "CFM56-7B",
-        "number_of_engines": 2,
-        "passenger_capacity": 149,
-        "mtow_kg": 70080,
-        "cruise_speed_kts": 450,
-        "nominal_range_nm": 3010,
-    },
-    # Commercial Widebody Airliners
-    "A332": {
-        "model": "Airbus A330-200",
-        "icao_type": "A332",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "RR Trent 700 / CF6",
-        "number_of_engines": 2,
-        "passenger_capacity": 274,
-        "mtow_kg": 242000,
-        "cruise_speed_kts": 470,
-        "nominal_range_nm": 7250,
-    },
-    "A333": {
-        "model": "Airbus A330-300",
-        "icao_type": "A333",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "RR Trent 700",
-        "number_of_engines": 2,
-        "passenger_capacity": 305,
-        "mtow_kg": 242000,
-        "cruise_speed_kts": 470,
-        "nominal_range_nm": 6350,
-    },
-    "B77W": {
-        "model": "Boeing 777-300ER",
-        "icao_type": "B77W",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "GE90-115B",
-        "number_of_engines": 2,
-        "passenger_capacity": 396,
-        "mtow_kg": 351534,
-        "cruise_speed_kts": 482,
-        "nominal_range_nm": 7370,
-    },
-    "B772": {
-        "model": "Boeing 777-200ER",
-        "icao_type": "B772",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "GE90-90B / Trent 800",
-        "number_of_engines": 2,
-        "passenger_capacity": 314,
-        "mtow_kg": 297550,
-        "cruise_speed_kts": 482,
-        "nominal_range_nm": 7065,
-    },
-    "B788": {
-        "model": "Boeing 787-8 Dreamliner",
-        "icao_type": "B788",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "GEnx-1B / Trent 1000",
-        "number_of_engines": 2,
-        "passenger_capacity": 248,
-        "mtow_kg": 227930,
-        "cruise_speed_kts": 488,
-        "nominal_range_nm": 7355,
-    },
-    "B789": {
-        "model": "Boeing 787-9 Dreamliner",
-        "icao_type": "B789",
-        "category": "commercial",
-        "engine_type": "turbofan",
-        "engine_model": "GEnx-1B / Trent 1000",
-        "number_of_engines": 2,
-        "passenger_capacity": 296,
-        "mtow_kg": 254000,
-        "cruise_speed_kts": 488,
-        "nominal_range_nm": 7635,
-    },
-}
-
-# Backwards compatibility aliases for tests and database models
-STANDARD_AIRCRAFT_SPECS["ATR72-500Basic"] = STANDARD_AIRCRAFT_SPECS["AT72"]
-STANDARD_AIRCRAFT_SPECS["AirbusCorporateJetliner320neo"] = STANDARD_AIRCRAFT_SPECS["A20N"]
-STANDARD_AIRCRAFT_SPECS["BombardierCRJ700"] = STANDARD_AIRCRAFT_SPECS["CRJ7"]
-STANDARD_AIRCRAFT_SPECS["HALDornier228-201"] = STANDARD_AIRCRAFT_SPECS["D228"]
-STANDARD_AIRCRAFT_SPECS["Boeing737-800BusinessJet"] = STANDARD_AIRCRAFT_SPECS["B738"]
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -627,25 +196,366 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return r * c
 
 
-def _make_route(orig_key: str, dest_key: str) -> FlightRoute:
-    """Build a FlightRoute domain object from airport registry keys."""
-    orig = AIRPORT_REGISTRY.get(orig_key, {"iata": orig_key, "icao": orig_key, "name": orig_key})
-    dest = AIRPORT_REGISTRY.get(dest_key, {"iata": dest_key, "icao": dest_key, "name": dest_key})
+def _make_route(
+    orig_key: str,
+    dest_key: str,
+    orig_name: Optional[str] = None,
+    dest_name: Optional[str] = None,
+    orig_iata: Optional[str] = None,
+    dest_iata: Optional[str] = None
+) -> FlightRoute:
+    """Build a FlightRoute domain object from airport registry keys or explicit API data."""
+    orig_info = AIRPORT_REGISTRY.get(orig_key, {"iata": orig_iata or orig_key, "icao": orig_key, "name": orig_name or orig_key})
+    dest_info = AIRPORT_REGISTRY.get(dest_key, {"iata": dest_iata or dest_key, "icao": dest_key, "name": dest_name or dest_key})
+
+    final_dest_icao = dest_info.get("icao", dest_key) if dest_key else None
+    final_dest_iata = dest_iata or (dest_info.get("iata") if dest_key else None)
+    final_dest_name = dest_name or (dest_info.get("name") if dest_key else None)
+
     return FlightRoute(
-        origin_icao=orig["icao"],
-        origin_iata=orig["iata"],
-        origin_name=orig["name"],
-        destination_icao=dest["icao"],
-        destination_iata=dest["iata"],
-        destination_name=dest["name"],
+        origin_icao=orig_info.get("icao", orig_key) if orig_key else None,
+        origin_iata=orig_iata or (orig_info.get("iata") if orig_key else None),
+        origin_name=orig_name or (orig_info.get("name") if orig_key else None),
+        destination_icao=final_dest_icao,
+        destination_iata=final_dest_iata,
+        destination_name=final_dest_name,
     )
 
 
 class FlightEnrichmentService:
     """Enriches normalized flight entities with airport proximity, aircraft models, and route resolution."""
 
-    def __init__(self):
+    def __init__(self, client: Optional[httpx.AsyncClient] = None):
         self._spec_cache: Dict[str, Optional[Dict[str, Any]]] = {}
+        self._route_cache: Dict[str, Optional[FlightRoute]] = {}
+        self._route_cache_timestamps: Dict[str, float] = {}
+        self._route_ttl_seconds: float = 3600.0  # 1 hour cache for resolved routes
+        self._route_negative_ttl_seconds: float = 30.0  # Short 30s negative cache to prevent locking out live flights
+        self._aircraft_meta_cache: Dict[str, Optional[Dict[str, Any]]] = {}
+        self._aircraft_meta_timestamps: Dict[str, float] = {}
+        self._aircraft_meta_ttl_seconds: float = 86400.0  # 24 hours cache for airframe metadata
+        self._http_client = client
+
+    def _is_route_cached(self, callsign: str) -> bool:
+        """Check if callsign has a valid non-expired route cache entry."""
+        if not callsign:
+            return False
+        cs_clean = callsign.strip().upper()
+        cs_alnum = "".join(c for c in cs_clean if c.isalnum())
+        for key in (cs_clean, cs_alnum):
+            if key in self._route_cache:
+                cached_ts = self._route_cache_timestamps.get(key, 0.0)
+                is_positive = self._route_cache[key] is not None
+                ttl = self._route_ttl_seconds if is_positive else self._route_negative_ttl_seconds
+                if (time.monotonic() - cached_ts) < ttl:
+                    return True
+        return False
+
+    def _is_aircraft_meta_cached(self, icao24: str) -> bool:
+        """Check if icao24 has a valid non-expired aircraft metadata cache entry."""
+        if not icao24 or icao24 not in self._aircraft_meta_cache:
+            return False
+        cached_ts = self._aircraft_meta_timestamps.get(icao24, 0.0)
+        is_positive = self._aircraft_meta_cache[icao24] is not None
+        ttl = self._aircraft_meta_ttl_seconds if is_positive else 300.0  # 5 min negative cache
+        return (time.monotonic() - cached_ts) < ttl
+
+    async def _fetch_live_aircraft_meta(self, icao24_list: List[str]) -> None:
+        """
+        Query actual aircraft metadata (type code, model, registration) by icao24.
+        Caches resolved aircraft metadata.
+        """
+        clean_icaos = list(dict.fromkeys(
+            hex_id.strip().lower() for hex_id in icao24_list if hex_id and hex_id.strip()
+        ))
+        if not clean_icaos:
+            return
+
+        now = time.monotonic()
+        client = self._http_client
+        close_client = False
+        if client is None:
+            client = httpx.AsyncClient(timeout=4.0)
+            close_client = True
+
+        try:
+            for icao in clean_icaos[:8]:
+                try:
+                    r = await client.get(
+                        f"https://api.adsbdb.com/v0/aircraft/{icao}",
+                        headers={"User-Agent": "NepalFlightTracker/1.0"}
+                    )
+                    if r.status_code == 200:
+                        ac_data = r.json().get("response", {}).get("aircraft", {})
+                        if ac_data:
+                            self._aircraft_meta_cache[icao] = {
+                                "type": ac_data.get("type"),
+                                "icao_type": ac_data.get("icao_type"),
+                                "manufacturer": ac_data.get("manufacturer"),
+                                "registration": ac_data.get("registration"),
+                                "registered_owner": ac_data.get("registered_owner"),
+                                "operator_code": ac_data.get("registered_owner_operator_flag_code")
+                            }
+                            self._aircraft_meta_timestamps[icao] = now
+                            continue
+                except Exception as e:
+                    logger.debug(f"Aircraft metadata lookup failed for {icao}: {e}")
+
+                self._aircraft_meta_cache[icao] = None
+                self._aircraft_meta_timestamps[icao] = now
+        finally:
+            if close_client:
+                await client.aclose()
+
+    def _pick_active_leg(
+        self,
+        airports: list,
+        cur_lat: Optional[float],
+        cur_lon: Optional[float],
+        heading: Optional[float]
+    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Select active departure and arrival airport pair for multi-segment flights."""
+        if not airports:
+            return {}, {}
+        if len(airports) == 1:
+            return airports[0], airports[0]
+        if len(airports) == 2:
+            return airports[0], airports[1]
+
+        # Multi-stop flight (e.g. IXB - DEL - GOI)
+        if cur_lat is not None and cur_lon is not None and heading is not None:
+            for i in range(len(airports) - 1):
+                dep = airports[i]
+                arr = airports[i + 1]
+                arr_lat = arr.get("lat")
+                arr_lon = arr.get("lon")
+                if arr_lat is not None and arr_lon is not None:
+                    bearing = calculate_bearing(cur_lat, cur_lon, arr_lat, arr_lon)
+                    diff = abs(heading - bearing) % 360.0
+                    if diff > 180.0:
+                        diff = 360.0 - diff
+                    if diff <= 85.0:
+                        return dep, arr
+
+        return airports[0], airports[-1]
+
+    async def _fetch_live_api_routes(
+        self,
+        callsigns: List[str],
+        flights_map: Optional[Dict[str, NormalizedFlight]] = None
+    ) -> None:
+        """
+        Query actual live flight route API data for callsigns using a multi-tier, fully concurrent engine:
+        - Tier 1: High-Speed Batch ADS-B Route Resolution (adsb.im routeset)
+        - Tier 2: Concurrent FlightRoute Database Fallback (api.adsbdb.com)
+        - Tier 3: OpenSky Network Real-Time Flight Departure/Arrival Tracking (/flights/aircraft)
+        - Tier 4: Dynamic Spatial Departure & Landing Detection (physics-based proximity)
+        """
+        clean_callsigns = list(dict.fromkeys(
+            cs.strip().upper() for cs in callsigns if cs and cs.strip()
+        ))
+        if not clean_callsigns:
+            return
+
+        now = time.monotonic()
+        client = self._http_client
+        close_client = False
+        if client is None:
+            client = httpx.AsyncClient(timeout=8.0)
+            close_client = True
+
+        try:
+            # 1. Primary: Batch query ADS-B community route registry (used by tar1090/OpenSky map)
+            try:
+                resp = await client.post(
+                    "https://adsb.im/api/0/routeset",
+                    json={"planes": [{"callsign": cs} for cs in clean_callsigns]},
+                    headers={"User-Agent": "NepalFlightTracker/1.0"},
+                    timeout=4.0
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    for item in data:
+                        cs = (item.get("callsign") or "").strip().upper()
+                        airports = item.get("_airports") or []
+                        if cs and len(airports) >= 2:
+                            flight = flights_map.get(cs) if flights_map else None
+                            cur_lat = flight.position.latitude if flight else None
+                            cur_lon = flight.position.longitude if flight else None
+                            heading = flight.position.heading_deg if flight else None
+
+                            dep, arr = self._pick_active_leg(airports, cur_lat, cur_lon, heading)
+                            orig_icao = dep.get("icao") or dep.get("ident")
+                            orig_iata = dep.get("iata") or orig_icao
+                            orig_name = dep.get("name") or orig_icao
+                            dest_icao = arr.get("icao") or arr.get("ident")
+                            dest_iata = arr.get("iata") or dest_icao
+                            dest_name = arr.get("name") or dest_icao
+
+                            if orig_icao and dest_icao:
+                                route = _make_route(
+                                    orig_key=orig_icao,
+                                    dest_key=dest_icao,
+                                    orig_name=orig_name,
+                                    dest_name=dest_name,
+                                    orig_iata=orig_iata,
+                                    dest_iata=dest_iata
+                                )
+                                self._route_cache[cs] = route
+                                cs_alnum = "".join(c for c in cs if c.isalnum())
+                                if cs_alnum:
+                                    self._route_cache[cs_alnum] = route
+                                self._route_cache_timestamps[cs] = now
+            except Exception as e:
+                logger.debug(f"Batch routeset query encountered error: {e}")
+
+            # 2. Tier 2: Concurrent query to api.adsbdb.com for unresolved callsigns
+            unresolved = [cs for cs in clean_callsigns if cs not in self._route_cache or self._route_cache[cs] is None]
+            if unresolved:
+                sem = asyncio.Semaphore(10)
+
+                async def _query_adsbdb(cs_item: str):
+                    clean_cs = "".join(c for c in cs_item if c.isalnum())
+                    if not clean_cs:
+                        return cs_item, None
+                    async with sem:
+                        try:
+                            r = await client.get(f"https://api.adsbdb.com/v0/callsign/{clean_cs}", timeout=3.0)
+                            if r.status_code == 200:
+                                froute = r.json().get("response", {}).get("flightroute", {})
+                                orig_info = froute.get("origin", {})
+                                dest_info = froute.get("destination", {})
+                                orig_icao = orig_info.get("icao_code")
+                                dest_icao = dest_info.get("icao_code")
+                                if orig_icao and dest_icao:
+                                    route = _make_route(
+                                        orig_key=orig_icao,
+                                        dest_key=dest_icao,
+                                        orig_name=orig_info.get("name"),
+                                        dest_name=dest_info.get("name"),
+                                        orig_iata=orig_info.get("iata_code"),
+                                        dest_iata=dest_info.get("iata_code")
+                                    )
+                                    return cs_item, route
+                        except Exception as err:
+                            logger.debug(f"adsbdb lookup error for {cs_item}: {err}")
+                    return cs_item, None
+
+                adsbdb_results = await asyncio.gather(*(_query_adsbdb(cs) for cs in unresolved))
+                for cs_key, res_route in adsbdb_results:
+                    if res_route:
+                        self._route_cache[cs_key] = res_route
+                        cs_alnum = "".join(c for c in cs_key if c.isalnum())
+                        if cs_alnum:
+                            self._route_cache[cs_alnum] = res_route
+                        self._route_cache_timestamps[cs_key] = now
+
+            # 3. Tier 3: OpenSky Real-Time Flight Departure Tracking (/flights/aircraft)
+            still_unresolved = [cs for cs in clean_callsigns if cs not in self._route_cache or self._route_cache[cs] is None]
+            if still_unresolved and flights_map:
+                from app.services.providers.opensky import OpenSkyProvider
+                opensky = OpenSkyProvider(client=client)
+                token = await opensky._get_auth_token(client)
+                auth_headers = {"Authorization": f"Bearer {token}", "User-Agent": "NepalFlightTracker/1.0"} if token else {"User-Agent": "NepalFlightTracker/1.0"}
+
+                now_ts = int(time.time())
+                begin_ts = now_ts - 7200  # last 2 hours
+                os_sem = asyncio.Semaphore(6)
+
+                async def _query_opensky_realtime(cs_item: str):
+                    fl = flights_map.get(cs_item)
+                    if not fl:
+                        return cs_item, None
+                    icao24 = (fl.identification.icao24 or "").lower().strip()
+                    if not icao24:
+                        return cs_item, None
+                    async with os_sem:
+                        try:
+                            os_url = f"{opensky.settings.OPENSKY_BASE_URL}/flights/aircraft"
+                            r = await client.get(
+                                os_url,
+                                params={"icao24": icao24, "begin": begin_ts, "end": now_ts},
+                                headers=auth_headers,
+                                timeout=3.5
+                            )
+                            if r.status_code == 200:
+                                records = r.json()
+                                if records:
+                                    latest = records[-1]
+                                    dep = (latest.get("estDepartureAirport") or "").upper().strip()
+                                    arr = (latest.get("estArrivalAirport") or "").upper().strip()
+                                    if dep or arr:
+                                        route = _make_route(
+                                            orig_key=dep or "VNKT",
+                                            dest_key=arr or "",
+                                            dest_name="En Route" if not arr else None
+                                        )
+                                        return cs_item, route
+                        except Exception as e:
+                            logger.debug(f"OpenSky flights/aircraft lookup error for {icao24}: {e}")
+                    return cs_item, None
+
+                os_results = await asyncio.gather(*(_query_opensky_realtime(cs) for cs in still_unresolved))
+                for cs_key, res_route in os_results:
+                    if res_route:
+                        self._route_cache[cs_key] = res_route
+                        cs_alnum = "".join(c for c in cs_key if c.isalnum())
+                        if cs_alnum:
+                            self._route_cache[cs_alnum] = res_route
+                        self._route_cache_timestamps[cs_key] = now
+
+            # 4. Tier 4: Algorithmic Spatial Takeoff Proximity Detection (Zero Hardcoding)
+            # Dynamically identifies departure airport for flights currently climbing / taking off
+            if flights_map:
+                for cs in clean_callsigns:
+                    if cs not in self._route_cache or self._route_cache[cs] is None:
+                        fl = flights_map.get(cs)
+                        if fl and fl.position.latitude is not None and fl.position.longitude is not None:
+                            lat = fl.position.latitude
+                            lon = fl.position.longitude
+                            alt_m = fl.position.altitude_baro_m or fl.position.altitude_geo_m or 0.0
+                            if 25.8 <= lat <= 30.65 and 79.8 <= lon <= 88.5:
+                                closest_apt = None
+                                min_dist = float("inf")
+                                for apt in REFERENCE_AIRPORTS:
+                                    d = haversine_km(lat, lon, apt["lat"], apt["lon"])
+                                    if d < min_dist:
+                                        min_dist = d
+                                        closest_apt = apt
+
+                                if closest_apt:
+                                    elevation_m = closest_apt.get("elevation_ft", 0) * 0.3048
+                                    height_agl = alt_m - elevation_m
+                                    is_ground_takeoff = fl.position.on_ground and min_dist <= 3.0
+                                    is_climbing_takeoff = (
+                                        min_dist <= 6.0 and
+                                        -50.0 <= height_agl <= 600.0 and
+                                        fl.position.vertical_rate_mps is not None and
+                                        fl.position.vertical_rate_mps >= 1.5
+                                    )
+                                    if is_ground_takeoff or is_climbing_takeoff:
+                                        route = _make_route(
+                                            orig_key=closest_apt["ident"],
+                                            dest_key="",
+                                            orig_name=closest_apt["name"],
+                                            orig_iata=closest_apt["iata"],
+                                            dest_name="En Route"
+                                        )
+                                        self._route_cache[cs] = route
+                                        cs_alnum = "".join(c for c in cs if c.isalnum())
+                                        if cs_alnum:
+                                            self._route_cache[cs_alnum] = route
+                                        self._route_cache_timestamps[cs] = now
+
+            # 5. Short negative cache (30s) only for truly unresolvable flights
+            for cs in clean_callsigns:
+                if cs not in self._route_cache:
+                    self._route_cache[cs] = None
+                    self._route_cache_timestamps[cs] = now
+
+        finally:
+            if close_client:
+                await client.aclose()
 
     def _find_nearest_airport(self, lat: Optional[float], lon: Optional[float]) -> Tuple[Optional[str], Optional[float]]:
         """Find the closest Nepalese reference airport and distance."""
@@ -668,36 +578,33 @@ class FlightEnrichmentService:
 
     async def _resolve_aircraft_spec(self, flight: NormalizedFlight) -> Optional[Dict[str, Any]]:
         """
-        Lookup aircraft specifications based on operator fleet, ICAO type, or standard catalog.
-        Guarantees realistic commercial passenger capacity (not business jet / VIP seats).
+        Lookup aircraft specifications based on genuine verified ICAO type.
+        Never fabricates arbitrary aircraft models for operators when type is unknown.
         """
-        operator_icao = flight.identification.operator_icao
         type_code = (flight.identification.aircraft_type_icao or "").upper().strip()
+        icao24 = (flight.identification.icao24 or "").lower().strip()
 
-        # If neither operator nor aircraft type is identified, do not fabricate specs
-        if not operator_icao and not type_code:
+        # 1. Update from live aircraft metadata cache if type_code is missing
+        if not type_code and icao24 and icao24 in self._aircraft_meta_cache:
+            meta = self._aircraft_meta_cache[icao24]
+            if meta:
+                meta_type = (meta.get("icao_type") or meta.get("type") or "").upper().strip()
+                if meta_type:
+                    type_code = meta_type
+                    flight.identification.aircraft_type_icao = meta_type
+                if not flight.identification.registration and meta.get("registration"):
+                    flight.identification.registration = meta.get("registration")
+
+        # 2. Require genuine aircraft type code for specification lookup
+        if not type_code:
             return None
 
-        # Resolve target key from airline fleet or type code
-        target_key = None
-        if operator_icao and operator_icao in AIRLINE_FLEET_MAP:
-            target_key = AIRLINE_FLEET_MAP[operator_icao]
-        elif type_code:
-            target_key = type_code
-
-        if not target_key:
-            return None
+        target_key = type_code
 
         if target_key in self._spec_cache:
             return self._spec_cache[target_key]
 
-        # 1. Check in-memory standard catalog first for commercial integrity
-        if target_key in STANDARD_AIRCRAFT_SPECS:
-            spec_dict = dict(STANDARD_AIRCRAFT_SPECS[target_key])
-            self._spec_cache[target_key] = spec_dict
-            return spec_dict
-
-        # 2. Try Supabase aviation repository lookup
+        # Query aircraft specifications from database table via aviation_repo
         try:
             spec = await aviation_repo.get_aircraft_spec(target_key)
             if spec:
@@ -707,283 +614,37 @@ class FlightEnrichmentService:
                     model_upper = (spec_dict.get("model") or "").upper()
                     if "320" in model_upper or "321" in model_upper or "737" in model_upper:
                         spec_dict["passenger_capacity"] = 180
+                # Preserve genuine verified ICAO type if DB row stores 3-char IATA code (e.g. 321 vs A321)
+                if type_code and (not spec_dict.get("icao_type") or len(spec_dict.get("icao_type", "")) < len(type_code)):
+                    spec_dict["icao_type"] = type_code
                 self._spec_cache[target_key] = spec_dict
                 return spec_dict
         except Exception as e:
             logger.debug(f"Could not load spec for model {target_key} from database: {e}")
 
-        # 3. Fallback to standard narrowbody default if commercial airliner category
-        if flight.identification.category == 3 or (flight.identification.category_name and "large" in flight.identification.category_name.lower()):
-            default_spec = dict(STANDARD_AIRCRAFT_SPECS["A20N"])
-            self._spec_cache[target_key] = default_spec
-            return default_spec
-
+        # If model is unverified, do not fabricate generic specs
         self._spec_cache[target_key] = None
         return None
 
     def _resolve_flight_route(self, flight: NormalizedFlight) -> Optional[FlightRoute]:
         """
-        Dynamically resolve departure and arrival destinations using:
-        1. Verified commercial airline route catalog (real scheduled airline operations)
-        2. Spherical great-circle bearing calculations (track towards vs away from destination)
-        3. Domestic odd/even flight numbering conventions in Nepal
+        Resolve departure and arrival destinations using live API route data.
+        Returns None when reliable route data is unavailable.
         """
         raw_callsign = (flight.identification.callsign or "").strip().upper()
-        if not raw_callsign:
-            return None
+        icao24 = (flight.identification.icao24 or "").lower().strip()
 
-        callsign = "".join(c for c in raw_callsign if c.isalnum())
-        if not callsign:
-            return None
+        if raw_callsign:
+            callsign = "".join(c for c in raw_callsign if c.isalnum())
+            if raw_callsign in self._route_cache and self._route_cache[raw_callsign] is not None:
+                return self._route_cache[raw_callsign]
+            if callsign in self._route_cache and self._route_cache[callsign] is not None:
+                return self._route_cache[callsign]
 
-        # 1. Check Known Verified Airline Routes first (highest accuracy)
-        if callsign in KNOWN_SCHEDULED_ROUTES:
-            orig_k, dest_k = KNOWN_SCHEDULED_ROUTES[callsign]
-            return _make_route(orig_k, dest_k)
+        if icao24 and icao24 in self._route_cache and self._route_cache[icao24] is not None:
+            return self._route_cache[icao24]
 
-        lat = flight.position.latitude
-        lon = flight.position.longitude
-        heading = flight.position.heading_deg
-
-        # 2. Buddha Air (BHA) Routes
-        if callsign.startswith("BHA"):
-            digits_str = "".join(c for c in callsign if c.isdigit())
-            flight_num = int(digits_str) if digits_str else None
-
-            # Mountain Scenic Flight: strictly 100-109
-            if flight_num and 100 <= flight_num <= 109:
-                return _make_route("VNKT", "VNKT")
-
-            dest_code = "VNPK"  # Default KTM - PKR
-            if flight_num:
-                if 200 <= flight_num <= 249:
-                    dest_code = "VNBW"  # Bhairahawa
-                elif 250 <= flight_num <= 269:
-                    # Inter-regional Pokhara - Bhairahawa
-                    is_pkr = is_heading_towards(lat, lon, heading, "VNPK")
-                    return _make_route("VNBW", "VNPK") if is_pkr else _make_route("VNPK", "VNBW")
-                elif 300 <= flight_num <= 349:
-                    dest_code = "VNVT"  # Biratnagar
-                elif 400 <= flight_num <= 449:
-                    dest_code = "VNNG"  # Nepalgunj
-                elif 500 <= flight_num <= 549:
-                    dest_code = "VNCG"  # Bhadrapur
-                elif 600 <= flight_num <= 649:
-                    dest_code = "VNJP"  # Janakpur
-                elif 650 <= flight_num <= 699:
-                    dest_code = "VNPK"  # Pokhara
-                elif 700 <= flight_num <= 749:
-                    dest_code = "VNDH"  # Dhangadhi
-                elif 800 <= flight_num <= 849:
-                    dest_code = "VNSI"  # Simara
-                elif 900 <= flight_num <= 949:
-                    dest_code = "VNBP"  # Bharatpur
-                elif 950 <= flight_num <= 979:
-                    dest_code = "VNCG"  # Bhadrapur (including BHA960)
-
-            # Determine direction:
-            # 1) Spherical bearing calculation towards KTM
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(dest_code, "VNKT") if is_inbound else _make_route("VNKT", dest_code)
-
-            # 2) Domestic numbering standard: Even = Inbound to KTM, Odd = Outbound from KTM
-            if flight_num is not None:
-                return _make_route(dest_code, "VNKT") if (flight_num % 2 == 0) else _make_route("VNKT", dest_code)
-
-            return _make_route("VNKT", dest_code)
-
-        # 3. Yeti Airlines (NYT) Routes
-        if callsign.startswith("NYT"):
-            digits_str = "".join(c for c in callsign if c.isdigit())
-            flight_num = int(digits_str) if digits_str else None
-
-            if flight_num and 100 <= flight_num <= 109:
-                return _make_route("VNKT", "VNKT")
-
-            dest_code = "VNPK"
-            if flight_num:
-                if 350 <= flight_num <= 399:
-                    dest_code = "VNVT"  # Biratnagar
-                elif 420 <= flight_num <= 449:
-                    dest_code = "VNNG"  # Nepalgunj
-                elif 550 <= flight_num <= 569:
-                    dest_code = "VNJP"  # Janakpur
-                elif 670 <= flight_num <= 699:
-                    dest_code = "VNPK"  # Pokhara
-                elif 780 <= flight_num <= 799:
-                    dest_code = "VNBW"  # Bhairahawa
-                elif 890 <= flight_num <= 899:
-                    dest_code = "VNCG"  # Bhadrapur
-
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(dest_code, "VNKT") if is_inbound else _make_route("VNKT", dest_code)
-            if flight_num is not None:
-                return _make_route(dest_code, "VNKT") if (flight_num % 2 == 0) else _make_route("VNKT", dest_code)
-            return _make_route("VNKT", dest_code)
-
-        # 4. Shree Airlines (SHA) Routes
-        if callsign.startswith("SHA"):
-            digits_str = "".join(c for c in callsign if c.isdigit())
-            flight_num = int(digits_str) if digits_str else None
-
-            if flight_num and 100 <= flight_num <= 109:
-                return _make_route("VNKT", "VNKT")
-
-            dest_code = "VNPK"
-            if flight_num:
-                if 220 <= flight_num <= 239:
-                    dest_code = "VNBW"  # Bhairahawa
-                elif 410 <= flight_num <= 429:
-                    dest_code = "VNNG"  # Nepalgunj
-                elif 700 <= flight_num <= 729:
-                    dest_code = "VNVT"  # Biratnagar
-                elif 800 <= flight_num <= 829:
-                    dest_code = "VNDH"  # Dhangadhi
-                elif 850 <= flight_num <= 879:
-                    dest_code = "VNCG"  # Bhadrapur
-                elif 910 <= flight_num <= 929:
-                    dest_code = "VNSI"  # Simara
-
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(dest_code, "VNKT") if is_inbound else _make_route("VNKT", dest_code)
-            if flight_num is not None:
-                return _make_route(dest_code, "VNKT") if (flight_num % 2 == 0) else _make_route("VNKT", dest_code)
-            return _make_route("VNKT", dest_code)
-
-        # 5. Tara Air (TRA) & Summit Air (SMT) Mountain Routes
-        if callsign.startswith("TRA") or callsign.startswith("SMT"):
-            digits = "".join(c for c in callsign if c.isdigit())
-            if digits.startswith("2"):
-                return _make_route("VNPK", "VNJS") # Pokhara - Jomsom
-            elif digits.startswith("3"):
-                return _make_route("VNNG", "VNST") # Nepalgunj - Simikot
-            else:
-                return _make_route("VNKT", "VNLK") # Kathmandu - Lukla
-
-        # 6. Air India (AIC) & IndiGo (IGO)
-        if callsign.startswith("IGO") or callsign.startswith("AIC"):
-            digits_str = "".join(c for c in callsign if c.isdigit())
-            indian_port = "VABB" if (digits_str and digits_str.startswith("4")) else "VIDP"
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(indian_port, "VNKT") if is_inbound else _make_route("VNKT", indian_port)
-            flight_num = int(digits_str) if digits_str else None
-            if flight_num is not None:
-                # Odd flight numbers (AIC211, IGO6041) = Inbound to KTM, Even = Outbound from KTM
-                return _make_route(indian_port, "VNKT") if (flight_num % 2 != 0) else _make_route("VNKT", indian_port)
-            return _make_route(indian_port, "VNKT")
-
-        # 7. Nepal Airlines (RNA)
-        if callsign.startswith("RNA"):
-            digits = "".join(c for c in callsign if c.isdigit())
-            if digits.startswith("20"):
-                intl_port = "VIDP" # Delhi
-            elif digits.startswith("21"):
-                intl_port = "VABB" # Mumbai
-            elif digits.startswith("40"):
-                intl_port = "VTBS" # Bangkok
-            elif digits.startswith("41"):
-                intl_port = "WMKK" # Kuala Lumpur
-            elif digits.startswith("23") or digits.startswith("24"):
-                intl_port = "OMDB" # Dubai
-            elif digits.startswith("70"):
-                intl_port = "RJAA" # Tokyo Narita
-            else:
-                intl_port = "VIDP"
-
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(intl_port, "VNKT") if is_inbound else _make_route("VNKT", intl_port)
-            flight_num = int(digits) if digits else None
-            if flight_num is not None:
-                return _make_route(intl_port, "VNKT") if (flight_num % 2 != 0) else _make_route("VNKT", intl_port)
-            return _make_route(intl_port, "VNKT")
-
-        # 8. Himalaya Airlines (HRA / HIM)
-        if callsign.startswith("HRA") or callsign.startswith("HIM"):
-            digits = "".join(c for c in callsign if c.isdigit())
-            if digits.startswith("36"):
-                intl_port = "OEDF" # Dammam
-            elif digits.startswith("38"):
-                intl_port = "OMDB" # Dubai
-            elif digits.startswith("39"):
-                intl_port = "OKBK" # Kuwait
-            elif digits.startswith("89"):
-                intl_port = "WMKK" # Kuala Lumpur
-            elif digits.startswith("75"):
-                intl_port = "ZUTF" # Chengdu
-            elif digits.startswith("73"):
-                intl_port = "ZGGG" # Guangzhou
-            else:
-                intl_port = "OTHH" # Doha
-
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            if is_inbound is not None:
-                return _make_route(intl_port, "VNKT") if is_inbound else _make_route("VNKT", intl_port)
-            flight_num = int(digits) if digits else None
-            if flight_num is not None:
-                return _make_route(intl_port, "VNKT") if (flight_num % 2 != 0) else _make_route("VNKT", intl_port)
-            return _make_route(intl_port, "VNKT")
-
-        # 9. Gulf Carriers
-        if callsign.startswith("QTR"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("OTHH", "VNKT") if is_inbound is not False else _make_route("VNKT", "OTHH")
-        if callsign.startswith("FDB"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("OMDB", "VNKT") if is_inbound is not False else _make_route("VNKT", "OMDB")
-        if callsign.startswith("ABY") or callsign.startswith("BPA"):
-            intl_port = "OMAA" if callsign.startswith("BPA") else "OMSJ"
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route(intl_port, "VNKT") if is_inbound is not False else _make_route("VNKT", intl_port)
-        if callsign.startswith("JZR"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("OKBK", "VNKT") if is_inbound is not False else _make_route("VNKT", "OKBK")
-        if callsign.startswith("GFA"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("OBBI", "VNKT") if is_inbound is not False else _make_route("VNKT", "OBBI")
-
-        # 10. Southeast Asia Carriers
-        if callsign.startswith("SIA"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("WSSS", "VNKT") if is_inbound is not False else _make_route("VNKT", "WSSS")
-        if callsign.startswith("MAS") or callsign.startswith("MXD") or callsign.startswith("BAT"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("WMKK", "VNKT") if is_inbound is not False else _make_route("VNKT", "WMKK")
-        if callsign.startswith("THA"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("VTBS", "VNKT") if is_inbound is not False else _make_route("VNKT", "VTBS")
-
-        # 11. Regional Neighbors
-        if callsign.startswith("DRK") or callsign.startswith("KB"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("VQPR", "VNKT") if is_inbound is not False else _make_route("VNKT", "VQPR")
-        if callsign.startswith("BIM") or callsign.startswith("BBC"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("VGHS", "VNKT") if is_inbound is not False else _make_route("VNKT", "VGHS")
-        if callsign.startswith("CSC") or callsign.startswith("CCA"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("ZUTF", "VNKT") if is_inbound is not False else _make_route("VNKT", "ZUTF")
-        if callsign.startswith("CSN"):
-            is_inbound = is_heading_towards(lat, lon, heading, "VNKT")
-            return _make_route("ZGGG", "VNKT") if is_inbound is not False else _make_route("VNKT", "ZGGG")
-
-        # 12. General Aviation & Helicopters registered in Nepal (9N-...)
-        if callsign.startswith("9N") or callsign.startswith("9-N"):
-            return _make_route("VNKT", "VNPK")
-
-        # 13. Overflight / Transiting Airways (High Altitude)
-        alt_m = flight.position.altitude_baro_m or 0.0
-        if alt_m > 8500:  # Above FL280
-            # If tracking towards Delhi/Northwest India
-            if heading and (240 <= heading <= 330):
-                return _make_route("VECC", "VIDP")
-            else:
-                return _make_route("VIDP", "VECC")
-
+        # Unverified routes remain None - never fabricate synthetic routes
         return None
 
     async def enrich_flight(self, flight: NormalizedFlight) -> NormalizedFlight:
@@ -997,9 +658,20 @@ class FlightEnrichmentService:
         flight.nearest_airport_distance_km = dist_km
 
         # 2. Flight Route resolution (Departure & Arrival destinations)
-        flight.route = self._resolve_flight_route(flight)
+        cs = (flight.identification.callsign or "").strip().upper()
+        icao = (flight.identification.icao24 or "").lower().strip()
+        lookup_key = cs or icao
+        if lookup_key and not self._is_route_cached(lookup_key):
+            await self._fetch_live_api_routes([lookup_key], {lookup_key: flight})
+
+        resolved_route = self._resolve_flight_route(flight)
+        if resolved_route:
+            flight.route = resolved_route
 
         # 3. Aircraft specifications
+        if icao and not flight.identification.aircraft_type_icao and not self._is_aircraft_meta_cached(icao):
+            await self._fetch_live_aircraft_meta([icao])
+
         spec = await self._resolve_aircraft_spec(flight)
         if spec:
             flight.aircraft_spec = spec
@@ -1011,6 +683,37 @@ class FlightEnrichmentService:
 
     async def enrich_flight_collection(self, flights: List[NormalizedFlight]) -> List[NormalizedFlight]:
         """Enrich an entire collection of NormalizedFlight objects."""
+        # 1. Batch fetch live API routes and aircraft metadata for uncached entities
+        flights_map: Dict[str, NormalizedFlight] = {}
+        needed_callsigns: List[str] = []
+        needed_icaos: List[str] = []
+
+        for flight in flights:
+            cs = (flight.identification.callsign or "").strip().upper()
+            icao = (flight.identification.icao24 or "").lower().strip()
+            if cs:
+                flights_map[cs] = flight
+                cs_alnum = "".join(c for c in cs if c.isalnum())
+                if cs_alnum:
+                    flights_map[cs_alnum] = flight
+                if not self._is_route_cached(cs):
+                    needed_callsigns.append(cs)
+            elif icao:
+                flights_map[icao] = flight
+                if not self._is_route_cached(icao):
+                    needed_callsigns.append(icao)
+
+            if icao and not flight.identification.aircraft_type_icao:
+                if not self._is_aircraft_meta_cached(icao):
+                    needed_icaos.append(icao)
+
+        if needed_callsigns:
+            await self._fetch_live_api_routes(needed_callsigns, flights_map)
+
+        if needed_icaos:
+            await self._fetch_live_aircraft_meta(needed_icaos)
+
+        # 2. Enrich each flight
         enriched = []
         for flight in flights:
             enriched.append(await self.enrich_flight(flight))

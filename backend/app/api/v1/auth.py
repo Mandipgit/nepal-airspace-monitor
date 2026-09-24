@@ -48,6 +48,19 @@ async def login(req: UserLoginRequest):
     return await auth_service.login(req)
 
 
+@router.post(
+    "/guest",
+    response_model=TokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Issue anonymous guest session tokens"
+)
+async def guest_login():
+    """
+    Issue a valid Bearer JWT session for visitors browsing in Guest Mode.
+    """
+    return await auth_service.guest_session()
+
+
 @router.get(
     "/me",
     response_model=UserResponseSchema,

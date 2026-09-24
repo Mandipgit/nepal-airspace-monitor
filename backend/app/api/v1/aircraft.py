@@ -17,7 +17,7 @@ router = APIRouter(prefix="/aircraft", tags=["Aircraft Specifications"])
 async def list_aircraft_specifications(
     query: Optional[str] = Query(None, description="Search by aircraft model or engine type"),
     category: Optional[str] = Query(None, description="Filter by category: regional, commuter, short_medium, business, general, long_range"),
-    limit: int = Query(50, ge=1, le=200, description="Max records to return"),
+    limit: int = Query(50, ge=1, le=500, description="Max records to return"),
     offset: int = Query(0, ge=0, description="Offset for pagination")
 ):
     """

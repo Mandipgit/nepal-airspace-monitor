@@ -54,13 +54,44 @@ export interface AircraftSpec {
   number_of_engines?: number;
   passenger_capacity?: number;
   oew_kg?: number;
+  owe?: number;
   mtow_kg?: number;
+  mtow?: number;
   mlw_kg?: number;
+  mlw?: number;
+  fuel_capacity_liters?: number;
+  max_fuel?: number;
   cruise_speed_kts?: number;
   max_speed_kts?: number;
+  cruise_altitude?: number;
   nominal_range_nm?: number;
   approach_speed_kts?: number;
   takeoff_field_length_m?: number;
+  landing_field_length_m?: number;
+
+  // Dimensions & Geometry (m, deg, m2)
+  fuselage_width?: number;
+  wing_span?: number;
+  wing_sweep25?: number;
+  wing_area?: number;
+  wing_position?: string;
+  htp_area?: number;
+  vtp_area?: number;
+  total_length?: number;
+  total_height?: number;
+
+  // Propulsion & Engines
+  thruster_type?: string;
+  powerplant?: string;
+  bpr?: number;
+  energy_type?: string;
+  engine_position?: string;
+  engine_y_arm?: number;
+  rotor_diameter?: number;
+  max_power?: number;
+  max_power_2?: number;
+  max_thrust?: number;
+  n_engine?: number;
 }
 
 export interface NormalizedFlight {

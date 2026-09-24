@@ -18,6 +18,7 @@ export default function Home() {
   const { isAuthenticated } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [activeTileStyle, setActiveTileStyle] = useState<string>("dark");
   const [syncViewport, setSyncViewport] = useState<boolean>(true);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
@@ -34,6 +35,7 @@ export default function Home() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
   const [viewportBounds, setViewportBounds] = useState<{
     lamin?: number;
     lomin?: number;
@@ -117,13 +119,32 @@ export default function Home() {
     });
   }, []);
 
+  const handleCycleTileStyle = useCallback(() => {
+    const styles = ["bright", "liberty", "positron"];
+    setActiveTileStyle((prev) => {
+      const idx = styles.indexOf(prev);
+      const next = idx === -1 ? styles[0] : styles[(idx + 1) % styles.length];
+      return next;
+    });
+    setIsDarkMode(false);
+  }, []);
+
+  const handleToggleDarkMode = useCallback((dark: boolean) => {
+    setIsDarkMode(dark);
+    setActiveTileStyle(dark ? "dark" : "bright");
+  }, []);
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans transition-colors duration-150 ease-out">
       {/* 1. Dedicated Top Navigation Bar Inspired by Reference Screenshot */}
       <TopBar
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
         isDarkMode={isDarkMode}
-        onToggleDarkMode={setIsDarkMode}
+        onToggleDarkMode={handleToggleDarkMode}
+        mapStyle={activeTileStyle}
+        onCycleMapStyle={handleCycleTileStyle}
+        syncViewport={syncViewport}
+        onToggleSyncViewport={handleToggleSyncViewport}
       />
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
@@ -146,6 +167,7 @@ export default function Home() {
           flightCount={flights.length}
           syncViewport={syncViewport}
           onToggleSyncViewport={handleToggleSyncViewport}
+          activeNav={isSearchOpen ? "directory" : "dashboard"}
         />
 
         {/* Selected Aircraft / Flight Details Panel (Immediately next to sidebar) */}
@@ -153,6 +175,7 @@ export default function Home() {
           <FlightDetailsPanel
             flight={selectedFlight}
             onClose={() => setSelectedFlight(null)}
+            isSidebarOpen={isSidebarOpen}
           />
         )}
 
@@ -183,7 +206,9 @@ export default function Home() {
             isSidebarOpen={isSidebarOpen}
             onOpenSidebar={() => setIsSidebarOpen(true)}
             isDarkMode={isDarkMode}
-            onToggleDarkMode={setIsDarkMode}
+            onToggleDarkMode={handleToggleDarkMode}
+            activeTileStyle={activeTileStyle}
+            onCycleTileStyle={handleCycleTileStyle}
           />
 
           {/* Bottom Right Telemetry Drawer / Slider */}

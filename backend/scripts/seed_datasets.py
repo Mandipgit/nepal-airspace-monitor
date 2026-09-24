@@ -87,16 +87,33 @@ def clean_str(val: Any, max_len: Optional[int] = None) -> Optional[str]:
         s = s[:max_len]
     return s
 
-def seed_aircraft_specifications(client) -> int:
+def seed_aircraft_specifications(client, force: bool = False) -> int:
     """Parse and seed aircraft_specifications table."""
     path = DATA_DIR / "aircraft_df.xls"
     if not path.exists():
-        print(f"[!] File not found: {path}")
-        return 0
+        root_path = Path(__file__).resolve().parent.parent.parent / "aircraft_df.xls"
+        if root_path.exists():
+            path = root_path
+        else:
+            print(f"[!] File not found: {path}")
+            return 0
 
     print("\n" + "=" * 70)
     print("1. SEEDING AIRCRAFT SPECIFICATIONS")
     print("=" * 70)
+
+    # Detect all currently existing columns in database to safely insert
+    db_columns = set()
+    try:
+        sample_res = client.table("aircraft_specifications").select("*").limit(1).execute()
+        if sample_res.data:
+            db_columns = set(sample_res.data[0].keys())
+            print(f"[+] Detected {len(db_columns)} columns in Supabase aircraft_specifications table.")
+            if "wing_span" not in db_columns or "landing_field_length_m" not in db_columns:
+                print("[!] Note: Some new dimension/propulsion columns not yet in database schema.")
+                print("    Run data/schemas/03_add_all_aircraft_specifications_columns.sql in Supabase SQL editor to create all columns.")
+    except Exception as e:
+        print(f"[!] Note on schema check: {e}")
 
     rows = []
     with open(path, mode="r", encoding="utf-8", errors="ignore") as f:
@@ -106,44 +123,95 @@ def seed_aircraft_specifications(client) -> int:
             # Map 'unknown' or empty code to 'UNK' to conform to VARCHAR(4)
             icao_type = "UNK" if (not raw_code or raw_code.lower() == "unknown") else raw_code[:4]
             
-            # Speed in knots (source speeds are in km/h)
-            cruise_kmh = to_float(r.get("cruise_speed_kmh"))
-            max_kmh = to_float(r.get("max_speed_kmh"))
-            nominal_range_km = to_float(r.get("nominal_range"))
-            
+            # Speed in knots (source speeds are in km/h, check for Mach if < 2.0)
+            cruise_kmh = to_float(r.get("cruise_speed_kmh") or r.get("cruise_speed"))
+            if cruise_kmh and 0 < cruise_kmh < 2.0:
+                cruise_kmh = cruise_kmh * 1062.0
             cruise_kts = round(cruise_kmh / 1.852) if cruise_kmh else None
+
+            max_kmh = to_float(r.get("max_speed_kmh") or r.get("max_speed"))
+            if max_kmh and 0 < max_kmh < 2.0:
+                max_kmh = max_kmh * 1062.0
             max_kts = round(max_kmh / 1.852) if max_kmh else None
+
+            # Nominal range: km -> nm
+            nominal_range_km = to_float(r.get("nominal_range"))
             range_nm = round(nominal_range_km / 1.852) if nominal_range_km else None
 
-            rows.append({
+            # Approach speed: km/h -> kts IAS
+            approach_kmh = to_float(r.get("approach_speed"))
+            approach_kts = round(approach_kmh / 1.852) if approach_kmh else None
+
+            full_row = {
                 "model": clean_str(r.get("name")),
                 "icao_type": icao_type,
                 "category": clean_str(r.get("airplane_type")),
                 "engine_type": clean_str(r.get("engine_type")),
                 "engine_model": clean_str(r.get("powerplant")),
+                "powerplant": clean_str(r.get("powerplant")),
                 "number_of_engines": to_int(r.get("n_engine")) or 2,
+                "n_engine": to_int(r.get("n_engine")) or 2,
                 "passenger_capacity": to_int(r.get("n_pax")),
                 "oew_kg": to_float(r.get("owe")),
+                "owe": to_float(r.get("owe")),
                 "mtow_kg": to_float(r.get("mtow")),
+                "mtow": to_float(r.get("mtow")),
                 "mlw_kg": to_float(r.get("mlw")),
+                "mlw": to_float(r.get("mlw")),
                 "fuel_capacity_liters": to_float(r.get("max_fuel")),
+                "max_fuel": to_float(r.get("max_fuel")),
                 "cruise_speed_kts": cruise_kts,
                 "max_speed_kts": max_kts,
+                "cruise_altitude": to_float(r.get("cruise_altitude")),
                 "nominal_range_nm": range_nm,
-                "approach_speed_kts": to_int(r.get("approach_speed")),
-                "takeoff_field_length_m": to_int(r.get("tofl"))
-            })
+                "approach_speed_kts": approach_kts,
+                "takeoff_field_length_m": to_int(r.get("tofl")),
+                "landing_field_length_m": to_int(r.get("lfl")),
+                # Airframe Dimensions & Aerodynamics (m, deg, m2)
+                "fuselage_width": to_float(r.get("fuselage_width")),
+                "wing_span": to_float(r.get("wing_span")),
+                "wing_sweep25": to_float(r.get("wing_sweep25")),
+                "wing_area": to_float(r.get("wing_area")),
+                "wing_position": clean_str(r.get("wing_position")),
+                "htp_area": to_float(r.get("htp_area")),
+                "vtp_area": to_float(r.get("vtp_area")),
+                "total_length": to_float(r.get("total_length")),
+                "total_height": to_float(r.get("total_height")),
+                # Propulsion & Engine Details
+                "engine_y_arm": to_float(r.get("engine_y_arm")),
+                "thruster_type": clean_str(r.get("thruster_type")),
+                "bpr": to_float(r.get("bpr")),
+                "energy_type": clean_str(r.get("energy_type")),
+                "engine_position": clean_str(r.get("engine_position")),
+                "rotor_diameter": to_float(r.get("rotor_diameter")),
+                "max_power": to_float(r.get("max_power")),
+                "max_power_2": to_float(r.get("max_power_2")),
+                "max_thrust": to_float(r.get("max_thrust"))
+            }
+
+            if db_columns:
+                row_data = {k: v for k, v in full_row.items() if k in db_columns}
+            else:
+                row_data = full_row
+
+            rows.append(row_data)
 
     total_records = len(rows)
     print(f"Parsed {total_records} aircraft specification records from {path.name}.")
 
-    try:
-        existing = client.table("aircraft_specifications").select("id", count="exact").limit(1).execute()
-        if (existing.count or 0) >= total_records:
-            print(f"[+] Aircraft specifications already seeded ({existing.count} records). Skipping insertion.")
-            return existing.count
-    except Exception:
-        pass
+    if not force:
+        try:
+            existing = client.table("aircraft_specifications").select("id", count="exact").limit(1).execute()
+            # If already seeded and not force, check if approach_speed_kts needs updating
+            check_sample = client.table("aircraft_specifications").select("approach_speed_kts").eq("model", "ATR72-500Basic").limit(1).execute()
+            if check_sample.data and (check_sample.data[0].get("approach_speed_kts") or 0) > 150:
+                print("[!] Detected outdated/unconverted approach speed data in database. Updating...")
+                force = True
+            elif (existing.count or 0) >= total_records:
+                print(f"[+] Aircraft specifications already seeded ({existing.count} records). Skipping insertion.")
+                return existing.count
+        except Exception:
+            pass
 
     # Clear existing specifications to maintain clean idempotency
     try:
@@ -309,8 +377,19 @@ def main():
 
     admin_client = get_supabase_admin_client()
 
+    aircraft_only = "--aircraft" in sys.argv or "--aircraft-only" in sys.argv
+    force_flag = "--force" in sys.argv or "-f" in sys.argv
+
     # 1. Aircraft Specifications
-    aircraft_count = seed_aircraft_specifications(admin_client)
+    aircraft_count = seed_aircraft_specifications(admin_client, force=force_flag)
+
+    if aircraft_only:
+        elapsed = time.time() - start_time
+        print("\n" + "=" * 70)
+        print("AIRCRAFT SPECIFICATIONS SEEDING COMPLETE IN {:.1f} SECONDS".format(elapsed))
+        print(f"  * Aircraft Models Seeded : {aircraft_count}")
+        print("=" * 70)
+        return
 
     # 2. Airports
     valid_airport_idents = seed_airports(admin_client)

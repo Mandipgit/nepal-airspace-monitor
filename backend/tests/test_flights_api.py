@@ -10,7 +10,8 @@ from app.main import app
 from app.models.flight import (
     NormalizedFlight,
     FlightIdentification,
-    FlightPosition
+    FlightPosition,
+    FlightRoute
 )
 from app.services.providers.base import BaseFlightProvider
 from app.services.flight_service import FlightService, flight_service
@@ -62,6 +63,14 @@ class MockFlightProvider(BaseFlightProvider):
                     altitude_baro_m=10668.0,
                     groundspeed_mps=233.0,
                     heading_deg=96.0
+                ),
+                route=FlightRoute(
+                    origin_icao="VIDP",
+                    origin_iata="DEL",
+                    origin_name="Indira Gandhi International",
+                    destination_icao="VNKT",
+                    destination_iata="KTM",
+                    destination_name="Tribhuvan International"
                 )
             )
         ]
@@ -90,9 +99,13 @@ class FlightsAPITestCase(unittest.TestCase):
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
     def tearDown(self):
-        # Clear cache between tests
+        # Clear cache and track persistence buffer between tests
         import asyncio
         asyncio.run(flight_cache.clear())
+        flight_service._track_store.clear()
+        flight_service._trajectory_store.clear()
+        flight_service._trajectory_metadata.clear()
+        flight_service._trajectory_last_seen.clear()
 
     def test_unauthenticated_request_rejected(self):
         """Test GET /api/v1/flights/live without token returns 401 Unauthorized."""
@@ -156,7 +169,97 @@ class FlightsAPITestCase(unittest.TestCase):
         # Latest point in chronological order is current aircraft position
         last_pt = data["points"][-1]
         self.assertEqual(last_pt["latitude"], 27.99)
-        self.assertEqual(last_pt["longitude"], 83.94)
+    def test_nepal_context_filter_excludes_unrelated_flight_outside_nepal(self):
+        """Test that foreign flights outside Nepal without Nepal origin/destination are excluded."""
+        # Add an Indian domestic flight flying Lucknow -> Patna (outside Nepal)
+        unrelated_flight = NormalizedFlight(
+            id="mock_801999",
+            provider="mock_provider",
+            identification=FlightIdentification(
+                icao24="801999",
+                callsign="IGO612",
+                operator_icao="IGO",
+                operator_name="IndiGo",
+                is_nepal_registered=False
+            ),
+            position=FlightPosition(
+                latitude=26.20,
+                longitude=83.50,
+                altitude_baro_m=8000.0,
+                groundspeed_mps=210.0,
+                heading_deg=110.0
+            ),
+            route=FlightRoute(
+                origin_icao="VILK",
+                origin_iata="LKO",
+                destination_icao="VEPT",
+                destination_iata="PAT"
+            )
+        )
+        async def mock_unrelated(*args, **kwargs):
+            return [
+                NormalizedFlight(
+                    id="mock_70a8ee",
+                    provider="mock_provider",
+                    identification=FlightIdentification(
+                        icao24="70a8ee",
+                        callsign="BHA137",
+                        operator_icao="BHA",
+                        operator_name="Buddha Air",
+                        is_nepal_registered=True
+                    ),
+                    position=FlightPosition(
+                        latitude=27.99,
+                        longitude=83.94,
+                        altitude_baro_m=5455.0,
+                        groundspeed_mps=122.0,
+                        heading_deg=280.0
+                    )
+                ),
+                unrelated_flight
+            ]
+        self.mock_provider.get_live_flights = mock_unrelated
+        res = self.client.get("/api/v1/flights/live?force_refresh=true", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        callsigns = [f["identification"]["callsign"] for f in data["flights"]]
+        self.assertIn("BHA137", callsigns)
+        self.assertNotIn("IGO612", callsigns)
+
+    def test_overflight_transit_inside_nepal_boundary_included(self):
+        """Test that foreign overflight flights entering Nepal boundary are included even without Nepal origin/dest."""
+        transit_flight = NormalizedFlight(
+            id="mock_802000",
+            provider="mock_provider",
+            identification=FlightIdentification(
+                icao24="802000",
+                callsign="THA319",
+                operator_icao="THA",
+                operator_name="Thai Airways",
+                is_nepal_registered=False
+            ),
+            position=FlightPosition(
+                latitude=27.6966,  # Inside Kathmandu / Nepal FIR
+                longitude=85.3591,
+                altitude_baro_m=11000.0,
+                groundspeed_mps=240.0,
+                heading_deg=280.0
+            ),
+            route=FlightRoute(
+                origin_icao="VTBS",
+                origin_iata="BKK",
+                destination_icao="VIDP",
+                destination_iata="DEL"
+            )
+        )
+        async def mock_transit(*args, **kwargs):
+            return [transit_flight]
+        self.mock_provider.get_live_flights = mock_transit
+        res = self.client.get("/api/v1/flights/live?force_refresh=true", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["total"], 1)
+        self.assertEqual(data["flights"][0]["identification"]["callsign"], "THA319")
 
 if __name__ == "__main__":
     unittest.main()

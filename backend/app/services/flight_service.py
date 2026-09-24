@@ -22,6 +22,7 @@ from app.models.flight import (
 from app.services.providers.base import BaseFlightProvider
 from app.services.providers.opensky import OpenSkyProvider
 from app.services.enrichment import enrichment_service
+from app.services.nepal_airspace import should_display_flight_in_nepal_context
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ class FlightService:
         lamax: Optional[float] = None,
         lomax: Optional[float] = None,
         nepal_only: bool = False,
+        nepal_context_only: bool = True,
         source: Optional[str] = None,
         enriched: bool = True,
         force_refresh: bool = False
@@ -208,6 +210,12 @@ class FlightService:
                 if f.identification.position_source and src_norm in f.identification.position_source.lower()
             ]
 
+        # Apply Nepal Airspace Context Filter:
+        # Keep flights inbound to Nepal, outbound from Nepal, domestic, or physically within Nepal's border.
+        # Exclude unrelated foreign flights outside Nepal's borders.
+        if nepal_context_only:
+            filtered_flights = [f for f in filtered_flights if should_display_flight_in_nepal_context(f)]
+
         return FlightCollectionResponse(
             total=len(filtered_flights),
             timestamp=datetime.now(timezone.utc),
@@ -220,7 +228,7 @@ class FlightService:
     async def get_flight_by_id(self, icao24: str) -> Optional[NormalizedFlight]:
         """Look up a specific flight by 24-bit ICAO address in the current airspace cache."""
         target_icao = icao24.lower().strip()
-        live_res = await self.get_live_flights()
+        live_res = await self.get_live_flights(nepal_context_only=False)
         for flight in live_res.flights:
             if flight.identification.icao24 == target_icao:
                 return flight
@@ -229,8 +237,6 @@ class FlightService:
     async def get_flight_trajectory(self, icao24: str) -> Optional[FlightTrajectoryResponse]:
         """
         Retrieve historical spatial breadcrumbs and trajectory trail for an active flight.
-        If the flight has limited recorded points, synthesizes past corridor breadcrumbs
-        based on true track heading and groundspeed so a full trajectory is immediately visible.
         """
         target_icao = icao24.lower().strip()
         flight = await self.get_flight_by_id(target_icao)
@@ -258,37 +264,6 @@ class FlightService:
 
         if not stored_points:
             return None
-
-        # If flight has speed and heading and few recorded points, extrapolate realistic backtrack path
-        first_pt = stored_points[0]
-        speed_kts = first_pt.groundspeed_kts or (flight.position.groundspeed_kts if flight else None)
-        heading_deg = first_pt.heading_deg if first_pt.heading_deg is not None else (flight.position.heading_deg if flight else None)
-
-        if len(stored_points) < 8 and speed_kts and speed_kts > 60 and heading_deg is not None:
-            back_rad = math.radians((heading_deg + 180.0) % 360.0)
-            backtrack_points: List[TrajectoryPoint] = []
-            num_backtrack = 10 - len(stored_points)
-            interval_sec = 45  # 45 seconds per waypoint
-
-            for i in range(num_backtrack, 0, -1):
-                t_sec = i * interval_sec
-                dist_nm = speed_kts * (t_sec / 3600.0)
-                dist_km = dist_nm * 1.852
-                d_lat = (dist_km * math.cos(back_rad)) / 111.0
-                d_lon = (dist_km * math.sin(back_rad)) / (111.0 * max(0.2, math.cos(math.radians(first_pt.latitude))))
-
-                backtrack_points.append(
-                    TrajectoryPoint(
-                        latitude=round(first_pt.latitude + d_lat, 5),
-                        longitude=round(first_pt.longitude + d_lon, 5),
-                        altitude_ft=first_pt.altitude_ft,
-                        groundspeed_kts=speed_kts,
-                        heading_deg=heading_deg,
-                        timestamp=first_pt.timestamp - timedelta(seconds=t_sec)
-                    )
-                )
-
-            stored_points = backtrack_points + stored_points
 
         return FlightTrajectoryResponse(
             icao24=target_icao,
