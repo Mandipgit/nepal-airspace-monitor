@@ -72,18 +72,21 @@ class FlightService:
         reg_lamax = self.settings.NEPAL_BBOX.lamax
         reg_lomax = self.settings.NEPAL_BBOX.lomax
 
-        # Check if requested bounds fit within or near the canonical regional envelope
+        # Check if requested bounds fit within or near the canonical regional radar envelope
+        # Regional envelope covers 24.0°N to 32.5°N and 77.5°E to 90.5°E (Nepal FIR + arrival/departure corridors)
         is_sub_regional = (
-            (lamin is None or lamin >= reg_lamin - 0.5) and
-            (lomin is None or lomin >= reg_lomin - 0.5) and
-            (lamax is None or lamax <= reg_lamax + 0.5) and
-            (lomax is None or lomax <= reg_lomax + 0.5)
+            (lamin is None or lamin >= 23.5) and
+            (lomin is None or lomin >= 77.0) and
+            (lamax is None or lamax <= 33.0) and
+            (lomax is None or lomax <= 91.5)
         )
 
         if is_sub_regional:
             cache_key = "live_flights_nepal_regional"
-            query_lamin, query_lomin = reg_lamin, reg_lomin
-            query_lamax, query_lomax = reg_lamax, reg_lomax
+            query_lamin = min(reg_lamin, 24.20)
+            query_lomin = min(reg_lomin, 78.00)
+            query_lamax = max(reg_lamax, 32.20)
+            query_lomax = max(reg_lomax, 90.00)
         else:
             b_lamin = lamin if lamin is not None else reg_lamin
             b_lomin = lomin if lomin is not None else reg_lomin

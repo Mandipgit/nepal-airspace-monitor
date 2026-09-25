@@ -261,7 +261,67 @@ class FlightsAPITestCase(unittest.TestCase):
         self.assertEqual(data["total"], 1)
         self.assertEqual(data["flights"][0]["identification"]["callsign"], "THA319")
 
+    def test_vns_varanasi_flight_excluded_from_nepal_corridors_mode(self):
+        """Test that flight AXB1828 between VNS (Varanasi) and DEL (Delhi) is NOT considered a Nepal flight."""
+        from app.services.nepal_airspace import is_nepal_airport, should_display_flight_in_nepal_context
+
+        # Verify airport code classification: VNS is Indian IATA (Varanasi), not Nepalese
+        self.assertFalse(is_nepal_airport("VNS"))
+        self.assertFalse(is_nepal_airport("DEL"))
+        self.assertFalse(is_nepal_airport("VIDP"))
+        self.assertFalse(is_nepal_airport("VIBN"))
+        self.assertTrue(is_nepal_airport("VNKT"))
+        self.assertTrue(is_nepal_airport("KTM"))
+        self.assertTrue(is_nepal_airport("VNPK"))
+        self.assertTrue(is_nepal_airport("PKR"))
+
+        vns_flight = NormalizedFlight(
+            id="mock_80161c",
+            provider="mock_provider",
+            identification=FlightIdentification(
+                icao24="80161c",
+                callsign="AXB1828",
+                operator_icao="AXB",
+                operator_name="Air India Express",
+                origin_country="India",
+                is_nepal_registered=False
+            ),
+            position=FlightPosition(
+                latitude=27.6210,
+                longitude=79.7546,  # Uttar Pradesh, India (outside Nepal boundary)
+                altitude_baro_m=9754.0,
+                groundspeed_mps=231.0,
+                heading_deg=310.0
+            ),
+            route=FlightRoute(
+                origin_icao="VIBN",
+                origin_iata="VNS",
+                origin_name="Lal Bahadur Shastri",
+                destination_icao="VIDP",
+                destination_iata="DEL",
+                destination_name="Indira Gandhi Intl"
+            )
+        )
+
+        self.assertFalse(should_display_flight_in_nepal_context(vns_flight))
+
+        async def mock_vns(*args, **kwargs):
+            return [vns_flight]
+        self.mock_provider.get_live_flights = mock_vns
+
+        # In Nepal Corridors mode (nepal_context_only=True): AXB1828 should be excluded
+        res_nepal = self.client.get("/api/v1/flights/live?nepal_context_only=true&force_refresh=true", headers=self.headers)
+        self.assertEqual(res_nepal.status_code, 200)
+        self.assertEqual(res_nepal.json()["total"], 0)
+
+        # In All Traffic mode (nepal_context_only=False): AXB1828 should be included
+        res_all = self.client.get("/api/v1/flights/live?nepal_context_only=false&force_refresh=true", headers=self.headers)
+        self.assertEqual(res_all.status_code, 200)
+        self.assertEqual(res_all.json()["total"], 1)
+        self.assertEqual(res_all.json()["flights"][0]["identification"]["callsign"], "AXB1828")
+
 if __name__ == "__main__":
     unittest.main()
+
 
 

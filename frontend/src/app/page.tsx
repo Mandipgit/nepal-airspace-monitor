@@ -43,6 +43,8 @@ export default function Home() {
     lomax?: number;
   }>({});
 
+  const [nepalContextOnly, setNepalContextOnly] = useState<boolean>(true);
+
   const {
     flights,
     loading,
@@ -55,6 +57,7 @@ export default function Home() {
     refetch,
   } = useLiveFlights({
     enriched: true,
+    nepalContextOnly,
     ...(syncViewport ? viewportBounds : {}),
   });
 
@@ -145,6 +148,8 @@ export default function Home() {
         onCycleMapStyle={handleCycleTileStyle}
         syncViewport={syncViewport}
         onToggleSyncViewport={handleToggleSyncViewport}
+        nepalContextOnly={nepalContextOnly}
+        onToggleNepalContext={() => setNepalContextOnly((prev) => !prev)}
       />
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}

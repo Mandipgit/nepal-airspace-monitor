@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { Bell, Sun, Moon, LogOut, User as UserIcon, Layers, Scan } from "lucide-react";
+import { Bell, Sun, Moon, LogOut, User as UserIcon, Layers, Scan, Plane, Globe } from "lucide-react";
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
@@ -13,6 +13,8 @@ interface TopBarProps {
   onCycleMapStyle?: () => void;
   syncViewport?: boolean;
   onToggleSyncViewport?: () => void;
+  nepalContextOnly?: boolean;
+  onToggleNepalContext?: () => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -23,6 +25,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onCycleMapStyle,
   syncViewport,
   onToggleSyncViewport,
+  nepalContextOnly = true,
+  onToggleNepalContext,
 }) => {
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
@@ -82,6 +86,31 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             <Scan className="w-3.5 h-3.5 text-neutral-300" />
             <span>{syncViewport ? "Viewport Bounds ON" : "Lock FIR"}</span>
+          </button>
+        )}
+
+        {/* Airspace Traffic Scope Toggle: Nepal Corridors vs All Regional Flights */}
+        {onToggleNepalContext && (
+          <button
+            type="button"
+            onClick={onToggleNepalContext}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm ${
+              nepalContextOnly
+                ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/40 text-emerald-300"
+                : "bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/40 text-sky-200"
+            }`}
+            title={
+              nepalContextOnly
+                ? "Nepal Airspace Focus ON: Inbound, outbound, domestic, and overflights. Click to show All Regional Traffic."
+                : "All Regional Flights ON: All planes in map viewport. Click to focus on Nepal Corridors only."
+            }
+          >
+            {nepalContextOnly ? (
+              <Plane className="w-3.5 h-3.5 text-emerald-400 rotate-45" />
+            ) : (
+              <Globe className="w-3.5 h-3.5 text-sky-400" />
+            )}
+            <span>{nepalContextOnly ? "Nepal Corridors" : "All Traffic"}</span>
           </button>
         )}
 

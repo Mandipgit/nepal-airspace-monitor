@@ -21,23 +21,57 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
   const pollIntervalMs = DEFAULT_POLL_INTERVAL;
   const isMountedRef = useRef<boolean>(true);
   const lastFetchTimeRef = useRef<number>(0);
+  const activeRequestSeqRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Client-side cache for instant mode toggling between Nepal Corridors and All Traffic
+  const modeCacheRef = useRef<{
+    nepal?: FlightCollectionResponse;
+    all?: FlightCollectionResponse;
+  }>({});
 
   const loadFlights = useCallback(
     async (isManual: boolean = false) => {
-      // Debounce manual triggers to at least 2 seconds
+      // Abort previous in-flight request to prevent race conditions and stale overwrites
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      const requestSeq = ++activeRequestSeqRef.current;
+
       const now = Date.now();
-      if (isManual && now - lastFetchTimeRef.current < 2000) {
-        return;
+      if (isManual) {
+        // Prevent accidental rapid-click flooding
+        if (now - lastFetchTimeRef.current < 800) {
+          return;
+        }
+        setRefreshing(true);
       }
       lastFetchTimeRef.current = now;
 
-      if (isManual) {
-        setRefreshing(true);
+      // Instant optimistic display from client cache if available for current mode
+      const isNepalMode = options.nepalContextOnly !== false;
+      const cachedResponse = isNepalMode ? modeCacheRef.current.nepal : modeCacheRef.current.all;
+      if (cachedResponse && cachedResponse.flights?.length) {
+        setData(cachedResponse);
+        setFlights(cachedResponse.flights);
+        setLoading(false);
       }
 
       try {
-        const response = await fetchLiveFlights(options);
-        if (!isMountedRef.current) return;
+        const response = await fetchLiveFlights(options, controller.signal);
+        // If this request was superseded by a newer one or unmounted, discard it
+        if (!isMountedRef.current || requestSeq !== activeRequestSeqRef.current) {
+          return;
+        }
+
+        // Cache the latest response for the active mode
+        if (isNepalMode) {
+          modeCacheRef.current.nepal = response;
+        } else {
+          modeCacheRef.current.all = response;
+        }
 
         setData(response);
         setFlights(response.flights || []);
@@ -45,11 +79,17 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
         setLastUpdated(new Date());
         setCountdown(Math.round(pollIntervalMs / 1000));
       } catch (err: unknown) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || requestSeq !== activeRequestSeqRef.current) {
+          return;
+        }
+        // Ignore aborted fetches triggered by mode toggles
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
         const msg = err instanceof Error ? err.message : "Failed to load flights";
         setError(msg);
       } finally {
-        if (isMountedRef.current) {
+        if (isMountedRef.current && requestSeq === activeRequestSeqRef.current) {
           setLoading(false);
           setRefreshing(false);
         }
@@ -57,6 +97,7 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
     },
     [
       options.nepalOnly,
+      options.nepalContextOnly,
       options.filterGround,
       options.source,
       options.enriched,
@@ -79,6 +120,9 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
 
     return () => {
       isMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       clearInterval(interval);
     };
   }, [loadFlights, pollIntervalMs]);

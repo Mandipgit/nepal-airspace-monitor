@@ -113,8 +113,10 @@ def is_nepal_airport(code: Optional[str]) -> bool:
     if not code:
         return False
     clean = code.strip().upper()
-    if clean.startswith("VN"):
+    # Nepalese ICAO airport codes are strictly 4 characters starting with 'VN' (ICAO Doc 7910)
+    if len(clean) == 4 and clean.startswith("VN"):
         return True
+    # Nepalese IATA (3-letter) or local codes (e.g. KTM, PKR, BWA, LUA, BIR, KEP, etc.)
     if clean in NEPAL_AIRPORT_ICAOS or clean in NEPAL_AIRPORT_IATAS:
         return True
     return False
