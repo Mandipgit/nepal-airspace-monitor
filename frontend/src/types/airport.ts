@@ -8,13 +8,25 @@ export interface Runway {
   airport_ident: string;
   length_ft: number | null;
   width_ft: number | null;
+  length_m?: number | null;
+  width_m?: number | null;
   surface: string | null;
   lighted: boolean;
   closed: boolean;
   le_ident: string | null;
   he_ident: string | null;
-  le_heading_degT: number | null;
-  he_heading_degT: number | null;
+  le_heading_degT?: number | null;
+  he_heading_degT?: number | null;
+  le_heading_degt?: number | null;
+  he_heading_degt?: number | null;
+  le_elevation_ft?: number | null;
+  he_elevation_ft?: number | null;
+  le_displaced_threshold_ft?: number | null;
+  he_displaced_threshold_ft?: number | null;
+  le_latitude_deg?: number | null;
+  le_longitude_deg?: number | null;
+  he_latitude_deg?: number | null;
+  he_longitude_deg?: number | null;
 }
 
 export interface AirportSummary {

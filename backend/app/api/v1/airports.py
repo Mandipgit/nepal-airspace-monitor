@@ -2,13 +2,14 @@
 Airports and Runways API Endpoints
 """
 
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Query, HTTPException, status
 
 from app.schemas.airport import (
     AirportSummarySchema,
     AirportDetailSchema,
-    AirportListResponse
+    AirportListResponse,
+    RunwaySchema,
 )
 from app.services.supabase.aviation_repository import aviation_repo
 
@@ -53,3 +54,16 @@ async def get_airport_details(ident: str):
             detail=f"Airport with identifier '{ident.upper()}' not found."
         )
     return airport
+
+@router.get("/{ident}/runways", response_model=List[RunwaySchema])
+async def get_airport_runways(ident: str):
+    """
+    Retrieve all physical runways for a specified airport.
+    """
+    airport = await aviation_repo.get_airport_by_ident(ident)
+    if not airport:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Airport with identifier '{ident.upper()}' not found."
+        )
+    return airport.runways

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { NormalizedFlight, FlightCollectionResponse } from "@/types/flight";
 import { fetchLiveFlights, FetchLiveFlightsOptions } from "@/lib/api";
+import { getUserFriendlyErrorMessage } from "@/lib/errors";
 
 const DEFAULT_POLL_INTERVAL = parseInt(
   process.env.NEXT_PUBLIC_FLIGHT_POLL_INTERVAL_MS || "10000",
@@ -86,7 +87,7 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
         if (err instanceof DOMException && err.name === "AbortError") {
           return;
         }
-        const msg = err instanceof Error ? err.message : "Failed to load flights";
+        const msg = getUserFriendlyErrorMessage(err, "live_flights");
         setError(msg);
       } finally {
         if (isMountedRef.current && requestSeq === activeRequestSeqRef.current) {

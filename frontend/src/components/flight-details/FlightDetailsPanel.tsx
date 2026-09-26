@@ -36,6 +36,9 @@ interface AircraftDataCardProps {
   value: React.ReactNode;
   subValue?: React.ReactNode;
   className?: string;
+  activeTooltip?: string | null;
+  setActiveTooltip?: (key: string | null) => void;
+  tooltipAlign?: "top" | "bottom";
 }
 
 const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
@@ -44,6 +47,9 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
   value,
   subValue,
   className = "",
+  activeTooltip,
+  setActiveTooltip,
+  tooltipAlign,
 }) => {
   const explanation = fieldKey ? SPEC_EXPLANATIONS[fieldKey] : undefined;
 

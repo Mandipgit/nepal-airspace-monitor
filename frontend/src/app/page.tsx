@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { TopBar } from "@/components/common/TopBar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { FlightDetailsPanel } from "@/components/flight-details/FlightDetailsPanel";
+import { AirportDetailsPanel } from "@/components/airport-details/AirportDetailsPanel";
 import { FlightSearchDrawer } from "@/components/flight-list/FlightSearchDrawer";
 import { BottomStatsSlider } from "@/components/stats/BottomStatsSlider";
 import { DynamicFlightMap } from "@/components/map";
@@ -12,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLiveFlights } from "@/hooks/useLiveFlights";
 import { useAirports } from "@/hooks/useAirports";
 import { NormalizedFlight } from "@/types/flight";
+import { getUserFriendlyErrorMessage } from "@/lib/errors";
 import { List } from "lucide-react";
 
 export default function Home() {
@@ -71,6 +73,7 @@ export default function Home() {
   const { airports } = useAirports();
 
   const [selectedFlight, setSelectedFlight] = useState<NormalizedFlight | null>(null);
+  const [selectedAirportIdent, setSelectedAirportIdent] = useState<string | null>(null);
 
   // Sync selected flight with live updates from polling
   useEffect(() => {
@@ -89,6 +92,21 @@ export default function Home() {
       }
       return flight;
     });
+    if (flight) {
+      setSelectedAirportIdent(null);
+    }
+  }, []);
+
+  const handleSelectAirport = useCallback((ident: string | null) => {
+    setSelectedAirportIdent((prev) => {
+      if (!ident || prev === ident) {
+        return null;
+      }
+      return ident;
+    });
+    if (ident) {
+      setSelectedFlight(null);
+    }
   }, []);
 
   const handleBoundsChange = useCallback(
@@ -184,6 +202,28 @@ export default function Home() {
           />
         )}
 
+        {/* Selected Nepal Airport Details Panel (Immediately next to sidebar) */}
+        {selectedAirportIdent && (
+          <AirportDetailsPanel
+            airportIdent={selectedAirportIdent}
+            onClose={() => setSelectedAirportIdent(null)}
+            onCenterAirport={(apt) => {
+              if (typeof window !== "undefined") {
+                const map = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+                if (map && apt.latitude_deg && apt.longitude_deg) {
+                  map.flyTo({
+                    center: [apt.longitude_deg, apt.latitude_deg],
+                    zoom: Math.max(map.getZoom(), 11),
+                    essential: true,
+                    duration: 1200,
+                  });
+                }
+              }
+            }}
+            isSidebarOpen={isSidebarOpen}
+          />
+        )}
+
         {/* Flight Explorer & Search Drawer (When requested via sidebar) */}
         {isSearchOpen && (
           <FlightSearchDrawer
@@ -193,6 +233,7 @@ export default function Home() {
             selectedFlightId={selectedFlight?.id ?? null}
             onSelectFlight={(flight) => {
               setSelectedFlight(flight);
+              setSelectedAirportIdent(null);
             }}
             loading={loading}
           />
@@ -205,6 +246,8 @@ export default function Home() {
             airports={airports}
             selectedFlightId={selectedFlight?.id ?? null}
             onSelectFlight={handleSelectFlight}
+            selectedAirportIdent={selectedAirportIdent}
+            onSelectAirport={handleSelectAirport}
             onBoundsChange={handleBoundsChange}
             syncViewport={syncViewport}
             onToggleSyncViewport={handleToggleSyncViewport}
@@ -231,7 +274,7 @@ export default function Home() {
           {error && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-black/95 px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <span>Connection notice: {error}</span>
+              <span>Connection notice: {getUserFriendlyErrorMessage(error, "live_flights")}</span>
               <button
                 onClick={() => refetch()}
                 className="px-2 py-0.5 rounded bg-amber-900/60 hover:bg-amber-800 text-amber-200 text-[10px] font-semibold transition-colors cursor-pointer"

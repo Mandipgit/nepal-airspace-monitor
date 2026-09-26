@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { AirportSummary } from "@/types/airport";
 import { fetchNepalAirports } from "@/lib/api";
+import { getUserFriendlyErrorMessage } from "@/lib/errors";
 
 export function useAirports() {
   const [airports, setAirports] = useState<AirportSummary[]>([]);
@@ -21,7 +22,7 @@ export function useAirports() {
         }
       } catch (err: unknown) {
         if (isMounted) {
-          const msg = err instanceof Error ? err.message : "Failed to load airports";
+          const msg = getUserFriendlyErrorMessage(err, "airports");
           setError(msg);
         }
       } finally {

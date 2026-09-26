@@ -16,6 +16,7 @@ import {
   fetchRouteInformation,
   analyzeRouteAircraft,
 } from "@/lib/api";
+import { getUserFriendlyErrorMessage } from "@/lib/errors";
 
 import { RouteAnalyzerHeader } from "@/components/route-analyzer/RouteAnalyzerHeader";
 import { AirportSelector } from "@/components/route-analyzer/AirportSelector";
@@ -138,7 +139,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
       }
     } catch (err: unknown) {
       console.warn("Could not fetch remote aircraft fleet, using local catalog:", err);
-      const msg = err instanceof Error ? err.message : "Failed to load aircraft fleet";
+      const msg = getUserFriendlyErrorMessage(err, "aircraft_specs");
       setFleetError(msg);
     } finally {
       setAircraftLoading(false);
@@ -183,7 +184,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
       const data = await fetchRouteInformation(dep.ident, dest.ident);
       setRouteInfo(data);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load route distance and runway data";
+      const msg = getUserFriendlyErrorMessage(err, "route_analyzer");
       setRouteInfoError(msg);
       setRouteInfo(null);
     } finally {
@@ -317,7 +318,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
         resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Route analysis failed";
+      const msg = getUserFriendlyErrorMessage(err, "route_analyzer");
       setAnalysisError(msg);
     } finally {
       setAnalyzing(false);

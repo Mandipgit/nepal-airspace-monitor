@@ -24,6 +24,8 @@ interface FlightMapProps {
   airports: AirportSummary[];
   selectedFlightId: string | null;
   onSelectFlight: (flight: NormalizedFlight | null) => void;
+  selectedAirportIdent?: string | null;
+  onSelectAirport?: (ident: string | null) => void;
   onBoundsChange?: (bounds: { lamin: number; lomin: number; lamax: number; lomax: number }) => void;
   syncViewport?: boolean;
   onToggleSyncViewport?: () => void;
@@ -752,6 +754,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   airports,
   selectedFlightId,
   onSelectFlight,
+  selectedAirportIdent,
+  onSelectAirport,
   onBoundsChange,
   syncViewport = true,
   onToggleSyncViewport,
@@ -779,9 +783,31 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   const onBoundsChangeRef = useRef(onBoundsChange);
   const syncViewportRef = useRef(syncViewport);
   const onSelectFlightRef = useRef(onSelectFlight);
+  const onSelectAirportRef = useRef(onSelectAirport);
   const flightsRef = useRef(flights);
   const airportsRef = useRef(airports);
   const selectedFlightIdRef = useRef(selectedFlightId);
+  const selectedAirportIdentRef = useRef(selectedAirportIdent);
+
+  useEffect(() => {
+    onSelectAirportRef.current = onSelectAirport;
+  }, [onSelectAirport]);
+
+  useEffect(() => {
+    selectedAirportIdentRef.current = selectedAirportIdent;
+  }, [selectedAirportIdent]);
+
+  useEffect(() => {
+    airportsRef.current = airports;
+  }, [airports]);
+
+  useEffect(() => {
+    flightsRef.current = flights;
+  }, [flights]);
+
+  useEffect(() => {
+    selectedFlightIdRef.current = selectedFlightId;
+  }, [selectedFlightId]);
 
   // Instant Trajectory Rendering Engine (Synchronous 0ms updates)
   const renderInstantTrajectory = useCallback(
@@ -1337,9 +1363,13 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
     map.on("moveend", handleMoveEnd);
 
+    // Variable to track if a feature (aircraft or airport) was clicked in this event cycle
+    let featureClickedInThisCycle = false;
+
     // Click handler for aircraft selection via GPU hit detection (INSTANT 0ms TRAIL RENDER)
     map.on("click", "aircraft-icons", (e) => {
       if (!e.features || e.features.length === 0) return;
+      featureClickedInThisCycle = true;
       const clickedId = e.features[0].properties?.id;
       if (clickedId) {
         const flight = flightsRef.current.find((f) => f.id === clickedId) || null;
@@ -1348,22 +1378,56 @@ export const FlightMap: React.FC<FlightMapProps> = ({
           renderInstantTrajectoryRef.current?.(flight);
         }
         onSelectFlightRef.current?.(flight);
+        onSelectAirportRef.current?.(null);
       }
     });
 
-    // Deselect aircraft on empty map background click (INSTANT 0ms TRAIL REMOVAL)
+    // Click handler for airport selection on Nepal map
+    map.on("click", "airports-circle", (e) => {
+      if (!e.features || e.features.length === 0) return;
+      featureClickedInThisCycle = true;
+      const clickedIdent = e.features[0].properties?.ident;
+      if (clickedIdent) {
+        if (popupRef.current) {
+          popupRef.current.remove();
+        }
+        // Deselect flight and select airport
+        onSelectFlightRef.current?.(null);
+        // Clear flight trajectory
+        const trajSource = map.getSource("trajectory") as GeoJSONSource;
+        if (trajSource) {
+          trajSource.setData({ type: "FeatureCollection", features: [] });
+        }
+        onSelectAirportRef.current?.(clickedIdent);
+      }
+    });
+
+    // Deselect aircraft and airport on empty map background click (INSTANT 0ms TRAIL REMOVAL)
     map.on("click", (e) => {
       if (!mapInstanceRef.current) return;
-      const aircraftHits = mapInstanceRef.current.queryRenderedFeatures(e.point, {
+      if (featureClickedInThisCycle) {
+        featureClickedInThisCycle = false;
+        return;
+      }
+
+      const bbox: [{ x: number; y: number }, { x: number; y: number }] = [
+        { x: e.point.x - 6, y: e.point.y - 6 },
+        { x: e.point.x + 6, y: e.point.y + 6 },
+      ];
+      const aircraftHits = mapInstanceRef.current.queryRenderedFeatures(bbox, {
         layers: ["aircraft-icons"],
       });
-      if (aircraftHits.length === 0) {
+      const airportHits = mapInstanceRef.current.queryRenderedFeatures(bbox, {
+        layers: ["airports-circle"],
+      });
+      if (aircraftHits.length === 0 && airportHits.length === 0) {
         // Synchronously clear trajectory source on the exact click event
         const trajSource = mapInstanceRef.current.getSource("trajectory") as GeoJSONSource;
         if (trajSource) {
           trajSource.setData({ type: "FeatureCollection", features: [] });
         }
         onSelectFlightRef.current?.(null);
+        onSelectAirportRef.current?.(null);
       }
     });
 
@@ -1394,7 +1458,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       popupRef.current
         .setLngLat(coords)
         .setHTML(`
-          <div class="p-1 font-sans text-xs">
+          <div class="p-1 font-sans text-xs cursor-pointer select-none" id="popup-airport-${p.ident}">
             <div class="font-bold text-neutral-100 flex items-center gap-1">
               <span>${p.name}</span>
               <span class="text-emerald-400 font-mono font-bold">(${p.ident}${p.iata ? ` / ${p.iata}` : ""})</span>
@@ -1402,9 +1466,26 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             <div class="text-neutral-400 mt-1 font-mono text-[11px]">
               Elev: ${p.elevation ? `${p.elevation.toLocaleString()} ft` : "N/A"} • ${p.municipality || "Nepal"}
             </div>
+            <div class="text-[10px] text-emerald-400 font-sans font-semibold mt-1 flex items-center gap-1">
+              <span>Click to view airport & runway details</span>
+              <span>→</span>
+            </div>
           </div>
         `)
         .addTo(map);
+
+      const popupEl = document.getElementById(`popup-airport-${p.ident}`);
+      if (popupEl) {
+        popupEl.onclick = () => {
+          if (popupRef.current) popupRef.current.remove();
+          onSelectFlightRef.current?.(null);
+          const trajSource = map.getSource("trajectory") as GeoJSONSource;
+          if (trajSource) {
+            trajSource.setData({ type: "FeatureCollection", features: [] });
+          }
+          onSelectAirportRef.current?.(p.ident);
+        };
+      }
     });
 
     map.on("mouseleave", "airports-circle", () => {
