@@ -1,0 +1,83 @@
+'icao24','timestamp','acars','adsb','built','categoryDescription',country','engines','firstFlightDate','firstSeen','icaoAircraftClass','lineNumber','manufacturerIcao','manufacturerName','model','modes','nextReg','notes','operator','operatorCallsign','operatorIata','operatorIcao','owner','prevReg','regUntil','registered','registration','selCal','serialNumber','status','typecode','vdl'
+'70a00d','2019-02-12 17:07:06',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,Jetstream 41 -01,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AIH','','41085','',JS41,0
+'70a04c','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,H2T,'',LEONARDO,'','',0,'','','','','','','','',,,NA-058,'','','',A139,0
+'70a062','2019-02-24 16:42:59',0,0,,'',Nepal,'',,,L2J,'',BOEING,Boeing,'757 2F8C',0,'','',Nepal Airlines,ROYAL NEPAL,RA,RNA,Nepal Airlines,'',,,'9N-ACB','','23863','',B752,0
+'70a7b7','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,'','','','','',0,'','','','','','','','',,,'','','','','',0
+'70a8e5','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Yeti Airlines,,YT,NYT,,,,,'9N-AOH',,,,AT75,0
+'70a8e7','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,De Havilland Canada Dash 8-400,0,,,Shree Airlines,,N9,SHA,,,,,'9N-AOM',,,,DH8D,0
+'70a8e9','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,De Havilland Canada Dash 8-400,0,,,Shree Airlines,,N9,SHA,,,,,'9N-AOL',,,,DH8D,0
+'70a8eb','2025-06-26 16:26:28',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Buddha Air,,U4,BHA,,,,,'9N-AOG',,,,AT75,0
+'70a8ee','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Buddha Air,,U4,BHA,,,,,'9N-AOC',,,,AT75,0
+'70a8f0','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-AOE',,,,AS50,0
+'70a8f2','2025-06-26 16:41:04',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-AOD',,,,AS50,0
+'70a8f6','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Yeti Airlines,,YT,NYT,,,,,'9N-AOF',,,,AT75,0
+'70a8fe','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,De Havilland Canada Dash 8-400,0,,,Shree Airlines,,N9,SHA,,,,,'9N-AOK',,,,DH8D,0
+'70a96a','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,Dornier 228-202,0,,,'',,'','',,,,,'9N-AHR',,,,D228,0
+'70a96f','2019-02-12 17:09:52',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,BAe Jetstream 41,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AHV','','41077','',JS41,0
+'70a975','2019-02-12 17:08:22',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,BAe Jetstream 41,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AHY','','41066','',JS41,0
+'70a979','2019-02-12 17:08:46',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,Jetstream 41 -01,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AHW','','41078','',JS41,0
+'70a97c','2019-02-12 17:09:02',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,Jetstream 41 -01,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AHU','','41072','',JS41,0
+'70a9a1','2025-06-26 16:37:54',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-ANT',,,,AS50,0
+'70a9a5','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',ATR,'','',0,'','','','','','','','',,,'9N-ANH','','','',AT75,0
+'70a9a7','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Mitsubishi CRJ-200,0,,,Saurya Airlines,,'',SAU,,,,,'9N-ANM',,,,CRJ2,0
+'70a9a9','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-ANL',,,,AS50,0
+'70a9aa','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,De Havilland Canada Dash 8-400,0,,,Shree Airlines,,N9,SHA,,,,,'9N-ANR',,,,DH8D,0
+'70a9ab','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Yeti Airlines,,YT,NYT,,,,,'9N-ANG',,,,AT75,0
+'70a9ac','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',ATR,'','',0,'','','','','','','','',,,'9N-ANI','','','',AT75,0
+'70a9ad','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',ATR,'','',0,'','','','','','','','',,,'9N-ANP','','','',AT75,0
+'70a9ae','2023-01-20 15:39:22',0,0,,'',Nepal,PWC PW127F,'2001-08-20',,L2T,'',ATR,'','72-212A',0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,'','',,,'9N-ANC','','754','',AT75,0
+'70a9b0','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',DE HAVILLAND CANADA,'','',0,'','','','','','','','',,,'9N-ANE','','','',DH8D,0
+'70a9b1','2025-06-26 16:26:28',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Buddha Air,,U4,BHA,,,,,'9N-ANZ',,,,AT75,0
+'70a9b2','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',LET,'','',0,'','','','','','','','',,,'9N-AND','','','',L410,0
+'70a9b4','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',DE HAVILLAND CANADA,'','',0,'','','','','','','','',,,'9N-ANS','','','',DH8D,0
+'70a9b6','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,De Havilland Canada Dash 8-400,0,,,Shree Airlines,,N9,SHA,,,,,'9N-ANF',,,,DH8D,0
+'70a9b7','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,Bell 505 Jet Ranger X,0,,,'',,'','',,,,,'9N-ANX',,,,B505,0
+'70a9b9','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Buddha Air,,U4,BHA,,,,,'9N-ANW',,,,AT75,0
+'70a9bd','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Buddha Air,,U4,BHA,,,,,'9N-ANQ',,,,AT75,0
+'70a9e6','2019-02-24 16:45:09',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72 500,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AMN','','876','',AT75,0
+'70a9e7','2019-02-12 17:14:55',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,, 9N-AMM,'','749','',AT75,0
+'70a9e9','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-AML',,,,AS50,0
+'70a9eb','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Let L-410 Turbolet,0,,,'',,'','',,,,,'9N-AMG',,,,L410,0
+'70a9ee','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,Mitsubishi CRJ-200ER,0,,,Shree Airlines,,N9,SHA,,,,,'9N-AMC',,,,CRJ2,0
+'70a9f0','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,Mitsubishi CRJ-200ER,0,,,Saurya Airlines,,'',SAU,,,,,'9N-AME',,,,CRJ2,0
+'70a9f1','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,Yeti Airlines,,YT,NYT,,,,,'9N-AMZ',,,,AT75,0
+'70a9f2','2019-02-24 16:46:44',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AMD','','735','',AT75,0
+'70a9f3','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2J,'',CANADAIR,'','',0,'','','','','','','','',,,'9N-AMB','','','',CRJ7,0
+'70a9f4','2025-06-26 16:37:54',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-AMS',,,,AS50,0
+'70a9f5','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',ATR,'','',0,'','','','','','','','',,,'9N-AMY','','','',AT75,0
+'70a9f6','2019-02-24 16:46:14',0,0,,No ADS-B Emitter Category Information,Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AMF','','764','',AT75,0
+'70a9f8','2022-05-08 13:47:53',0,0,,,Nepal,,,,,,,,Mitsubishi CRJ-200ER,0,,,Shree Airlines,,N9,SHA,,,,,'9N-AMA',,,,CRJ2,0
+'70a9fc','2019-02-24 16:46:29',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AMU','','759','',AT75,0
+'70a9fd','2025-06-26 16:37:54',0,0,,,Nepal,,,,,,,,Airbus Helicopters H125,0,,,'',,'','',,,,,'9N-AMQ',,,,AS50,0
+'70aa61','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,Bell 407GXP,0,,,'',,'','',,,,,'9N-ALT',,,,B407,0
+'70aa63','2019-03-03 11:12:00',0,0,,'',Nepal,'',,,L2T,'',VIKING (2),'','',0,'','','','','','','','',,,'9N-ALO','','','',DHC6,0
+'70aa66','2019-02-12 17:12:55',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-ALN','','776','',AT75,0
+'70aa67','2019-02-12 16:54:02',0,0,,No ADS-B Emitter Category Information,Nepal,'',,,L2J,'',AIRBUS,Airbus,A320 214SL,0,'','',Himalaya Airlines,HIM,H9,HIM,Himalaya Airlines,'',,,'9N-ALM','','6626','',A320,0
+'70aa6d','2017-09-15 00:10:19',0,0,,'',Nepal,'',,,H1T,'',LOT,Airbus Helicopters,Squirrel AS.350 B3,0,'','','','','','',Private,'',,,'9N-ALP','','8022','',AS50,0
+'70aa6f','2019-02-12 16:57:34',0,0,,Large (75000 to 300000 lbs),Nepal,'',,,L2J,'',AIRBUS,Airbus,A320 214SL,0,'','',Himalaya Airlines,HIM,H9,HIM,Himalaya Airlines,'',,,'9N-ALV','','7503','',A320,0
+'70aa71','2019-02-24 16:42:09',0,0,,'',Nepal,'',,,L2J,'',AIRBUS,Airbus,Airbus A330-243,0,'','',Nepal Airlines,ROYAL NEPAL,RA,RNA,Nepal Airlines,'',,,'9N-ALZ','','1878','',A332,0
+'70aa75','2019-02-24 16:43:25',0,0,,'',Nepal,'',,,L2J,'',AIRBUS,Airbus,Airbus A330-243,0,'','',Nepal Airlines,ROYAL NEPAL,RA,RNA,Nepal Airlines,'',,,'9N-ALY','','1872','',A332,0
+'70aa79','2019-02-12 16:58:38',0,0,,Large (75000 to 300000 lbs),Nepal,'',,,L2J,'',AIRBUS,Airbus,A320 214SL,0,'','',Himalaya Airlines,HIM,H9,HIM,Himalaya Airlines,'',,,'9N-ALW','','7604','',A320,0
+'70ab21','2019-02-12 16:36:04',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 42-320,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AIT','','409','',AT43,0
+'70ab26','2019-02-12 16:33:52',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 42-320,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AIN','','403','',AT43,0
+'70ab27','2019-02-12 16:28:33',0,0,,'',Nepal,'',,,L2T,'',ATR,Atr,ATR 42-320,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AIM','','388','',AT43,0
+'70ab30','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,Dornier 228-202K,0,,,'',,'','',,,,,'9N-AIE',,,,D228,0
+'70ac21','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',VIKING (2),'','',0,'','','','','','','','',,,'9N-AET','','','',DHC6,0
+'70ac2f','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',VIKING (2),'','',0,'','','','','','','','',,,'9N-AEV','','','',DHC6,0
+'70ac30','2024-06-25 12:27:44',0,0,,,Nepal,,,,,,,,Beechcraft 1900D,0,,,'',,'','',,,,,'9N-AEE',,,,B190,0
+'70ac39','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Beechcraft 1900D,0,,,'',,'','',,,,,'9N-AEW',,,,B190,0
+'70aca9','2024-06-25 12:42:30',0,0,,,Nepal,,,,,,,,ATR 72-500,0,,,'',,'','',,,,,'9N-AJL',,,,AT75,0
+'70ae27','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,H2T,'',LEONARDO,'','',0,'','','','','','','','',,,'9N-RAM','','','',A139,0
+'70aea3','2019-02-12 16:38:18',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AJO','','535','',AT75,0
+'70aea5','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Dornier Do 228-212,0,,,'',,'','',,,,,'9N-AJH',,,,D28D,0
+'70aea9','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2T,'',ATR,'','',0,'','','','','','','','',,,'9N-AJL','','','',AT75,0
+'70aeae','2019-02-12 17:09:24',0,0,,'',Nepal,'',,,L2T,'',JETSTREAM,British Aerospace,BAe Jetstream 41,0,'','',Yeti Airlines,YETI AIRLINES,'',NYT,Yeti Airlines,'',,,'9N-AJC','','41096','',JS41,0
+'70aeb4','2019-02-24 16:47:26',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72 500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AJS','','531','',AT75,0
+'70aeb7','2019-02-24 16:47:40',0,0,,'',Nepal,'',,,L2T,'',ATR,Avions De Transport Regional,ATR 72-500,0,'','',Buddha Air,BUDDHA AIR,'',BHA,Buddha Air,'',,,'9N-AJX','','578','',AT75,0
+'70aebe','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,L2J,'',AIRBUS,'','',0,'','','','','','','','',,,'9N-AJK','','','',A319,0
+'70af73','1970-01-01 01:00:00',0,0,,'',Nepal,'',,,'','','','','',0,'','','','','','','','',,,'','','','','',0
+'70afa9','2024-06-25 12:35:50',0,0,,,Nepal,,,,,,,,Viking DHC-6-400 Twin Otter,0,,,'',,'','',,,,,'9N-AKL',,,,DHC6,0
+'70afb0','2025-06-26 16:41:04',0,0,,,Nepal,,,,,,,,'',0,,,'',,'','',,,,,'9N-XXA',,,,'',0
+'70afb1','2025-06-26 16:37:54',0,0,,,Nepal,,,,,,,,Let L-410 Turbolet,0,,,'',,'','',,,,,'9N-AKZ',,,,L410,0
+'70afb7','2019-02-24 16:43:59',0,0,,Large (75000 to 300000 lbs),Nepal,'',,,L2J,'',AIRBUS,Airbus,A320 233SL,0,'','',Nepal Airlines,ROYAL NEPAL,RA,RNA,Nepal Airlines,'',,,'9N-AKX','','6555','',A320,0
+'70afb9','2019-02-24 16:44:09',0,0,,Large (75000 to 300000 lbs),Nepal,'',,,L2J,'',AIRBUS,Airbus,A320 233SL,0,'','',Nepal Airlines,ROYAL NEPAL,RA,RNA,Nepal Airlines,'',,,'9N-AKW','','6445','',A320,0

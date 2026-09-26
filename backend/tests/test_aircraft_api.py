@@ -67,5 +67,62 @@ class AircraftAPITestCase(unittest.TestCase):
         res = self.client.get("/api/v1/aircraft/NONEXISTENT_MODEL_XYZ", headers=self.headers)
         self.assertEqual(res.status_code, 404)
 
+    def test_list_nepal_fleet(self):
+        """Test GET /api/v1/aircraft/nepal/fleet returns registered aircraft with linked specs."""
+        res = self.client.get("/api/v1/aircraft/nepal/fleet?limit=20", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertIn("total", data)
+        self.assertIn("aircraft", data)
+        self.assertGreaterEqual(data["total"], 80)
+        self.assertLessEqual(len(data["aircraft"]), 20)
+
+        # Verify junction linking
+        linked = [ac for ac in data["aircraft"] if ac.get("specification") is not None]
+        self.assertGreater(len(linked), 0)
+
+    def test_filter_nepal_fleet_by_operator(self):
+        """Test GET /api/v1/aircraft/nepal/fleet?operator=Buddha Air."""
+        res = self.client.get("/api/v1/aircraft/nepal/fleet?operator=Buddha Air", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreater(data["total"], 0)
+        for ac in data["aircraft"]:
+            self.assertIn("buddha", ac["operator"].lower())
+
+    def test_filter_nepal_fleet_by_typecode(self):
+        """Test GET /api/v1/aircraft/nepal/fleet?typecode=DHC6."""
+        res = self.client.get("/api/v1/aircraft/nepal/fleet?typecode=DHC6", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertGreaterEqual(data["total"], 4)
+        for ac in data["aircraft"]:
+            self.assertEqual(ac["typecode"], "DHC6")
+            self.assertIsNotNone(ac.get("specification"))
+
+    def test_get_nepal_aircraft_by_registration(self):
+        """Test GET /api/v1/aircraft/nepal/9N-AOH returns aircraft with linked spec."""
+        res = self.client.get("/api/v1/aircraft/nepal/9N-AOH", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["registration"], "9N-AOH")
+        self.assertEqual(data["typecode"], "AT75")
+        self.assertIsNotNone(data.get("specification"))
+        self.assertIn("ATR", data["specification"]["model"])
+        self.assertGreater(len(data.get("junction_links", [])), 0)
+
+    def test_get_nepal_aircraft_by_icao24(self):
+        """Test GET /api/v1/aircraft/nepal/70a8e5 returns aircraft by Mode-S hex."""
+        res = self.client.get("/api/v1/aircraft/nepal/70a8e5", headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["icao24"], "70a8e5")
+        self.assertEqual(data["registration"], "9N-AOH")
+
+    def test_get_nepal_aircraft_404(self):
+        """Test GET /api/v1/aircraft/nepal/INVALID returns 404."""
+        res = self.client.get("/api/v1/aircraft/nepal/9N-INVALID-999", headers=self.headers)
+        self.assertEqual(res.status_code, 404)
+
 if __name__ == "__main__":
     unittest.main()

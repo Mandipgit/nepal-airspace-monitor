@@ -63,3 +63,60 @@ class AircraftSpecificationListResponse(BaseModel):
     """Envelope for aircraft specifications query."""
     total: int
     specifications: List[AircraftSpecificationSchema]
+
+
+class NepalAircraftSchema(BaseModel):
+    """Nepal registered aircraft schema (sourced from CAAN/OpenSky dataset)."""
+    id: Optional[int] = None
+    icao24: str = Field(description="24-bit Mode-S transponder hex address (e.g. '70a00d')")
+    registration: Optional[str] = Field(default=None, description="Nepalese tail registration (e.g. '9N-AIH')")
+    typecode: Optional[str] = Field(default=None, description="ICAO type designator (e.g. 'AT75', 'DH8D')")
+    model: Optional[str] = Field(default=None, description="Aircraft model name")
+    manufacturer_name: Optional[str] = None
+    manufacturer_icao: Optional[str] = None
+    operator: Optional[str] = Field(default=None, description="Airline or operator")
+    operator_callsign: Optional[str] = None
+    operator_icao: Optional[str] = None
+    operator_iata: Optional[str] = None
+    owner: Optional[str] = None
+    serial_number: Optional[str] = None
+    icao_aircraft_class: Optional[str] = None
+    category_description: Optional[str] = None
+    country: Optional[str] = "Nepal"
+    engines: Optional[str] = None
+    built_year: Optional[str] = None
+    first_flight_date: Optional[str] = None
+    registered_date: Optional[str] = None
+    reg_until: Optional[str] = None
+    status: Optional[str] = None
+    modes: Optional[bool] = False
+    adsb: Optional[bool] = False
+    acars: Optional[bool] = False
+    vdl: Optional[bool] = False
+    notes: Optional[str] = None
+    sel_cal: Optional[str] = None
+
+
+class NepalAircraftSpecificationJunctionSchema(BaseModel):
+    """Junction table entry linking a Nepal aircraft to an aircraft specification."""
+    id: Optional[int] = None
+    nepal_aircraft_id: int
+    specification_id: int
+    match_method: str = Field(description="Match strategy: exact_typecode, iata_mapping, model_variant")
+    match_confidence: float = Field(default=1.00, description="Match confidence score")
+    is_primary: bool = Field(default=True, description="Whether this is the primary airframe specification")
+    notes: Optional[str] = None
+
+
+class NepalAircraftDetailSchema(NepalAircraftSchema):
+    """Nepal registered aircraft with linked specifications from junction table."""
+    specification: Optional[AircraftSpecificationSchema] = Field(default=None, description="Primary linked specification")
+    specifications: List[AircraftSpecificationSchema] = Field(default_factory=list, description="All matching specifications")
+    junction_links: List[NepalAircraftSpecificationJunctionSchema] = Field(default_factory=list, description="Junction metadata")
+
+
+class NepalAircraftListResponse(BaseModel):
+    """Envelope response for Nepal registered fleet query."""
+    total: int
+    aircraft: List[NepalAircraftDetailSchema]
+

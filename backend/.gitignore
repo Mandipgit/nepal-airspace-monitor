@@ -20,7 +20,10 @@ htmlcov/
 # Environment Variables & Secrets
 .env
 .env.*
+.env.local
+.env.*.local
 *.env
+*.env.*
 !.env.example
 
 # IDE

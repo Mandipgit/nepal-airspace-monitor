@@ -31,12 +31,9 @@ interface FlightDetailsDrawerProps {
 
 interface AircraftDataCardProps {
   label: string;
-  fieldKey: string;
+  fieldKey?: string;
   value: React.ReactNode;
   subValue?: React.ReactNode;
-  activeTooltip?: string | null;
-  setActiveTooltip?: (key: string | null) => void;
-  tooltipAlign?: "top" | "bottom";
   className?: string;
 }
 
@@ -47,7 +44,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
   subValue,
   className = "",
 }) => {
-  const explanation = SPEC_EXPLANATIONS[fieldKey];
+  const explanation = fieldKey ? SPEC_EXPLANATIONS[fieldKey] : undefined;
 
   return (
     <div
@@ -63,7 +60,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
 
         {explanation && (
           <div className="shrink-0">
-            <Tooltip closeDelay={100} placement="top">
+            <Tooltip closeDelay={100}>
               <Tooltip.Trigger>
                 <button
                   type="button"
@@ -73,7 +70,10 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
                   i
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#18181b]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left">
+              <Tooltip.Content
+                placement="top"
+                className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#18181b]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left"
+              >
                 <div className="flex items-center justify-between border-b border-white/10 pb-1 mb-1.5 gap-2">
                   <span className="text-[11px] font-bold text-neutral-100 font-sans tracking-tight">
                     {explanation.meaning}
@@ -121,7 +121,8 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
 
   if (!flight) return null;
 
-  const { identification, position, aircraft_spec } = flight;
+  const { identification, position, aircraft_spec, nepal_aircraft } = flight;
+  const nepalAircraft = nepal_aircraft || null;
   const isNepal = identification.is_nepal_registered;
   const onGround = position.on_ground;
 
@@ -135,7 +136,9 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
       const identifier =
         flight.aircraft_spec?.icao_type ||
         flight.identification.aircraft_type_icao ||
-        flight.aircraft_spec?.model;
+        flight.aircraft_spec?.model ||
+        flight.identification.registration ||
+        flight.identification.icao24;
 
       if (identifier) {
         try {
@@ -454,7 +457,7 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
               <span>Aircraft Specifications</span>
             </h3>
 
-            {(effectiveSpec || identification.aircraft_type_icao) && (
+            {(effectiveSpec || identification.aircraft_type_icao || nepalAircraft) && (
               <button
                 type="button"
                 onClick={handleToggleDetails}
@@ -481,81 +484,200 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
             )}
           </div>
 
-          {effectiveSpec ? (
+          {(effectiveSpec || nepalAircraft) ? (
             isDetailsExpanded ? (
               /* Extended Database Profile View */
               <div className="space-y-3 animate-in fade-in duration-200">
                 {/* Identification / Model Header Card */}
-                <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2 text-xs">
-                  <div className="flex items-center justify-between border-b border-white/6 pb-2">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
-                        Commercial Model
-                      </span>
-                      <span className="font-bold text-neutral-100 font-mono-avionics text-sm">
-                        {effectiveSpec.model}
-                      </span>
+                {effectiveSpec ? (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-white/6 pb-2">
+                      <div>
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Commercial Model
+                        </span>
+                        <span className="font-bold text-neutral-100 font-mono-avionics text-sm">
+                          {effectiveSpec.model}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          ICAO Type
+                        </span>
+                        <span className="font-bold text-emerald-400 font-mono-avionics text-sm">
+                          {effectiveSpec.icao_type}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
-                        ICAO Type
-                      </span>
-                      <span className="font-bold text-emerald-400 font-mono-avionics text-sm">
-                        {effectiveSpec.icao_type}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                    <AircraftDataCard
-                      label="Category"
-                      fieldKey="category"
-                      value={
-                        effectiveSpec.category
-                          ? effectiveSpec.category.replace(/_/g, " ")
-                          : "Commercial"
-                      }
-                      activeTooltip={activeTooltip}
-                      setActiveTooltip={setActiveTooltip}
-                      tooltipAlign="bottom"
-                    />
-                    <AircraftDataCard
-                      label="Engine Type"
-                      fieldKey="engine_type"
-                      value={effectiveSpec.engine_type || "Turbofan"}
-                      activeTooltip={activeTooltip}
-                      setActiveTooltip={setActiveTooltip}
-                      tooltipAlign="bottom"
-                    />
-                    <AircraftDataCard
-                      label="Engine Model"
-                      fieldKey="engine_model"
-                      value={effectiveSpec.engine_model || "Not specified"}
-                      activeTooltip={activeTooltip}
-                      setActiveTooltip={setActiveTooltip}
-                      tooltipAlign="bottom"
-                    />
-                    <AircraftDataCard
-                      label="Number of Engines"
-                      fieldKey="number_of_engines"
-                      value={
-                        effectiveSpec.number_of_engines !== undefined &&
-                        effectiveSpec.number_of_engines !== null
-                          ? `${effectiveSpec.number_of_engines}x installed`
-                          : "2x"
-                      }
-                      activeTooltip={activeTooltip}
-                      setActiveTooltip={setActiveTooltip}
-                      tooltipAlign="bottom"
-                    />
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                      <AircraftDataCard
+                        label="Category"
+                        fieldKey="category"
+                        value={
+                          effectiveSpec.category
+                            ? effectiveSpec.category.replace(/_/g, " ")
+                            : "Commercial"
+                        }
+                        activeTooltip={activeTooltip}
+                        setActiveTooltip={setActiveTooltip}
+                        tooltipAlign="bottom"
+                      />
+                      <AircraftDataCard
+                        label="Engine Type"
+                        fieldKey="engine_type"
+                        value={effectiveSpec.engine_type || "Turbofan"}
+                        activeTooltip={activeTooltip}
+                        setActiveTooltip={setActiveTooltip}
+                        tooltipAlign="bottom"
+                      />
+                      <AircraftDataCard
+                        label="Engine Model"
+                        fieldKey="engine_model"
+                        value={effectiveSpec.engine_model || "Not specified"}
+                        activeTooltip={activeTooltip}
+                        setActiveTooltip={setActiveTooltip}
+                        tooltipAlign="bottom"
+                      />
+                      <AircraftDataCard
+                        label="Number of Engines"
+                        fieldKey="number_of_engines"
+                        value={
+                          effectiveSpec.number_of_engines !== undefined &&
+                          effectiveSpec.number_of_engines !== null
+                            ? `${effectiveSpec.number_of_engines}x installed`
+                            : "2x"
+                        }
+                        activeTooltip={activeTooltip}
+                        setActiveTooltip={setActiveTooltip}
+                        tooltipAlign="bottom"
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-white/6 pb-2">
+                      <div>
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Commercial Model
+                        </span>
+                        <span className="font-bold text-neutral-100 font-mono-avionics text-sm">
+                          {nepalAircraft?.model || nepalAircraft?.aircraft_type || identification.aircraft_type_icao || "Aircraft"}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Registration
+                        </span>
+                        <span className="font-bold text-emerald-400 font-mono-avionics text-sm">
+                          {nepalAircraft?.registration || flight.identification.registration || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Civil Aviation Authority of Nepal (CAAN) Registry Card */}
+                {nepalAircraft && (
+                  <div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans flex items-center justify-between">
+                      <span className="text-emerald-400 font-semibold">Civil Aviation Registry (CAAN)</span>
+                      <span className="text-[10px] font-mono-avionics text-neutral-500">9N Airframe Registry</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {nepalAircraft.owner && (
+                        <AircraftDataCard
+                          label="Registered Owner"
+                          fieldKey="owner"
+                          value={nepalAircraft.owner}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                          className="col-span-2"
+                        />
+                      )}
+                      {nepalAircraft.serial_number && (
+                        <AircraftDataCard
+                          label="Serial Number (MSN)"
+                          fieldKey="serial_number"
+                          value={nepalAircraft.serial_number}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.built_year && (
+                        <AircraftDataCard
+                          label="Year Built"
+                          fieldKey="built_year"
+                          value={nepalAircraft.built_year}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.status && (
+                        <AircraftDataCard
+                          label="Airworthiness Status"
+                          fieldKey="status"
+                          value={nepalAircraft.status}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.icao_aircraft_class && (
+                        <AircraftDataCard
+                          label="ICAO Aircraft Class"
+                          fieldKey="icao_aircraft_class"
+                          value={nepalAircraft.icao_aircraft_class}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.registered_date && (
+                        <AircraftDataCard
+                          label="Registration Date"
+                          fieldKey="registered_date"
+                          value={nepalAircraft.registered_date}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.reg_until && (
+                        <AircraftDataCard
+                          label="Registration Valid Until"
+                          fieldKey="reg_until"
+                          value={nepalAircraft.reg_until}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                        />
+                      )}
+                      {nepalAircraft.engines && (
+                        <AircraftDataCard
+                          label="Powerplant Configuration"
+                          fieldKey="engines_desc"
+                          value={nepalAircraft.engines}
+                          activeTooltip={activeTooltip}
+                          setActiveTooltip={setActiveTooltip}
+                          tooltipAlign="top"
+                          className="col-span-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Weight Limitations */}
-                <div>
-                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans">
-                    Weight Limitations
-                  </div>
+                {effectiveSpec && (
+                  <>
+                    <div>
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans">
+                        Weight Limitations
+                      </div>
                   <div className="grid grid-cols-2 gap-2">
                     <AircraftDataCard
                       label="Operating Empty (OEW)"
@@ -976,18 +1098,34 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
                     />
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* Compact Summary View */
-              <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between border-b border-white/6 pb-2">
-                  <span className="text-neutral-400 font-medium font-sans">Model:</span>
-                  <span className="font-bold text-neutral-100 font-mono-avionics">
-                    {effectiveSpec.model}
-                  </span>
-                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          /* Compact Summary View */
+          <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between border-b border-white/6 pb-2">
+              <span className="text-neutral-400 font-medium font-sans">Model:</span>
+              <span className="font-bold text-neutral-100 font-mono-avionics">
+                {effectiveSpec?.model || nepalAircraft?.model || nepalAircraft?.aircraft_type || identification.aircraft_type_icao || "Aircraft"}
+              </span>
+            </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {nepalAircraft?.owner && (
+                <AircraftDataCard
+                  label="Registered Owner"
+                  fieldKey="owner"
+                  value={nepalAircraft.owner}
+                  activeTooltip={activeTooltip}
+                  setActiveTooltip={setActiveTooltip}
+                  tooltipAlign="bottom"
+                  className="col-span-2"
+                />
+              )}
+
+              {effectiveSpec ? (
+                <>
                   <AircraftDataCard
                     label="ICAO Type"
                     fieldKey="icao_type"
@@ -1090,11 +1228,55 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
                       tooltipAlign="bottom"
                     />
                   )}
-                </div>
-              </div>
-            )}
+                </>
+              ) : nepalAircraft ? (
+                <>
+                  <AircraftDataCard
+                    label="Registration"
+                    fieldKey="registration"
+                    value={nepalAircraft.registration || flight.identification.registration || "N/A"}
+                    activeTooltip={activeTooltip}
+                    setActiveTooltip={setActiveTooltip}
+                    tooltipAlign="bottom"
+                  />
+                  {nepalAircraft.status && (
+                    <AircraftDataCard
+                      label="Airworthiness Status"
+                      fieldKey="status"
+                      value={nepalAircraft.status}
+                      activeTooltip={activeTooltip}
+                      setActiveTooltip={setActiveTooltip}
+                      tooltipAlign="bottom"
+                    />
+                  )}
+                </>
+              ) : null}
+
+              {nepalAircraft?.serial_number && (
+                <AircraftDataCard
+                  label="Serial Number (MSN)"
+                  fieldKey="serial_number"
+                  value={nepalAircraft.serial_number}
+                  activeTooltip={activeTooltip}
+                  setActiveTooltip={setActiveTooltip}
+                  tooltipAlign="bottom"
+                />
+              )}
+
+              {nepalAircraft?.built_year && (
+                <AircraftDataCard
+                  label="Year Built"
+                  fieldKey="built_year"
+                  value={nepalAircraft.built_year}
+                  activeTooltip={activeTooltip}
+                  setActiveTooltip={setActiveTooltip}
+                  tooltipAlign="bottom"
+                />
+              )}
+            </div>
           </div>
-        ) : (
+        )
+      ) : (
           <div className="p-3.5 rounded-xl bg-[#141414] border border-white/8 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-neutral-300">
@@ -1129,6 +1311,7 @@ export const FlightDetailsDrawer: React.FC<FlightDetailsDrawerProps> = ({
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

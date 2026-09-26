@@ -94,6 +94,39 @@ export interface AircraftSpec {
   n_engine?: number;
 }
 
+export interface NepalAircraft {
+  id?: number;
+  icao24: string;
+  registration?: string | null;
+  typecode?: string | null;
+  model?: string | null;
+  aircraft_type?: string | null;
+  manufacturer_name?: string | null;
+  manufacturer_icao?: string | null;
+  operator?: string | null;
+  operator_callsign?: string | null;
+  operator_icao?: string | null;
+  operator_iata?: string | null;
+  owner?: string | null;
+  serial_number?: string | null;
+  icao_aircraft_class?: string | null;
+  category_description?: string | null;
+  country?: string | null;
+  engines?: string | null;
+  built_year?: string | null;
+  first_flight_date?: string | null;
+  registered_date?: string | null;
+  reg_until?: string | null;
+  status?: string | null;
+  modes?: boolean;
+  adsb?: boolean;
+  acars?: boolean;
+  vdl?: boolean;
+  notes?: string | null;
+  sel_cal?: string | null;
+  [key: string]: any;
+}
+
 export interface NormalizedFlight {
   id: string;
   provider: string;
@@ -103,6 +136,7 @@ export interface NormalizedFlight {
   nearest_airport: string | null;
   nearest_airport_distance_km: number | null;
   aircraft_spec: AircraftSpec | null;
+  nepal_aircraft?: NepalAircraft | null;
   last_contact: string | null;
   data_freshness_seconds: number | null;
 }

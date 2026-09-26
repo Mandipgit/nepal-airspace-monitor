@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { TopBar } from "@/components/common/TopBar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { useAirports } from "@/hooks/useAirports";
@@ -32,7 +31,6 @@ import { Play, Sparkles, AlertCircle, RefreshCw, Plane, MapPin } from "lucide-re
 
 export default function RouteAnalyzerPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
 
   // Left boundary hover trigger for App Drawer
   useEffect(() => {
@@ -336,19 +334,12 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans">
-      {/* 1. Global Navigation TopBar */}
-      <TopBar
-        onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={setIsDarkMode}
-      />
-
-      {/* 2. Operations Workspace */}
-      <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
+      {/* Operations Workspace */}
+      <div className="flex flex-1 w-full h-full overflow-hidden relative">
         {/* Leftmost Screen Boundary Hover Trigger Strip */}
         <div
           onMouseEnter={() => setIsSidebarOpen(true)}
-          className="fixed left-0 top-14 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
+          className="fixed left-0 top-0 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
           aria-hidden="true"
         />
 

@@ -78,12 +78,12 @@ class FlightEnrichmentTestCase(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(enriched.aircraft_spec)
 
     async def test_operator_without_aircraft_type_does_not_guess_specs(self):
-        """Test that missing aircraft type for domestic airline does not guess fleet model."""
+        """Test that unmapped aircraft missing type does not guess fleet model."""
         flight = NormalizedFlight(
-            id="opensky_70a8ee",
+            id="opensky_70a000",
             provider="opensky",
             identification=FlightIdentification(
-                icao24="70a8ee",
+                icao24="70a000",
                 callsign="BHA101",
                 operator_icao="BHA",
                 operator_name="Buddha Air",
@@ -94,11 +94,85 @@ class FlightEnrichmentTestCase(unittest.IsolatedAsyncioTestCase):
                 longitude=85.3
             )
         )
-        enrichment_service._aircraft_meta_cache.pop("70a8ee", None)
-        enrichment_service._aircraft_meta_timestamps.pop("70a8ee", None)
+        enrichment_service._aircraft_meta_cache.pop("70a000", None)
+        enrichment_service._aircraft_meta_timestamps.pop("70a000", None)
+        enrichment_service._nepal_aircraft_cache.pop("70a000", None)
+        enrichment_service._nepal_aircraft_timestamps.pop("70a000", None)
 
         enriched = await enrichment_service.enrich_flight(flight)
         self.assertIsNone(enriched.aircraft_spec)
+
+    async def test_nepal_aircraft_fallback_enriches_from_db_and_junction(self):
+        """Test Nepal domestic 9N aircraft without OpenSky type resolves dynamically from nepal_aircraft."""
+        flight = NormalizedFlight(
+            id="opensky_70a8ee",
+            provider="opensky",
+            identification=FlightIdentification(
+                icao24="70a8ee",
+                callsign="BHA101",
+                operator_icao="BHA",
+                operator_name="Buddha Air",
+                aircraft_type_icao=None,
+                is_nepal_registered=True
+            ),
+            position=FlightPosition(
+                latitude=27.7,
+                longitude=85.3
+            )
+        )
+        enrichment_service._nepal_aircraft_cache.pop("70a8ee", None)
+        enrichment_service._nepal_aircraft_timestamps.pop("70a8ee", None)
+
+        enriched = await enrichment_service.enrich_flight(flight)
+        self.assertIsNotNone(enriched.nepal_aircraft)
+        self.assertEqual(enriched.nepal_aircraft["registration"], "9N-AOC")
+        self.assertIn("Buddha Air", enriched.nepal_aircraft["owner"])
+        self.assertIsNotNone(enriched.aircraft_spec)
+        self.assertEqual(enriched.aircraft_spec["icao_type"], "AT7")
+        self.assertIn("ATR", enriched.aircraft_spec["model"])
+
+    async def test_adsbdb_fallback_for_foreign_aircraft(self):
+        """Test foreign aircraft without OpenSky type resolves dynamically via ADS-B DB."""
+        flight = NormalizedFlight(
+            id="opensky_a12345",
+            provider="opensky",
+            identification=FlightIdentification(
+                icao24="a12345",
+                callsign="UAL123",
+                operator_icao="UAL",
+                operator_name="United Airlines",
+                aircraft_type_icao=None,
+                is_nepal_registered=False
+            ),
+            position=FlightPosition(
+                latitude=27.7,
+                longitude=85.3
+            )
+        )
+        enrichment_service._aircraft_meta_cache.pop("a12345", None)
+        enrichment_service._aircraft_meta_timestamps.pop("a12345", None)
+
+        fake_resp = mock.MagicMock()
+        fake_resp.status_code = 200
+        fake_resp.json.return_value = {
+            "response": {
+                "aircraft": {
+                    "icao_type": "B789",
+                    "type": "Boeing 787-9 Dreamliner",
+                    "registered_owner": "United Airlines",
+                    "registration": "N12345"
+                }
+            }
+        }
+
+        with mock.patch("httpx.AsyncClient.get", return_value=fake_resp) as mock_get:
+            collection = await enrichment_service.enrich_flight_collection([flight])
+            enriched = collection[0]
+            self.assertIsNotNone(enriched.aircraft_spec)
+            self.assertEqual(enriched.aircraft_spec["icao_type"], "B789")
+            self.assertIsNone(enriched.nepal_aircraft)
+            self.assertEqual(enriched.identification.registration, "N12345")
+            self.assertTrue(mock_get.called)
 
     async def test_aic211_delhi_to_kathmandu(self):
         """Test Air India AIC211 is correctly resolved as DEL -> KTM from live API route data."""

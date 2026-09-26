@@ -48,6 +48,9 @@ class Settings(BaseModel):
     # FlightAware AeroAPI (Reserved for Phase 9)
     FLIGHTAWARE_API_KEY: str = os.getenv("FLIGHTAWARE_API_KEY", "")
     
+    # ADS-B DB Aircraft Metadata API
+    ADSBDB_AIRCRAFT_API_URL: str = os.getenv("ADSBDB_AIRCRAFT_API_URL", "https://api.adsbdb.com/v0/aircraft")
+    
     # Supabase (PostgreSQL) Configuration
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "").rstrip("/")
     SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")

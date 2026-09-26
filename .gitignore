@@ -5,8 +5,13 @@
 # --- Environment Variables & Secrets ---
 .env
 .env.*
+.env.local
+.env.*.local
 *.env
 *.env.*
+**/.env
+**/.env.*
+**/.env.local
 !.env.example
 !**/.env.example
 secrets/
@@ -96,6 +101,9 @@ pnpm-debug.log*
 *.xlsx
 data/raw/*.xls
 data/raw/*.xlsx
+# Whitelist essential small fallback catalog while ignoring massive raw databases
+!aircraft_df.xls
+!data/raw/aircraft_df.xls
 !data/raw/.gitkeep
 !data/backup/.gitkeep
 !data/schemas/**

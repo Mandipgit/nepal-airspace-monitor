@@ -13,6 +13,7 @@ import logging
 from typing import List, Optional, Tuple, Dict, Any
 import httpx
 
+from app.config import get_settings
 from app.models.flight import NormalizedFlight, FlightRoute
 from app.services.supabase.aviation_repository import aviation_repo, FALLBACK_NEPAL_AIRPORTS
 
@@ -226,6 +227,7 @@ class FlightEnrichmentService:
     """Enriches normalized flight entities with airport proximity, aircraft models, and route resolution."""
 
     def __init__(self, client: Optional[httpx.AsyncClient] = None):
+        self.settings = get_settings()
         self._spec_cache: Dict[str, Optional[Dict[str, Any]]] = {}
         self._route_cache: Dict[str, Optional[FlightRoute]] = {}
         self._route_cache_timestamps: Dict[str, float] = {}
@@ -234,7 +236,29 @@ class FlightEnrichmentService:
         self._aircraft_meta_cache: Dict[str, Optional[Dict[str, Any]]] = {}
         self._aircraft_meta_timestamps: Dict[str, float] = {}
         self._aircraft_meta_ttl_seconds: float = 86400.0  # 24 hours cache for airframe metadata
+        self._nepal_aircraft_cache: Dict[str, Optional[Any]] = {}
+        self._nepal_aircraft_timestamps: Dict[str, float] = {}
+        self._nepal_aircraft_ttl_seconds: float = 86400.0  # 24 hours cache for Nepal registered airframe records
+        self._nepal_negative_ttl_seconds: float = 300.0  # 5 min negative cache
         self._http_client = client
+
+    def _build_adsbdb_aircraft_url(self, icao: str) -> str:
+        """
+        Dynamically construct the ADS-B DB aircraft endpoint using the environment configured URL.
+        Never hardcodes external URLs. Supports base URL or pattern placeholder replacements.
+        """
+        base_url = (self.settings.ADSBDB_AIRCRAFT_API_URL or "https://api.adsbdb.com/v0/aircraft").strip()
+        clean_hex = icao.strip().lower()
+        if "{icao}" in base_url:
+            return base_url.replace("{icao}", clean_hex)
+        elif "{icao24}" in base_url:
+            return base_url.replace("{icao24}", clean_hex)
+        elif "[ICAO_HEX]" in base_url:
+            return base_url.replace("[ICAO_HEX]", clean_hex)
+        elif "{actual_icao_hex}" in base_url:
+            return base_url.replace("{actual_icao_hex}", clean_hex)
+        else:
+            return f"{base_url.rstrip('/')}/{clean_hex}"
 
     def _is_route_cached(self, callsign: str) -> bool:
         """Check if callsign has a valid non-expired route cache entry."""
@@ -262,8 +286,9 @@ class FlightEnrichmentService:
 
     async def _fetch_live_aircraft_meta(self, icao24_list: List[str]) -> None:
         """
-        Query actual aircraft metadata (type code, model, registration) by icao24.
-        Caches resolved aircraft metadata.
+        Query actual aircraft metadata (type code, model, registration) by icao24 from ADS-B DB API.
+        Used strictly for non-Nepal aircraft when OpenSky metadata is missing.
+        Caches resolved aircraft metadata in memory.
         """
         clean_icaos = list(dict.fromkeys(
             hex_id.strip().lower() for hex_id in icao24_list if hex_id and hex_id.strip()
@@ -281,8 +306,9 @@ class FlightEnrichmentService:
         try:
             for icao in clean_icaos[:8]:
                 try:
+                    url = self._build_adsbdb_aircraft_url(icao)
                     r = await client.get(
-                        f"https://api.adsbdb.com/v0/aircraft/{icao}",
+                        url,
                         headers={"User-Agent": "NepalFlightTracker/1.0"}
                     )
                     if r.status_code == 200:
@@ -306,6 +332,142 @@ class FlightEnrichmentService:
         finally:
             if close_client:
                 await client.aclose()
+
+    async def fetch_single_aircraft_meta(self, icao24: str) -> Optional[Dict[str, Any]]:
+        """Fetch and cache a single aircraft's metadata from ADS-B DB API."""
+        clean_hex = icao24.strip().lower()
+        if self._is_aircraft_meta_cached(clean_hex):
+            return self._aircraft_meta_cache.get(clean_hex)
+        await self._fetch_live_aircraft_meta([clean_hex])
+        return self._aircraft_meta_cache.get(clean_hex)
+
+    def _is_nepal_candidate(self, flight: NormalizedFlight) -> bool:
+        """
+        Detect if an aircraft is candidate for Nepalese civil registration (9N prefix or Nepal hex range).
+        """
+        if flight.identification.is_nepal_registered:
+            return True
+
+        reg = (flight.identification.registration or "").strip().upper()
+        if reg.startswith("9N") or reg.startswith("9-N"):
+            return True
+
+        cs = (flight.identification.callsign or "").strip().upper()
+        if cs.startswith("9N") or cs.startswith("9-N"):
+            return True
+
+        icao = (flight.identification.icao24 or "").strip().lower()
+        nepal_hex_prefixes = ("70a8", "70a9", "70aa", "70ab", "70ac", "70ad", "70ae", "70af")
+        if icao.startswith(nepal_hex_prefixes):
+            return True
+
+        op = (flight.identification.operator_icao or "").strip().upper()
+        nepal_operators = {"BHA", "NYT", "SHA", "RNA", "TRA", "SMT", "HRA", "HIM", "GBL", "NYA"}
+        if op in nepal_operators:
+            return True
+
+        country = (flight.identification.origin_country or "").strip().lower()
+        if country == "nepal":
+            return True
+
+        return False
+
+    def _is_nepal_aircraft_cached(self, icao24: str) -> bool:
+        """Check if icao24 has a valid non-expired nepal_aircraft cache entry."""
+        if not icao24:
+            return False
+        clean_key = icao24.strip().lower()
+        if clean_key not in self._nepal_aircraft_cache:
+            return False
+        cached_ts = self._nepal_aircraft_timestamps.get(clean_key, 0.0)
+        is_pos = self._nepal_aircraft_cache[clean_key] is not None
+        ttl = self._nepal_aircraft_ttl_seconds if is_pos else self._nepal_negative_ttl_seconds
+        return (time.monotonic() - cached_ts) < ttl
+
+    async def _resolve_nepal_aircraft(self, icao24: str, registration: Optional[str] = None) -> Optional[Any]:
+        """
+        Dynamically query nepal_aircraft table using ICAO hex code and/or registration.
+        Caches resolved records in memory to prevent repeated DB lookups on live polling.
+        """
+        clean_hex = (icao24 or "").strip().lower()
+        clean_reg = (registration or "").strip().upper()
+        now = time.monotonic()
+
+        # Check in-memory cache first
+        if clean_hex and clean_hex in self._nepal_aircraft_cache:
+            cached_ts = self._nepal_aircraft_timestamps.get(clean_hex, 0.0)
+            is_pos = self._nepal_aircraft_cache[clean_hex] is not None
+            ttl = self._nepal_aircraft_ttl_seconds if is_pos else self._nepal_negative_ttl_seconds
+            if (now - cached_ts) < ttl:
+                return self._nepal_aircraft_cache[clean_hex]
+
+        if clean_reg and clean_reg in self._nepal_aircraft_cache:
+            cached_ts = self._nepal_aircraft_timestamps.get(clean_reg, 0.0)
+            is_pos = self._nepal_aircraft_cache[clean_reg] is not None
+            ttl = self._nepal_aircraft_ttl_seconds if is_pos else self._nepal_negative_ttl_seconds
+            if (now - cached_ts) < ttl:
+                return self._nepal_aircraft_cache[clean_reg]
+
+        result = None
+        lookup_key = clean_hex or clean_reg
+        if lookup_key:
+            try:
+                # Queries nepal_aircraft -> nepal_aircraft_specifications -> aircraft_specifications
+                result = await aviation_repo.get_nepal_aircraft(lookup_key)
+            except Exception as e:
+                logger.debug(f"nepal_aircraft lookup failed for {lookup_key}: {e}")
+
+        # Store in cache
+        if clean_hex:
+            self._nepal_aircraft_cache[clean_hex] = result
+            self._nepal_aircraft_timestamps[clean_hex] = now
+        if clean_reg:
+            self._nepal_aircraft_cache[clean_reg] = result
+            self._nepal_aircraft_timestamps[clean_reg] = now
+        if result and getattr(result, "registration", None):
+            res_reg = result.registration.strip().upper()
+            self._nepal_aircraft_cache[res_reg] = result
+            self._nepal_aircraft_timestamps[res_reg] = now
+
+        return result
+
+    def _apply_nepal_aircraft_enrichment(self, flight: NormalizedFlight, nepal_ac: Any) -> None:
+        """
+        Merge nepal_aircraft identity details and junction-linked specification into NormalizedFlight.
+        Combines real-time OpenSky flight with static CAAN registry metadata.
+        """
+        if not nepal_ac:
+            return
+
+        flight.identification.is_nepal_registered = True
+
+        # Attach raw nepal_aircraft dict to flight for frontend CAAN detail panel
+        if hasattr(nepal_ac, "model_dump"):
+            flight.nepal_aircraft = nepal_ac.model_dump()
+        elif isinstance(nepal_ac, dict):
+            flight.nepal_aircraft = dict(nepal_ac)
+
+        if isinstance(flight.nepal_aircraft, dict) and not flight.nepal_aircraft.get("owner") and flight.nepal_aircraft.get("operator"):
+            flight.nepal_aircraft["owner"] = flight.nepal_aircraft["operator"]
+
+        # Backfill identity attributes if missing or unverified
+        if not flight.identification.registration and getattr(nepal_ac, "registration", None):
+            flight.identification.registration = nepal_ac.registration
+        if not flight.identification.aircraft_type_icao and getattr(nepal_ac, "typecode", None):
+            flight.identification.aircraft_type_icao = nepal_ac.typecode
+        if not flight.identification.operator_name and getattr(nepal_ac, "operator", None):
+            flight.identification.operator_name = nepal_ac.operator
+        if not flight.identification.operator_icao and getattr(nepal_ac, "operator_icao", None):
+            flight.identification.operator_icao = nepal_ac.operator_icao
+
+        # Linked specification from nepal_aircraft_specifications -> aircraft_specifications
+        linked_spec = getattr(nepal_ac, "specification", None)
+        if linked_spec:
+            if hasattr(linked_spec, "model_dump"):
+                flight.aircraft_spec = linked_spec.model_dump()
+            elif isinstance(linked_spec, dict):
+                flight.aircraft_spec = linked_spec
+
 
     def _pick_active_leg(
         self,
@@ -668,16 +830,41 @@ class FlightEnrichmentService:
         if resolved_route:
             flight.route = resolved_route
 
-        # 3. Aircraft specifications
-        if icao and not flight.identification.aircraft_type_icao and not self._is_aircraft_meta_cached(icao):
-            await self._fetch_live_aircraft_meta([icao])
+        # 3. Aircraft specifications & identity enrichment with Fallback Priority:
+        # -------------------------------------------------------------------------
+        # Priority 1: OpenSky provides aircraft information
+        # If OpenSky response already contains valid aircraft_type_icao, use existing flow
+        # to match aircraft with aircraft_specifications table.
+        if flight.identification.aircraft_type_icao and not flight.aircraft_spec:
+            spec = await self._resolve_aircraft_spec(flight)
+            if spec:
+                flight.aircraft_spec = spec
 
-        spec = await self._resolve_aircraft_spec(flight)
-        if spec:
-            flight.aircraft_spec = spec
-            # Update identification type if resolved
-            if not flight.identification.aircraft_type_icao:
-                flight.identification.aircraft_type_icao = spec.get("icao_type")
+        # Priority 2: Nepal-registered / 9N aircraft missing aircraft information
+        # Use ICAO HEX code to dynamically query nepal_aircraft table, then junction
+        # table nepal_aircraft_specifications -> aircraft_specifications.
+        # DO NOT call ADS-B DB for Nepal-registered aircraft.
+        if not flight.aircraft_spec and self._is_nepal_candidate(flight) and icao:
+            nepal_ac = await self._resolve_nepal_aircraft(icao, flight.identification.registration)
+            if nepal_ac:
+                self._apply_nepal_aircraft_enrichment(flight, nepal_ac)
+                if not flight.aircraft_spec and flight.identification.aircraft_type_icao:
+                    spec = await self._resolve_aircraft_spec(flight)
+                    if spec:
+                        flight.aircraft_spec = spec
+
+        # Priority 3: Non-Nepal aircraft missing aircraft information
+        # Use ICAO HEX code to query ADS-B DB API (using ADSBDB_AIRCRAFT_API_URL from .env).
+        if not flight.aircraft_spec and not flight.identification.aircraft_type_icao and icao:
+            if not self._is_nepal_candidate(flight):
+                if not self._is_aircraft_meta_cached(icao):
+                    await self._fetch_live_aircraft_meta([icao])
+
+                spec = await self._resolve_aircraft_spec(flight)
+                if spec:
+                    flight.aircraft_spec = spec
+                    if not flight.identification.aircraft_type_icao:
+                        flight.identification.aircraft_type_icao = spec.get("icao_type")
 
         return flight
 
@@ -686,7 +873,7 @@ class FlightEnrichmentService:
         # 1. Batch fetch live API routes and aircraft metadata for uncached entities
         flights_map: Dict[str, NormalizedFlight] = {}
         needed_callsigns: List[str] = []
-        needed_icaos: List[str] = []
+        needed_foreign_icaos: List[str] = []
 
         for flight in flights:
             cs = (flight.identification.callsign or "").strip().upper()
@@ -703,15 +890,21 @@ class FlightEnrichmentService:
                 if not self._is_route_cached(icao):
                     needed_callsigns.append(icao)
 
-            if icao and not flight.identification.aircraft_type_icao:
-                if not self._is_aircraft_meta_cached(icao):
-                    needed_icaos.append(icao)
+            # Determine whether external ADS-B DB lookup is needed:
+            # Fallback priority rule:
+            # 1. OpenSky provides aircraft info -> no external lookup needed.
+            # 2. Nepal candidate -> resolved from nepal_aircraft table, NOT ADS-B DB.
+            # 3. Non-Nepal aircraft missing aircraft info -> query ADS-B DB API.
+            if icao and not flight.identification.aircraft_type_icao and not flight.aircraft_spec:
+                if not self._is_nepal_candidate(flight):
+                    if not self._is_aircraft_meta_cached(icao):
+                        needed_foreign_icaos.append(icao)
 
         if needed_callsigns:
             await self._fetch_live_api_routes(needed_callsigns, flights_map)
 
-        if needed_icaos:
-            await self._fetch_live_aircraft_meta(needed_icaos)
+        if needed_foreign_icaos:
+            await self._fetch_live_aircraft_meta(needed_foreign_icaos)
 
         # 2. Enrich each flight
         enriched = []

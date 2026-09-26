@@ -397,12 +397,23 @@ def main():
     # 3. Runways (Foreign-keyed to airports)
     runway_count = seed_runways(admin_client, valid_airport_idents)
 
+    # 4. Nepal Registered Aircraft & Specifications Junction
+    nepal_aircraft_result = None
+    try:
+        from scripts.seed_nepal_aircraft import seed_nepal_aircraft_pipeline
+        nepal_aircraft_result = seed_nepal_aircraft_pipeline(admin_client)
+    except Exception as e:
+        print(f"[!] Note: Nepal aircraft seeding skipped or encountered: {e}")
+
     elapsed = time.time() - start_time
     print("\n" + "=" * 70)
     print("SEEDING COMPLETE IN {:.1f} SECONDS".format(elapsed))
     print(f"  * Aircraft Models Seeded : {aircraft_count}")
     print(f"  * Airports Seeded        : {len(valid_airport_idents)}")
     print(f"  * Runways Seeded         : {runway_count}")
+    if nepal_aircraft_result:
+        print(f"  * Nepal Aircraft Seeded  : {nepal_aircraft_result.get('seeded_aircraft', 0)}")
+        print(f"  * Junction Links Created : {nepal_aircraft_result.get('junction_links', 0)}")
     print("=" * 70)
 
 if __name__ == "__main__":

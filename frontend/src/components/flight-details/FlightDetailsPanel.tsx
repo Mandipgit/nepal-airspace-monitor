@@ -32,13 +32,10 @@ interface FlightDetailsPanelProps {
 
 interface AircraftDataCardProps {
   label: string;
-  fieldKey: string;
+  fieldKey?: string;
   value: React.ReactNode;
   subValue?: React.ReactNode;
   className?: string;
-  activeTooltip?: string | null;
-  setActiveTooltip?: (key: string | null) => void;
-  tooltipAlign?: "top" | "bottom";
 }
 
 const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
@@ -48,7 +45,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
   subValue,
   className = "",
 }) => {
-  const explanation = SPEC_EXPLANATIONS[fieldKey];
+  const explanation = fieldKey ? SPEC_EXPLANATIONS[fieldKey] : undefined;
 
   return (
     <div
@@ -64,7 +61,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
 
         {explanation && (
           <div className="shrink-0">
-            <Tooltip closeDelay={100} placement="top">
+            <Tooltip closeDelay={100}>
               <Tooltip.Trigger>
                 <button
                   type="button"
@@ -74,7 +71,10 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
                   i
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#18181b]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left">
+              <Tooltip.Content
+                placement="top"
+                className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#18181b]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left"
+              >
                 <div className="flex items-center justify-between border-b border-white/10 pb-1 mb-1.5 gap-2">
                   <span className="text-[11px] font-bold text-neutral-100 font-sans tracking-tight">
                     {explanation.meaning}
@@ -123,7 +123,8 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
 
   if (!flight) return null;
 
-  const { identification, position, route, aircraft_spec } = flight;
+  const { identification, position, route, aircraft_spec, nepal_aircraft } = flight;
+  const nepalAircraft = nepal_aircraft || null;
   const isNepal = identification.is_nepal_registered;
   const onGround = position.on_ground;
 
@@ -133,11 +134,13 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
     const nextExpanded = !isDetailsExpanded;
     setIsDetailsExpanded(nextExpanded);
 
-    if (nextExpanded) {
+    if (nextExpanded && !effectiveSpec) {
       const identifier =
         flight.aircraft_spec?.icao_type ||
         flight.identification.aircraft_type_icao ||
-        flight.aircraft_spec?.model;
+        flight.aircraft_spec?.model ||
+        flight.identification.registration ||
+        flight.identification.icao24;
 
       if (identifier) {
         try {
@@ -275,6 +278,22 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
       }
     }
 
+    // Civil Aviation Authority of Nepal (CAAN) Registry (for 9N aircraft)
+    if (nepalAircraft) {
+      lines.push("");
+      lines.push("── CIVIL AVIATION REGISTRY (CAAN 9N) ───────────");
+      if (nepalAircraft.registration) lines.push(`Registration: ${nepalAircraft.registration}`);
+      if (nepalAircraft.owner) lines.push(`Registered Owner: ${nepalAircraft.owner}`);
+      if (nepalAircraft.serial_number) lines.push(`Serial Number (MSN): ${nepalAircraft.serial_number}`);
+      if (nepalAircraft.built_year) lines.push(`Year Built: ${nepalAircraft.built_year}`);
+      if (nepalAircraft.registered_date) lines.push(`Registration Date: ${nepalAircraft.registered_date}`);
+      if (nepalAircraft.reg_until) lines.push(`Certificate Expiry: ${nepalAircraft.reg_until}`);
+      if (nepalAircraft.status) lines.push(`Airworthiness Status: ${nepalAircraft.status}`);
+      if (nepalAircraft.icao_aircraft_class) lines.push(`ICAO Aircraft Class: ${nepalAircraft.icao_aircraft_class}`);
+      if (nepalAircraft.engines) lines.push(`Powerplant Configuration: ${nepalAircraft.engines}`);
+      if (nepalAircraft.sel_cal) lines.push(`SELCAL Code: ${nepalAircraft.sel_cal}`);
+    }
+
     // Aircraft Specifications
     lines.push("");
     lines.push("── AIRCRAFT SPECIFICATIONS ───────────────────────");
@@ -385,7 +404,7 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
             )}
           </div>
 
-          <Tooltip closeDelay={100} placement="left">
+          <Tooltip closeDelay={100}>
             <Tooltip.Trigger>
               <button
                 type="button"
@@ -400,7 +419,10 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
                 )}
               </button>
             </Tooltip.Trigger>
-            <Tooltip.Content className="z-[9999] px-2.5 py-1 text-[11px] font-sans font-medium rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-200 shadow-xl">
+            <Tooltip.Content
+              placement="left"
+              className="z-[9999] px-2.5 py-1 text-[11px] font-sans font-medium rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-200 shadow-xl"
+            >
               {copied ? "All details copied!" : "Copy all aircraft & flight details"}
             </Tooltip.Content>
           </Tooltip>
@@ -624,7 +646,7 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
               <span>Aircraft Specifications</span>
             </div>
 
-            {(effectiveSpec || identification.aircraft_type_icao) && (
+            {(effectiveSpec || identification.aircraft_type_icao || nepalAircraft) && (
               <button
                 type="button"
                 onClick={handleToggleDetails}
@@ -651,69 +673,164 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
             )}
           </div>
 
-          {effectiveSpec ? (
+          {(effectiveSpec || nepalAircraft) ? (
             isDetailsExpanded ? (
               /* Extended Database Profile View: Displays ALL 25+ database fields */
               <div className="space-y-3 animate-in fade-in duration-200">
                 {/* Airframe & Classification Card */}
-                <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
-                  <div className="flex items-center justify-between border-b border-white/6 pb-2">
-                    <div>
-                      <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
-                        Commercial Model
-                      </span>
-                      <span className="font-bold text-neutral-100 font-sans text-sm">
-                        {effectiveSpec.model}
-                      </span>
+                {effectiveSpec ? (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between border-b border-white/6 pb-2">
+                      <div>
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Commercial Model
+                        </span>
+                        <span className="font-bold text-neutral-100 font-sans text-sm">
+                          {effectiveSpec.model}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          ICAO Type
+                        </span>
+                        <span className="font-bold text-emerald-400 font-mono text-sm">
+                          {effectiveSpec.icao_type}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
-                        ICAO Type
-                      </span>
-                      <span className="font-bold text-emerald-400 font-mono text-sm">
-                        {effectiveSpec.icao_type}
-                      </span>
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                    <AircraftDataCard
-                      label="Category"
-                      fieldKey="category"
-                      value={
-                        effectiveSpec.category
-                          ? effectiveSpec.category.replace(/_/g, " ")
-                          : "Commercial"
-                      }
-                    />
-                    <AircraftDataCard
-                      label="Engine Type"
-                      fieldKey="engine_type"
-                      value={effectiveSpec.engine_type || "Turbofan"}
-                    />
-                    <AircraftDataCard
-                      label="Engine Model"
-                      fieldKey="engine_model"
-                      value={effectiveSpec.engine_model || "Not specified"}
-                    />
-                    <AircraftDataCard
-                      label="Number of Engines"
-                      fieldKey="number_of_engines"
-                      value={
-                        effectiveSpec.number_of_engines !== undefined &&
-                        effectiveSpec.number_of_engines !== null
-                          ? `${effectiveSpec.number_of_engines}x installed`
-                          : "2x"
-                      }
-                    />
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                      <AircraftDataCard
+                        label="Category"
+                        fieldKey="category"
+                        value={
+                          effectiveSpec.category
+                            ? effectiveSpec.category.replace(/_/g, " ")
+                            : "Commercial"
+                        }
+                      />
+                      <AircraftDataCard
+                        label="Engine Type"
+                        fieldKey="engine_type"
+                        value={effectiveSpec.engine_type || "Turbofan"}
+                      />
+                      <AircraftDataCard
+                        label="Engine Model"
+                        fieldKey="engine_model"
+                        value={effectiveSpec.engine_model || "Not specified"}
+                      />
+                      <AircraftDataCard
+                        label="Number of Engines"
+                        fieldKey="number_of_engines"
+                        value={
+                          effectiveSpec.number_of_engines !== undefined &&
+                          effectiveSpec.number_of_engines !== null
+                            ? `${effectiveSpec.number_of_engines}x installed`
+                            : "2x"
+                        }
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between border-b border-white/6 pb-2">
+                      <div>
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Commercial Model
+                        </span>
+                        <span className="font-bold text-neutral-100 font-sans text-sm">
+                          {nepalAircraft?.model || nepalAircraft?.aircraft_type || identification.aircraft_type_icao || "Aircraft"}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-neutral-400 uppercase tracking-wider block font-sans">
+                          Registration
+                        </span>
+                        <span className="font-bold text-emerald-400 font-mono text-sm">
+                          {nepalAircraft?.registration || flight.identification.registration || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Civil Aviation Authority of Nepal (CAAN) Registry Card */}
+                {nepalAircraft && (
+                  <div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans flex items-center justify-between">
+                      <span className="text-emerald-400 font-semibold">Civil Aviation Registry (CAAN)</span>
+                      <span className="text-[10px] font-mono text-neutral-500">9N Airframe Registry</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {nepalAircraft.owner && (
+                        <AircraftDataCard
+                          label="Registered Owner"
+                          fieldKey="owner"
+                          value={nepalAircraft.owner}
+                          className="col-span-2"
+                        />
+                      )}
+                      {nepalAircraft.serial_number && (
+                        <AircraftDataCard
+                          label="Serial Number (MSN)"
+                          fieldKey="serial_number"
+                          value={nepalAircraft.serial_number}
+                        />
+                      )}
+                      {nepalAircraft.built_year && (
+                        <AircraftDataCard
+                          label="Year Built"
+                          fieldKey="built_year"
+                          value={nepalAircraft.built_year}
+                        />
+                      )}
+                      {nepalAircraft.status && (
+                        <AircraftDataCard
+                          label="Airworthiness Status"
+                          fieldKey="status"
+                          value={nepalAircraft.status}
+                        />
+                      )}
+                      {nepalAircraft.icao_aircraft_class && (
+                        <AircraftDataCard
+                          label="ICAO Aircraft Class"
+                          fieldKey="icao_aircraft_class"
+                          value={nepalAircraft.icao_aircraft_class}
+                        />
+                      )}
+                      {nepalAircraft.registered_date && (
+                        <AircraftDataCard
+                          label="Registration Date"
+                          fieldKey="registered_date"
+                          value={nepalAircraft.registered_date}
+                        />
+                      )}
+                      {nepalAircraft.reg_until && (
+                        <AircraftDataCard
+                          label="Certificate Validity"
+                          fieldKey="reg_until"
+                          value={nepalAircraft.reg_until}
+                        />
+                      )}
+                      {nepalAircraft.engines && (
+                        <AircraftDataCard
+                          label="Powerplant Config"
+                          fieldKey="engines_desc"
+                          value={nepalAircraft.engines}
+                          className="col-span-2"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Weight Limitations Card */}
-                <div>
-                  <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans">
-                    Weight Limitations
-                  </div>
+                {effectiveSpec && (
+                  <>
+                    <div>
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-1.5 px-0.5 font-sans">
+                        Weight Limitations
+                      </div>
                   <div className="grid grid-cols-2 gap-2">
                     <AircraftDataCard
                       label="Operating Empty (OEW)"
@@ -1053,18 +1170,31 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
                     />
                   </div>
                 </div>
-              </div>
-            ) : (
-              /* Compact Summary View */
-              <div className="p-3 rounded-xl bg-[#141414] border border-white/6 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-                  <span className="text-neutral-400 font-sans">Airframe:</span>
-                  <span className="font-bold text-neutral-100 font-sans">
-                    {effectiveSpec.model}
-                  </span>
-                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          /* Compact Summary View */
+          <div className="p-3 rounded-xl bg-[#141414] border border-white/6 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+              <span className="text-neutral-400 font-sans">Airframe:</span>
+              <span className="font-bold text-neutral-100 font-sans">
+                {effectiveSpec?.model || nepalAircraft?.model || nepalAircraft?.aircraft_type || identification.aircraft_type_icao || "Aircraft"}
+              </span>
+            </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              {nepalAircraft?.owner && (
+                <AircraftDataCard
+                  label="Registered Owner"
+                  fieldKey="owner"
+                  value={nepalAircraft.owner}
+                  className="col-span-2"
+                />
+              )}
+
+              {effectiveSpec ? (
+                <>
                   <AircraftDataCard
                     label="ICAO Type"
                     fieldKey="icao_type"
@@ -1140,10 +1270,43 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
                       value={`${Math.round(effectiveSpec.oew_kg).toLocaleString()} kg`}
                     />
                   )}
-                </div>
-              </div>
-            )
-          ) : null}
+                </>
+              ) : nepalAircraft ? (
+                <>
+                  <AircraftDataCard
+                    label="Registration"
+                    fieldKey="registration"
+                    value={nepalAircraft.registration || flight.identification.registration || "N/A"}
+                  />
+                  {nepalAircraft.status && (
+                    <AircraftDataCard
+                      label="Airworthiness Status"
+                      fieldKey="status"
+                      value={nepalAircraft.status}
+                    />
+                  )}
+                </>
+              ) : null}
+
+              {nepalAircraft?.serial_number && (
+                <AircraftDataCard
+                  label="Serial Number (MSN)"
+                  fieldKey="serial_number"
+                  value={nepalAircraft.serial_number}
+                />
+              )}
+
+              {nepalAircraft?.built_year && (
+                <AircraftDataCard
+                  label="Year Built"
+                  fieldKey="built_year"
+                  value={nepalAircraft.built_year}
+                />
+              )}
+            </div>
+          </div>
+        )
+      ) : null}
         </div>
       </div>
 

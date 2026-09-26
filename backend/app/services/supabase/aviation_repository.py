@@ -15,7 +15,11 @@ from app.schemas.airport import (
 )
 from app.schemas.aircraft import (
     AircraftSpecificationSchema,
-    AircraftSpecificationListResponse
+    AircraftSpecificationListResponse,
+    NepalAircraftSchema,
+    NepalAircraftSpecificationJunctionSchema,
+    NepalAircraftDetailSchema,
+    NepalAircraftListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -359,6 +363,106 @@ FALLBACK_AIRCRAFT_SPECS: List[Dict[str, Any]] = [
         "approach_speed_kts": 75,
         "takeoff_field_length_m": 366,
         "landing_field_length_m": 320
+    },
+    {
+        "id": 9,
+        "model": "Let L-410 Turbolet",
+        "icao_type": "L410",
+        "category": "commuter",
+        "engine_type": "turboprop",
+        "engine_model": "GE H80-200",
+        "number_of_engines": 2,
+        "passenger_capacity": 19,
+        "oew_kg": 4050.0,
+        "mtow_kg": 6600.0,
+        "mlw_kg": 6400.0,
+        "fuel_capacity_liters": 1625.0,
+        "cruise_speed_kts": 200,
+        "max_speed_kts": 224,
+        "nominal_range_nm": 810,
+        "approach_speed_kts": 82,
+        "takeoff_field_length_m": 500,
+        "landing_field_length_m": 480
+    },
+    {
+        "id": 10,
+        "model": "Airbus Helicopters H125 / AS350 B3",
+        "icao_type": "AS50",
+        "category": "helicopter",
+        "engine_type": "turboshaft",
+        "engine_model": "Safran Arriel 2D",
+        "number_of_engines": 1,
+        "passenger_capacity": 6,
+        "oew_kg": 1318.0,
+        "mtow_kg": 2250.0,
+        "mlw_kg": 2250.0,
+        "fuel_capacity_liters": 540.0,
+        "cruise_speed_kts": 133,
+        "max_speed_kts": 155,
+        "nominal_range_nm": 340,
+        "approach_speed_kts": 60,
+        "takeoff_field_length_m": 0,
+        "landing_field_length_m": 0
+    },
+    {
+        "id": 11,
+        "model": "Bell 407GXP",
+        "icao_type": "B407",
+        "category": "helicopter",
+        "engine_type": "turboshaft",
+        "engine_model": "Rolls-Royce 250-C47B/8",
+        "number_of_engines": 1,
+        "passenger_capacity": 6,
+        "oew_kg": 1221.0,
+        "mtow_kg": 2381.0,
+        "mlw_kg": 2381.0,
+        "fuel_capacity_liters": 492.0,
+        "cruise_speed_kts": 133,
+        "max_speed_kts": 140,
+        "nominal_range_nm": 324,
+        "approach_speed_kts": 60,
+        "takeoff_field_length_m": 0,
+        "landing_field_length_m": 0
+    },
+    {
+        "id": 12,
+        "model": "Bell 505 Jet Ranger X",
+        "icao_type": "B505",
+        "category": "helicopter",
+        "engine_type": "turboshaft",
+        "engine_model": "Safran Arrius 2R",
+        "number_of_engines": 1,
+        "passenger_capacity": 4,
+        "oew_kg": 991.0,
+        "mtow_kg": 1669.0,
+        "mlw_kg": 1669.0,
+        "fuel_capacity_liters": 322.0,
+        "cruise_speed_kts": 125,
+        "max_speed_kts": 135,
+        "nominal_range_nm": 333,
+        "approach_speed_kts": 55,
+        "takeoff_field_length_m": 0,
+        "landing_field_length_m": 0
+    },
+    {
+        "id": 13,
+        "model": "Leonardo AW139",
+        "icao_type": "A139",
+        "category": "helicopter",
+        "engine_type": "turboshaft",
+        "engine_model": "Pratt & Whitney Canada PT6C-67C",
+        "number_of_engines": 2,
+        "passenger_capacity": 15,
+        "oew_kg": 3622.0,
+        "mtow_kg": 6400.0,
+        "mlw_kg": 6400.0,
+        "fuel_capacity_liters": 2088.0,
+        "cruise_speed_kts": 165,
+        "max_speed_kts": 167,
+        "nominal_range_nm": 573,
+        "approach_speed_kts": 65,
+        "takeoff_field_length_m": 0,
+        "landing_field_length_m": 0
     }
 ]
 
@@ -376,6 +480,7 @@ class AviationRepository:
         self._fallback_airports: Optional[List[AirportSummarySchema]] = None
         self._fallback_runways: Optional[Dict[str, List[RunwaySchema]]] = None
         self._fallback_aircraft_specs: Optional[List[AircraftSpecificationSchema]] = None
+        self._fallback_nepal_aircraft: Optional[List[NepalAircraftDetailSchema]] = None
 
     def _get_client(self):
         return get_supabase_client()
@@ -624,6 +729,19 @@ class AviationRepository:
 
         if not loaded:
             loaded = [AircraftSpecificationSchema(**s) for s in FALLBACK_AIRCRAFT_SPECS]
+        else:
+            # Ensure Nepal-specific fleet models (Twin Otter, L-410, H125, Bell, AW139) are present
+            existing_icaos = {(s.icao_type or "").upper() for s in loaded}
+            existing_models = {s.model.upper() for s in loaded}
+            curr_id = len(loaded) + 1
+            for fb in FALLBACK_AIRCRAFT_SPECS:
+                fb_icao = fb.get("icao_type", "").upper()
+                fb_model = fb.get("model", "").upper()
+                if fb_icao not in existing_icaos and fb_model not in existing_models:
+                    fb_copy = dict(fb)
+                    fb_copy["id"] = curr_id
+                    curr_id += 1
+                    loaded.append(AircraftSpecificationSchema(**fb_copy))
 
         self._fallback_aircraft_specs = loaded
         return self._fallback_aircraft_specs
@@ -945,6 +1063,308 @@ class AviationRepository:
         total = len(matched)
         slice_result = matched[offset:offset + limit]
         return AircraftSpecificationListResponse(total=total, specifications=slice_result)
+
+    def _load_fallback_nepal_aircraft(self) -> List[NepalAircraftDetailSchema]:
+        """Lazy load Nepal registered aircraft from Nepal-aricraft-dataset.csv and resolve junction specifications."""
+        if self._fallback_nepal_aircraft is not None:
+            return self._fallback_nepal_aircraft
+
+        csv_candidates = [
+            Path(__file__).resolve().parent.parent.parent.parent.parent / "Nepal-aricraft-dataset.csv",
+            Path(__file__).resolve().parent.parent.parent.parent / "Nepal-aricraft-dataset.csv",
+            Path("Nepal-aricraft-dataset.csv").resolve(),
+            Path("../Nepal-aricraft-dataset.csv").resolve(),
+        ]
+        csv_path = None
+        for cand in csv_candidates:
+            if cand.exists():
+                csv_path = cand
+                break
+
+        if not csv_path:
+            logger.warning("Nepal-aricraft-dataset.csv not found for offline fallback.")
+            self._fallback_nepal_aircraft = []
+            return self._fallback_nepal_aircraft
+
+        all_specs = self._load_fallback_aircraft_specs()
+        typecode_rules = {
+            "AT75": {"codes": ["AT75"], "models": ["ATR72-500Basic", "ATR72-500IncreasedWeight", "ATR 72-500"]},
+            "AT43": {"codes": ["AT43"], "models": ["ATR42-320Basic", "ATR42-320IncreasedWeight", "ATR 42-320"]},
+            "DH8D": {"codes": ["DH4", "DH8D"], "models": ["BombardierQ400", "Dash 8 Q400"]},
+            "JS41": {"codes": ["J41", "JS41"], "models": ["Jetstream41"]},
+            "CRJ2": {"codes": ["CR2", "CRJ2"], "models": ["BombardierCRJ200", "BombardierCRJ200ER", "BombardierCRJ200LR"]},
+            "CRJ7": {"codes": ["CR7", "CRJ7"], "models": ["BombardierCRJ700", "BombardierCRJ700ER"]},
+            "A320": {"codes": ["320", "A320"], "models": ["A320-200", "A320-200neo"]},
+            "A319": {"codes": ["319", "A319"], "models": ["A319-100"]},
+            "A332": {"codes": ["332", "A332"], "models": ["A330-200"]},
+            "B752": {"codes": ["752", "B752"], "models": ["757-200"]},
+            "B190": {"codes": ["BE1", "B190"], "models": ["Beech1900D", "Beech1900C"]},
+            "D228": {"codes": ["D28", "D228"], "models": ["Dornier228-212", "HALDornier228-201"]},
+            "D28D": {"codes": ["D28", "D28D"], "models": ["Dornier228-212"]},
+            "DHC6": {"codes": ["DHC6"], "models": ["DHC-6-400 Twin Otter", "DHC-6 Twin Otter"]},
+            "L410": {"codes": ["L410"], "models": ["Let L-410 Turbolet"]},
+            "AS50": {"codes": ["AS50"], "models": ["Airbus Helicopters H125 / AS350 B3", "Airbus Helicopters H125"]},
+            "B407": {"codes": ["B407"], "models": ["Bell 407GXP"]},
+            "B505": {"codes": ["B505"], "models": ["Bell 505 Jet Ranger X"]},
+            "A139": {"codes": ["A139"], "models": ["Leonardo AW139"]},
+        }
+
+        loaded = []
+        try:
+            with open(csv_path, mode="r", encoding="utf-8", errors="ignore") as f:
+                r = csv.reader(f)
+                raw_header = next(r)
+                header = [c.strip().strip("'\"") for c in raw_header]
+                header = ["country" if c == "country'" else c for c in header]
+
+                for idx, row in enumerate(r, 1):
+                    if not row or not any(row):
+                        continue
+                    item = {}
+                    for i, val in enumerate(row):
+                        if i < len(header):
+                            item[header[i]] = val.strip().strip("'\"")
+
+                    icao24 = (item.get("icao24") or "").strip().lower()
+                    if not icao24:
+                        continue
+
+                    reg = item.get("registration") or None
+                    tc = (item.get("typecode") or "").strip().upper() or None
+                    model = item.get("model") or None
+                    mfr_name = item.get("manufacturerName") or None
+                    mfr_icao = item.get("manufacturerIcao") or None
+                    op = item.get("operator") or None
+                    op_callsign = item.get("operatorCallsign") or None
+                    op_icao = item.get("operatorIcao") or None
+                    op_iata = item.get("operatorIata") or None
+                    owner = item.get("owner") or None
+                    serial_no = item.get("serialNumber") or None
+                    ac_class = item.get("icaoAircraftClass") or None
+                    cat_desc = item.get("categoryDescription") or None
+                    country = item.get("country") or "Nepal"
+                    engines = item.get("engines") or None
+                    built = item.get("built") or None
+                    ff_date = item.get("firstFlightDate") or None
+                    reg_date = item.get("registered") or None
+                    reg_until = item.get("regUntil") or None
+                    status = item.get("status") or None
+                    modes = str(item.get("modes", "")).strip() in ("1", "true", "True")
+                    adsb = str(item.get("adsb", "")).strip() in ("1", "true", "True")
+                    acars = str(item.get("acars", "")).strip() in ("1", "true", "True")
+                    vdl = str(item.get("vdl", "")).strip() in ("1", "true", "True")
+                    notes = item.get("notes") or None
+                    sel_cal = item.get("selCal") or None
+
+                    matched_specs = []
+                    junction_links = []
+                    if tc and tc in typecode_rules:
+                        rule = typecode_rules[tc]
+                        # 1. Prioritize specified model variants
+                        for target_m in rule["models"]:
+                            for s in all_specs:
+                                if s.model.lower() == target_m.lower() or target_m.lower() in s.model.lower():
+                                    if s not in matched_specs:
+                                        matched_specs.append(s)
+                                        junction_links.append(NepalAircraftSpecificationJunctionSchema(
+                                            id=len(junction_links) + 1,
+                                            nepal_aircraft_id=idx,
+                                            specification_id=s.id,
+                                            match_method="exact_model" if s.model.lower() == target_m.lower() else "model_variant",
+                                            match_confidence=1.00,
+                                            is_primary=(len(matched_specs) == 1),
+                                            notes=f"Linked {reg or icao24} ({tc}) to {s.model} [{s.icao_type}]"
+                                        ))
+                        # 2. Add other ICAO/IATA code matches if not already present
+                        for target_c in rule["codes"]:
+                            for s in all_specs:
+                                if (s.icao_type or "").upper() == target_c.upper() and s not in matched_specs:
+                                    matched_specs.append(s)
+                                    junction_links.append(NepalAircraftSpecificationJunctionSchema(
+                                        id=len(junction_links) + 1,
+                                        nepal_aircraft_id=idx,
+                                        specification_id=s.id,
+                                        match_method="exact_typecode" if target_c.upper() == tc else "iata_mapping",
+                                        match_confidence=0.95,
+                                        is_primary=(len(matched_specs) == 1),
+                                        notes=f"Linked {reg or icao24} ({tc}) to {s.model} [{s.icao_type}]"
+                                    ))
+
+                    primary_spec = matched_specs[0] if matched_specs else None
+
+                    ac_detail = NepalAircraftDetailSchema(
+                        id=idx,
+                        icao24=icao24,
+                        registration=reg,
+                        typecode=tc,
+                        model=model,
+                        manufacturer_name=mfr_name,
+                        manufacturer_icao=mfr_icao,
+                        operator=op,
+                        operator_callsign=op_callsign,
+                        operator_icao=op_icao,
+                        operator_iata=op_iata,
+                        owner=owner,
+                        serial_number=serial_no,
+                        icao_aircraft_class=ac_class,
+                        category_description=cat_desc,
+                        country=country,
+                        engines=engines,
+                        built_year=built,
+                        first_flight_date=ff_date,
+                        registered_date=reg_date,
+                        reg_until=reg_until,
+                        status=status,
+                        modes=modes,
+                        adsb=adsb,
+                        acars=acars,
+                        vdl=vdl,
+                        notes=notes,
+                        sel_cal=sel_cal,
+                        specification=primary_spec,
+                        specifications=matched_specs,
+                        junction_links=junction_links
+                    )
+                    loaded.append(ac_detail)
+        except Exception as e:
+            logger.warning(f"Error loading offline Nepal aircraft: {e}")
+
+        self._fallback_nepal_aircraft = loaded
+        return self._fallback_nepal_aircraft
+
+    async def list_nepal_aircraft(
+        self,
+        query: Optional[str] = None,
+        operator: Optional[str] = None,
+        typecode: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0
+    ) -> NepalAircraftListResponse:
+        """Query Nepal registered fleet and linked specifications from Supabase with offline fallback."""
+        try:
+            client = self._get_client()
+            builder = client.table("nepal_aircraft").select(
+                "*, nepal_aircraft_specifications(*, aircraft_specifications(*))",
+                count="exact"
+            )
+            if operator:
+                op_clean = operator.strip()
+                builder = builder.or_(f"operator.ilike.%{op_clean}%,operator_icao.ilike.%{op_clean}%")
+            if typecode:
+                builder = builder.eq("typecode", typecode.strip().upper())
+            if query:
+                q = f"%{query.strip()}%"
+                builder = builder.or_(f"registration.ilike.{q},model.ilike.{q},operator.ilike.{q},icao24.ilike.{q}")
+
+            builder = builder.order("registration").range(offset, offset + limit - 1)
+            res = builder.execute()
+
+            if res.data:
+                results = []
+                for item in res.data:
+                    d = dict(item)
+                    raw_junctions = d.pop("nepal_aircraft_specifications", []) or []
+                    specs = []
+                    j_schemas = []
+                    primary_spec = None
+                    for j in raw_junctions:
+                        spec_raw = j.get("aircraft_specifications")
+                        if spec_raw:
+                            spec_obj = AircraftSpecificationSchema(**spec_raw)
+                            specs.append(spec_obj)
+                            if j.get("is_primary") and not primary_spec:
+                                primary_spec = spec_obj
+                        j_schemas.append(NepalAircraftSpecificationJunctionSchema(
+                            id=j.get("id"),
+                            nepal_aircraft_id=j.get("nepal_aircraft_id"),
+                            specification_id=j.get("specification_id"),
+                            match_method=j.get("match_method", "exact_typecode"),
+                            match_confidence=float(j.get("match_confidence", 1.0)),
+                            is_primary=bool(j.get("is_primary", True)),
+                            notes=j.get("notes")
+                        ))
+                    if not primary_spec and specs:
+                        primary_spec = specs[0]
+                    d["specification"] = primary_spec
+                    d["specifications"] = specs
+                    d["junction_links"] = j_schemas
+                    results.append(NepalAircraftDetailSchema(**d))
+
+                total = res.count if res.count is not None else len(results)
+                return NepalAircraftListResponse(total=total, aircraft=results)
+        except Exception as e:
+            logger.debug(f"Supabase list_nepal_aircraft failed, falling back to offline: {e}")
+
+        # Fallback offline filtering
+        all_ac = self._load_fallback_nepal_aircraft()
+        filtered = []
+        for ac in all_ac:
+            if operator:
+                op_clean = operator.strip().upper()
+                if op_clean not in (ac.operator or "").upper() and op_clean not in (ac.operator_icao or "").upper():
+                    continue
+            if typecode and (ac.typecode or "").upper() != typecode.strip().upper():
+                continue
+            if query:
+                q = query.strip().upper()
+                if (
+                    q not in (ac.registration or "").upper()
+                    and q not in (ac.model or "").upper()
+                    and q not in (ac.operator or "").upper()
+                    and q not in ac.icao24.upper()
+                ):
+                    continue
+            filtered.append(ac)
+
+        total = len(filtered)
+        paged = filtered[offset:offset + limit]
+        return NepalAircraftListResponse(total=total, aircraft=paged)
+
+    async def get_nepal_aircraft(self, identifier: str) -> Optional[NepalAircraftDetailSchema]:
+        """Fetch a single Nepal registered aircraft by registration or icao24 with linked specifications."""
+        key = identifier.strip().upper()
+        try:
+            client = self._get_client()
+            res = client.table("nepal_aircraft").select(
+                "*, nepal_aircraft_specifications(*, aircraft_specifications(*))"
+            ).or_(f"registration.ilike.{key},icao24.ilike.{key}").limit(1).execute()
+
+            if res.data:
+                d = dict(res.data[0])
+                raw_junctions = d.pop("nepal_aircraft_specifications", []) or []
+                specs = []
+                j_schemas = []
+                primary_spec = None
+                for j in raw_junctions:
+                    spec_raw = j.get("aircraft_specifications")
+                    if spec_raw:
+                        spec_obj = AircraftSpecificationSchema(**spec_raw)
+                        specs.append(spec_obj)
+                        if j.get("is_primary") and not primary_spec:
+                            primary_spec = spec_obj
+                    j_schemas.append(NepalAircraftSpecificationJunctionSchema(
+                        id=j.get("id"),
+                        nepal_aircraft_id=j.get("nepal_aircraft_id"),
+                        specification_id=j.get("specification_id"),
+                        match_method=j.get("match_method", "exact_typecode"),
+                        match_confidence=float(j.get("match_confidence", 1.0)),
+                        is_primary=bool(j.get("is_primary", True)),
+                        notes=j.get("notes")
+                    ))
+                if not primary_spec and specs:
+                    primary_spec = specs[0]
+                d["specification"] = primary_spec
+                d["specifications"] = specs
+                d["junction_links"] = j_schemas
+                return NepalAircraftDetailSchema(**d)
+        except Exception as e:
+            logger.debug(f"Supabase get_nepal_aircraft lookup failed for {key}: {e}")
+
+        # Fallback offline
+        for ac in self._load_fallback_nepal_aircraft():
+            if (ac.registration or "").upper() == key or ac.icao24.upper() == key:
+                return ac
+        return None
 
 
 aviation_repo = AviationRepository()

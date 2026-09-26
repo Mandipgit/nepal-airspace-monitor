@@ -75,6 +75,7 @@ class NormalizedFlight(BaseModel):
     position: FlightPosition
     route: Optional[FlightRoute] = None
     aircraft_spec: Optional[dict] = Field(default=None, description="Linked aircraft performance & capacity specifications")
+    nepal_aircraft: Optional[dict] = Field(default=None, description="Detailed Nepal civil aircraft registry record from nepal_aircraft")
     nearest_airport: Optional[str] = Field(default=None, description="Nearest airport code and name")
     nearest_airport_distance_km: Optional[float] = Field(default=None, description="Distance to nearest airport in km")
     last_contact: Optional[datetime] = Field(default=None, description="UTC timestamp of the latest signal receipt")

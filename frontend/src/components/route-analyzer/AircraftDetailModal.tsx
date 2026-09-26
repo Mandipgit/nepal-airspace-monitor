@@ -29,12 +29,9 @@ import { SPEC_EXPLANATIONS, SpecExplanation } from "@/lib/aircraftSpecs";
 
 interface AircraftDataCardProps {
   label: string;
-  fieldKey: string;
+  fieldKey?: string;
   value: React.ReactNode;
   subValue?: React.ReactNode;
-  activeTooltip?: string | null;
-  setActiveTooltip?: (key: string | null) => void;
-  tooltipAlign?: "top" | "bottom";
 }
 
 const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
@@ -43,7 +40,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
   value,
   subValue,
 }) => {
-  const explanation = SPEC_EXPLANATIONS[fieldKey];
+  const explanation = fieldKey ? SPEC_EXPLANATIONS[fieldKey] : undefined;
 
   return (
     <div className="relative p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between group hover:border-white/15 transition-colors">
@@ -57,7 +54,7 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
 
         {explanation && (
           <div className="shrink-0">
-            <Tooltip closeDelay={100} placement="top">
+            <Tooltip closeDelay={100}>
               <Tooltip.Trigger>
                 <button
                   type="button"
@@ -67,7 +64,10 @@ const AircraftDataCard: React.FC<AircraftDataCardProps> = ({
                   i
                 </button>
               </Tooltip.Trigger>
-              <Tooltip.Content className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#1c1c1f]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left">
+              <Tooltip.Content
+                placement="top"
+                className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#1c1c1f]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left"
+              >
                 <div className="flex items-center justify-between border-b border-white/10 pb-1 mb-1.5 gap-2">
                   <span className="text-[11px] font-bold text-neutral-100 font-sans tracking-tight">
                     {explanation.meaning}
