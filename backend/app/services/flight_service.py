@@ -185,12 +185,10 @@ class FlightService:
             await flight_cache.set(cache_key, flights, ttl_seconds=ttl)
 
 
-        # Apply in-memory spatial filtering ONLY for queries strictly OUTSIDE the regional envelope.
-        # When querying within the Nepal regional envelope, retain all regional aircraft so map
-        # and sidebar stay complete and consistent without chopping off edge flights during pan/zoom.
+        # Apply in-memory spatial filtering if viewport bounds are specified
         filtered_flights = flights
-        if not is_sub_regional and (lamin is not None and lomin is not None and lamax is not None and lomax is not None):
-            pad = 0.15
+        if lamin is not None and lomin is not None and lamax is not None and lomax is not None:
+            pad = 0.08
             filtered_flights = [
                 f for f in filtered_flights
                 if (

@@ -51,14 +51,14 @@ const NEPAL_FIR_BOUNDS: [[number, number], [number, number]] = [
 
 // Exact geographical center of the blue dotted FIR box
 const NEPAL_CENTER: [number, number] = [84.1500, 28.2250]; // [lng, lat]
-const NEPAL_INITIAL_ZOOM = 6.32;
-const MIN_ZOOM = 5.0; // Allow comfortable zoom out
+const NEPAL_INITIAL_ZOOM = 7.0;
+const MIN_ZOOM = 6.0;
 const MAX_ZOOM = 15.0;
 
-// Maximum geographical bounds for panning (with breathing room for slight zoom out)
+// Fixed absolute geographic boundary established by maximum zoomed-out framing
 const NEPAL_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [78.50, 24.50], // Southwest [lng, lat]
-  [89.80, 31.80], // Northeast [lng, lat]
+  [79.50, 25.50], // Southwest [lng, lat]
+  [88.80, 31.00], // Northeast [lng, lat]
 ];
 
 type TileStyle = "liberty" | "dark" | "positron" | "bright";
@@ -559,8 +559,7 @@ function registerAircraftIcons(map: MapLibreMap) {
  */
 function flightsToGeoJSON(
   flights: NormalizedFlight[],
-  selectedFlightId: string | null,
-  bounds?: { lamin: number; lomin: number; lamax: number; lomax: number } | null
+  selectedFlightId: string | null
 ): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = [];
 
@@ -568,18 +567,6 @@ function flightsToGeoJSON(
     const lat = flight.position.latitude;
     const lon = flight.position.longitude;
     if (lat === null || lon === null) return;
-
-    // Strict viewport bounds filter - strictly only flights within visible map
-    if (bounds) {
-      if (
-        lat < bounds.lamin ||
-        lat > bounds.lamax ||
-        lon < bounds.lomin ||
-        lon > bounds.lomax
-      ) {
-        return;
-      }
-    }
 
     const isSelected = flight.id === selectedFlightId;
     const category = resolveAircraftCategory(flight);
@@ -1082,17 +1069,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }
 
       // 4. Aircraft GeoJSON Source & High-Performance Symbol Layers
-      const bounds = map.getBounds();
-      const currentBbox = {
-        lamin: bounds.getSouth(),
-        lomin: bounds.getWest(),
-        lamax: bounds.getNorth(),
-        lomax: bounds.getEast(),
-      };
       const initialAircraftData = flightsToGeoJSON(
         flightsRef.current,
-        selectedFlightIdRef.current,
-        currentBbox
+        selectedFlightIdRef.current
       );
 
       if (map.getSource("aircraft")) {
@@ -1290,56 +1269,16 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     map.on("load", () => {
       setupMapLayers(map, airportsRef.current, initialStyleDef.isDark);
 
-      // Fit map camera to the FIR bounding box with balanced intermediate padding
-      map.fitBounds(NEPAL_FIR_BOUNDS, {
-        padding: 18,
-        duration: 0,
-      });
+      // Enforce new minimum zoom exactly ONE ZOOM STEP MORE ZOOMED OUT (6.0)
+      const newMinZoom = 6.0;
+      map.setMinZoom(newMinZoom);
+      minZoomRef.current = newMinZoom;
 
-      const fitZoom = Math.round(map.getZoom() * 100) / 100;
-      map.setMinZoom(fitZoom);
-      minZoomRef.current = fitZoom;
-
-      // At the initial/max zoomed overview state, lock panning so the map is completely unscrollable in all directions
-      map.dragPan.disable();
-
-      // Dynamically toggle dragPan: unscrollable at base zoom, pannable when zoomed in
-      const handleZoomPanLock = () => {
-        const currentZoom = map.getZoom();
-        const baseZoom = minZoomRef.current || fitZoom;
-        if (currentZoom <= baseZoom + 0.05) {
-          if (map.dragPan.isEnabled()) {
-            map.dragPan.disable();
-          }
-        } else {
-          if (!map.dragPan.isEnabled()) {
-            map.dragPan.enable();
-          }
-        }
-      };
-
-      map.on("zoom", handleZoomPanLock);
-
-      // When zooming back out to the base overview, snap cleanly back to the centered FIR view and lock panning
-      let isSnapping = false;
-      map.on("zoomend", () => {
-        if (isSnapping) return;
-        const currentZoom = map.getZoom();
-        const baseZoom = minZoomRef.current || fitZoom;
-        if (currentZoom <= baseZoom + 0.05) {
-          if (map.dragPan.isEnabled()) {
-            map.dragPan.disable();
-          }
-          isSnapping = true;
-          map.fitBounds(NEPAL_FIR_BOUNDS, {
-            padding: 18,
-            duration: 0,
-          });
-          requestAnimationFrame(() => {
-            isSnapping = false;
-          });
-        }
-      });
+      // Lock camera to current framing and enforce fixed geographic bounds
+      map.setCenter(NEPAL_CENTER);
+      map.setZoom(7.0);
+      map.setMaxBounds(NEPAL_MAX_BOUNDS);
+      map.dragPan.enable();
 
       // Trigger initial bounds calculation
       const b = map.getBounds();
@@ -1353,16 +1292,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }
     });
 
-    // Re-fit on container resize (e.g. sidebar toggle)
+    // Re-fit on container resize (e.g. sidebar toggle or window resize)
     map.on("resize", () => {
-      const baseZoom = minZoomRef.current || MIN_ZOOM;
-      if (map.getZoom() <= baseZoom + 0.05) {
-        map.fitBounds(NEPAL_FIR_BOUNDS, { padding: 18, duration: 0 });
-        const fitZoom = Math.round(map.getZoom() * 100) / 100;
-        map.setMinZoom(fitZoom);
-        minZoomRef.current = fitZoom;
-        map.dragPan.disable();
-      }
+      map.setMaxBounds(NEPAL_MAX_BOUNDS);
+      map.dragPan.enable();
     });
 
     // Debounced Viewport change listener (drag/pan/zoom)
@@ -1387,8 +1320,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         if (aircraftSource) {
           const updatedGeoJSON = flightsToGeoJSON(
             flightsRef.current,
-            selectedFlightIdRef.current,
-            nextBounds
+            selectedFlightIdRef.current
           );
           aircraftSource.setData(updatedGeoJSON);
         }
@@ -1525,15 +1457,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
     if (!aircraftSource) return;
 
-    const b = map.getBounds();
-    const currentBounds = {
-      lamin: b.getSouth(),
-      lomin: b.getWest(),
-      lamax: b.getNorth(),
-      lomax: b.getEast(),
-    };
-
-    const nextGeoJSON = flightsToGeoJSON(flights, selectedFlightId, currentBounds);
+    const nextGeoJSON = flightsToGeoJSON(flights, selectedFlightId);
     aircraftSource.setData(nextGeoJSON);
 
     // If currently selected flight updated position, refresh its path
@@ -1569,11 +1493,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         map.setStyle(OPENFREEMAP_STYLES.dark.url);
         map.once("style.load", () => {
           setupMapLayers(map, airportsRef.current, true);
-          const currentZoom = map.getZoom();
-          const baseZoom = minZoomRef.current || MIN_ZOOM;
-          if (currentZoom <= baseZoom + 0.05) {
-            map.dragPan.disable();
-          }
         });
       }
     } else {
@@ -1582,11 +1501,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         map.setStyle(OPENFREEMAP_STYLES.bright.url);
         map.once("style.load", () => {
           setupMapLayers(map, airportsRef.current, false);
-          const currentZoom = map.getZoom();
-          const baseZoom = minZoomRef.current || MIN_ZOOM;
-          if (currentZoom <= baseZoom + 0.05) {
-            map.dragPan.disable();
-          }
         });
       }
     }
@@ -1605,11 +1519,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     map.setStyle(OPENFREEMAP_STYLES[styleKey].url);
     map.once("style.load", () => {
       setupMapLayers(map, airportsRef.current, OPENFREEMAP_STYLES[styleKey].isDark);
-      const currentZoom = map.getZoom();
-      const baseZoom = minZoomRef.current || MIN_ZOOM;
-      if (currentZoom <= baseZoom + 0.05) {
-        map.dragPan.disable();
-      }
     });
   }, [propActiveTileStyle, activeTileStyle, setupMapLayers]);
 
@@ -1634,24 +1543,20 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     map.setStyle(OPENFREEMAP_STYLES[nextStyle].url);
     map.once("style.load", () => {
       setupMapLayers(map, airportsRef.current, OPENFREEMAP_STYLES[nextStyle].isDark);
-      const currentZoom = map.getZoom();
-      const baseZoom = minZoomRef.current || MIN_ZOOM;
-      if (currentZoom <= baseZoom + 0.05) {
-        map.dragPan.disable();
-      }
     });
   };
 
-  // Reset to exact FIR Airspace View
+  // Reset to exact FIR Airspace View at enforced minimum zoom
   const handleResetView = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    map.fitBounds(NEPAL_FIR_BOUNDS, {
-      padding: 18,
-      duration: 600,
+    const baseZoom = minZoomRef.current || MIN_ZOOM;
+    map.easeTo({
+      center: NEPAL_CENTER,
+      zoom: baseZoom,
+      duration: 500,
     });
-    map.dragPan.disable();
   };
 
   // Smoothly fly to selected flight ONLY when selection actually changes
