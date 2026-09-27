@@ -118,9 +118,33 @@ class FlightService:
                 lomax=query_lomax
             )
 
-            # Enrich flights if requested
+            # Fast in-memory enrichment: nearest airport, Nepal fleet identity & specs, cached routes
             if enriched:
-                raw_flights = await enrichment_service.enrich_flight_collection(raw_flights)
+                for f in raw_flights:
+                    nearest_apt, dist_km = enrichment_service._find_nearest_airport(
+                        f.position.latitude,
+                        f.position.longitude
+                    )
+                    f.nearest_airport = nearest_apt
+                    f.nearest_airport_distance_km = dist_km
+
+                    # Immediate Nepal fleet CAAN specification linkage
+                    icao = (f.identification.icao24 or "").lower().strip()
+                    if enrichment_service._is_nepal_candidate(f) and icao:
+                        nepal_ac = await enrichment_service._resolve_nepal_aircraft(icao, f.identification.registration)
+                        if nepal_ac:
+                            enrichment_service._apply_nepal_aircraft_enrichment(f, nepal_ac)
+
+                    # Attach already resolved / cached route
+                    cs = (f.identification.callsign or "").strip().upper()
+                    lookup_key = cs or icao
+                    if lookup_key:
+                        cached_route = enrichment_service._resolve_flight_route(f)
+                        if cached_route:
+                            f.route = cached_route
+
+                # Trigger background task for external route APIs and ADS-B DB metadata lookups
+                asyncio.create_task(self._enrich_and_update_cache(cache_key, list(raw_flights)))
 
             now_mono = time.monotonic()
             now_utc = datetime.now(timezone.utc)
@@ -226,12 +250,39 @@ class FlightService:
             flights=filtered_flights
         )
 
+    async def _enrich_and_update_cache(
+        self,
+        cache_key: str,
+        flights_to_enrich: List[NormalizedFlight]
+    ) -> None:
+        """
+        Asynchronously perform deep route and external ADS-B DB metadata lookups in the background,
+        updating the in-memory track persistence store and flight cache as data becomes available.
+        Ensures live flight positions are never delayed on initial map load.
+        """
+        try:
+            enriched_flights = await enrichment_service.enrich_flight_collection(flights_to_enrich)
+            async with self._track_lock:
+                for f in enriched_flights:
+                    icao = f.identification.icao24
+                    if icao in self._track_store:
+                        _, seen_mono = self._track_store[icao]
+                        self._track_store[icao] = (f, seen_mono)
+                persistent_flights = [f for f, _ in self._track_store.values()]
+                ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
+                await flight_cache.set(cache_key, persistent_flights, ttl_seconds=ttl)
+            logger.debug(f"Background enrichment completed for {len(enriched_flights)} flights.")
+        except Exception as e:
+            logger.debug(f"Background enrichment error: {e}")
+
     async def get_flight_by_id(self, icao24: str) -> Optional[NormalizedFlight]:
         """Look up a specific flight by 24-bit ICAO address in the current airspace cache."""
         target_icao = icao24.lower().strip()
         live_res = await self.get_live_flights(nepal_context_only=False)
         for flight in live_res.flights:
             if flight.identification.icao24 == target_icao:
+                if not flight.aircraft_spec:
+                    await enrichment_service.enrich_flight(flight)
                 return flight
         return None
 

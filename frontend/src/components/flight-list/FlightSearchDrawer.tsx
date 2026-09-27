@@ -125,7 +125,7 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
             placeholder="Search callsign, airline, reg (e.g. BHA, 9N-AMK, KTM)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-2 text-xs bg-[#161618] hover:bg-[#1a1a1d] focus:bg-[#161618] text-[#FAFAFA] placeholder-[#71717A] rounded-xl border border-white/[0.08] focus:border-[#108AEF] focus:ring-2 focus:ring-[#108AEF]/20 transition-all duration-150 ease-out outline-none font-sans"
+            className="w-full pl-9 pr-8 py-2 text-xs bg-[#161618] hover:bg-[#1a1a1d] focus:bg-[#161618] text-[#FAFAFA] placeholder-[#71717A] rounded-xl border border-white/[0.08] focus:border-[#108AEF] transition-all duration-150 ease-out outline-none font-sans"
           />
           {searchQuery && (
             <button

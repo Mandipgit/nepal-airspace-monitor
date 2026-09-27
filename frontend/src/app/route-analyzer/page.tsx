@@ -33,19 +33,6 @@ import { Play, Sparkles, AlertCircle, RefreshCw, Plane, MapPin } from "lucide-re
 export default function RouteAnalyzerPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
-  // Left boundary hover trigger for App Drawer
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (e.clientX <= 12) {
-        setIsSidebarOpen(true);
-      } else if (e.clientX > 275) {
-        setIsSidebarOpen(false);
-      }
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
-
   // Airports data
   const { airports, loading: airportsLoading } = useAirports();
 
@@ -337,17 +324,9 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans">
       {/* Operations Workspace */}
       <div className="flex flex-1 w-full h-full overflow-hidden relative">
-        {/* Leftmost Screen Boundary Hover Trigger Strip */}
-        <div
-          onMouseEnter={() => setIsSidebarOpen(true)}
-          className="fixed left-0 top-0 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
-          aria-hidden="true"
-        />
-
-        {/* Application Drawer / Sidebar */}
+        {/* Application Drawer / Sidebar (Hover-to-open disabled on Route Analyzer) */}
         <AppSidebar
           isOpen={isSidebarOpen}
-          onOpen={() => setIsSidebarOpen(true)}
           onClose={() => setIsSidebarOpen(false)}
           onToggle={() => setIsSidebarOpen((prev) => !prev)}
           activeNav="route-analyzer"
@@ -356,8 +335,8 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
         {/* Main Content Area */}
         <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 space-y-6">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header Section */}
-            <RouteAnalyzerHeader />
+            {/* Header Section with Explicit Drawer Toggle */}
+            <RouteAnalyzerHeader onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
 
             {/* Two-Part Workspace Grid (Map & Route Setup) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

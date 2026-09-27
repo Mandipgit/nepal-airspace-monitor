@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Avatar } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { Bell, Sun, Moon, LogOut, User as UserIcon, Layers, Scan, Plane, Globe } from "lucide-react";
+import { Sun, Moon, Layers, Scan, Plane, Globe } from "lucide-react";
 
 interface TopBarProps {
   onToggleSidebar?: () => void;
@@ -28,9 +28,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   nepalContextOnly = true,
   onToggleNepalContext,
 }) => {
-  const { user, isAuthenticated, openAuthModal, logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
-  const [notificationsOpen, setNotificationsOpen] = useState<boolean>(false);
+  const { user, isAuthenticated } = useAuth();
 
   // Dynamic user initial & name
   const userInitial = (user?.first_name || user?.email || "G").charAt(0).toUpperCase();
@@ -151,83 +149,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             <Moon className="w-3.5 h-3.5" />
           </button>
-        </div>
-
-        {/* Notification Bell Icon Button */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setNotificationsOpen(!notificationsOpen)}
-            aria-label="Airspace notifications"
-            className="w-9 h-9 rounded-full bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] text-[#A1A1AA] hover:text-[#FAFAFA] transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm relative flex items-center justify-center"
-          >
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#FB7185] ring-2 ring-[#111113] animate-scale-in-once" />
-          </button>
-
-          {/* Quick Notification Dropdown */}
-          {notificationsOpen && (
-            <div className="absolute right-0 mt-2 w-72 p-3.5 rounded-xl bg-[#111113] border border-white/[0.08] shadow-[0_2px_10px_rgba(0,0,0,0.35),0_12px_32px_rgba(0,0,0,0.45)] z-50 text-xs transition-all duration-240 ease-[cubic-bezier(0.16,1,0.3,1)]">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.08] mb-2">
-                <span className="font-semibold text-[#FAFAFA]">Airspace Feed Alerts</span>
-                <span className="text-[10px] text-[#4ADE80] bg-[rgba(34,197,94,0.18)] px-1.5 py-0.5 rounded font-mono-avionics font-bold">ALL CLEAR</span>
-              </div>
-              <p className="text-[11px] text-[#A1A1AA] leading-relaxed">
-                ADS-B receivers across Kathmandu FIR (VNKT) are operating nominally. 100% telemetry synced with OpenSky feeds.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* User Profile Avatar / Sign In Button */}
-        <div className="relative">
-          <div className="transition-opacity duration-150 ease-out">
-            {isAuthenticated ? (
-              <button
-                type="button"
-                onClick={() => setShowUserMenu(!showUserMenu)}
-                className="rounded-full focus:outline-none hover:ring-2 hover:ring-[#108AEF]/50 transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer"
-                aria-label="User account menu"
-              >
-                <Avatar
-                  size="sm"
-                  className="w-8 h-8 rounded-full bg-white/[0.08] border border-white/[0.08] text-[#FAFAFA] font-semibold text-xs flex items-center justify-center shadow-sm"
-                >
-                  <Avatar.Fallback>{userInitial}</Avatar.Fallback>
-                </Avatar>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => openAuthModal("login")}
-                className="h-9 px-4 rounded-full bg-transparent hover:bg-white/[0.06] border border-white/[0.08] text-[#A1A1AA] hover:text-[#FAFAFA] text-xs font-semibold flex items-center space-x-1.5 transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm"
-              >
-                <UserIcon className="w-3.5 h-3.5 text-[#A1A1AA]" />
-                <span>Sign In</span>
-              </button>
-            )}
-          </div>
-
-          {/* Authenticated User Menu Dropdown */}
-          {isAuthenticated && showUserMenu && (
-            <div className="absolute right-0 mt-2 w-52 p-2 rounded-xl bg-[#111113] border border-white/[0.08] shadow-[0_2px_10px_rgba(0,0,0,0.35),0_12px_32px_rgba(0,0,0,0.45)] z-50 transition-all duration-240 ease-[cubic-bezier(0.16,1,0.3,1)]">
-              <div className="px-2.5 py-2 border-b border-white/[0.08] mb-1">
-                <div className="text-xs font-semibold text-[#FAFAFA] truncate">{displayName}</div>
-                <div className="text-[10px] text-[#A1A1AA] truncate">{user?.email}</div>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  setShowUserMenu(false);
-                  await logout();
-                }}
-                className="w-full justify-start py-2 px-3 text-xs text-[#FB7185] hover:bg-[rgba(244,63,94,0.18)] rounded-xl flex items-center space-x-2 transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer font-medium"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </header>

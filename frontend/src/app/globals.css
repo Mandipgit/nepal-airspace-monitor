@@ -67,10 +67,17 @@ body {
 /* Visible :focus-visible ring per HeroUI standard */
 button:focus-visible,
 [role="button"]:focus-visible,
-a:focus-visible,
-input:focus-visible {
+a:focus-visible {
   outline: 2px solid #108AEF !important;
   outline-offset: 2px !important;
+}
+
+input:focus-visible,
+input:focus,
+textarea:focus-visible,
+textarea:focus {
+  outline: none !important;
+  outline-offset: 0 !important;
 }
 
 /* One-time scale-in for notification unread dot */

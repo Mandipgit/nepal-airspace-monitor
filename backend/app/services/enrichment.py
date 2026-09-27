@@ -300,11 +300,13 @@ class FlightEnrichmentService:
         client = self._http_client
         close_client = False
         if client is None:
-            client = httpx.AsyncClient(timeout=4.0)
+            client = httpx.AsyncClient(timeout=3.0)
             close_client = True
 
-        try:
-            for icao in clean_icaos[:8]:
+        sem = asyncio.Semaphore(8)
+
+        async def _query_single_meta(icao: str) -> None:
+            async with sem:
                 try:
                     url = self._build_adsbdb_aircraft_url(icao)
                     r = await client.get(
@@ -323,12 +325,15 @@ class FlightEnrichmentService:
                                 "operator_code": ac_data.get("registered_owner_operator_flag_code")
                             }
                             self._aircraft_meta_timestamps[icao] = now
-                            continue
+                            return
                 except Exception as e:
                     logger.debug(f"Aircraft metadata lookup failed for {icao}: {e}")
 
                 self._aircraft_meta_cache[icao] = None
                 self._aircraft_meta_timestamps[icao] = now
+
+        try:
+            await asyncio.gather(*(_query_single_meta(icao) for icao in clean_icaos[:16]))
         finally:
             if close_client:
                 await client.aclose()
@@ -900,16 +905,16 @@ class FlightEnrichmentService:
                     if not self._is_aircraft_meta_cached(icao):
                         needed_foreign_icaos.append(icao)
 
+        tasks = []
         if needed_callsigns:
-            await self._fetch_live_api_routes(needed_callsigns, flights_map)
-
+            tasks.append(self._fetch_live_api_routes(needed_callsigns, flights_map))
         if needed_foreign_icaos:
-            await self._fetch_live_aircraft_meta(needed_foreign_icaos)
+            tasks.append(self._fetch_live_aircraft_meta(needed_foreign_icaos))
+        if tasks:
+            await asyncio.gather(*tasks)
 
-        # 2. Enrich each flight
-        enriched = []
-        for flight in flights:
-            enriched.append(await self.enrich_flight(flight))
-        return enriched
+        # 2. Enrich each flight concurrently
+        enriched = await asyncio.gather(*(self.enrich_flight(flight) for flight in flights))
+        return list(enriched)
 
 enrichment_service = FlightEnrichmentService()

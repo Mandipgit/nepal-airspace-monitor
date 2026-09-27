@@ -961,6 +961,12 @@ class AviationRepository:
         if key in self._aircraft_cache:
             return self._aircraft_cache[key]
 
+        # Check offline catalog first for instant zero-latency specification resolution
+        fb_spec = self._find_fallback_spec(key)
+        if fb_spec:
+            self._aircraft_cache[key] = fb_spec
+            return fb_spec
+
         try:
             client = self._get_client()
             res = client.table("aircraft_specifications").select("*").or_(f"model.ilike.%{key}%,icao_type.eq.{key}").limit(1).execute()
@@ -976,12 +982,6 @@ class AviationRepository:
                 return spec
         except Exception as e:
             logger.debug(f"Supabase get_aircraft_spec lookup failed for {key}: {e}")
-
-        # Fallback check against offline catalog
-        fb_spec = self._find_fallback_spec(key)
-        if fb_spec:
-            self._aircraft_cache[key] = fb_spec
-            return fb_spec
 
         return None
 
@@ -1323,6 +1323,12 @@ class AviationRepository:
     async def get_nepal_aircraft(self, identifier: str) -> Optional[NepalAircraftDetailSchema]:
         """Fetch a single Nepal registered aircraft by registration or icao24 with linked specifications."""
         key = identifier.strip().upper()
+
+        # Check offline catalog first for instant zero-latency Nepal aircraft resolution
+        for ac in self._load_fallback_nepal_aircraft():
+            if (ac.registration or "").upper() == key or (ac.icao24 or "").upper() == key:
+                return ac
+
         try:
             client = self._get_client()
             res = client.table("nepal_aircraft").select(
@@ -1360,10 +1366,6 @@ class AviationRepository:
         except Exception as e:
             logger.debug(f"Supabase get_nepal_aircraft lookup failed for {key}: {e}")
 
-        # Fallback offline
-        for ac in self._load_fallback_nepal_aircraft():
-            if (ac.registration or "").upper() == key or ac.icao24.upper() == key:
-                return ac
         return None
 
 

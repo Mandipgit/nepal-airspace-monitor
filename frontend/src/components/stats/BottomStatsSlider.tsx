@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Button } from "@heroui/react";
-import { ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 
 interface BottomStatsSliderProps {
   totalFlights: number;
@@ -22,38 +22,44 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
   onRefresh,
   rateLimitRemaining,
 }) => {
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return (
     <div className="absolute bottom-4 right-4 z-20 select-none flex flex-col items-end">
-      {/* Slider Container - Distinct Elevated Console with Hover Shade Transition */}
-      <div className="bg-[#0a0b0e] hover:bg-[#1a1c24] rounded-2xl overflow-hidden border border-white/18 shadow-[0_6px_20px_rgba(0,0,0,0.48)] ring-1 ring-black/40 backdrop-blur-xl transition-colors duration-300 group">
-        {/* Toggle Bar / Header */}
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full px-4 py-2.5 bg-[#12141c] group-hover:bg-[#1f212c] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 hover:text-neutral-200 transition-colors duration-300 border-b border-white/12 cursor-pointer"
-        >
+      {/* Slider Container - Hover-Based Reveal with Smooth Hero UI Animation */}
+      <div
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+        className="bg-[#0a0b0e] hover:bg-[#14161f] rounded-2xl overflow-hidden border border-white/18 shadow-[0_6px_20px_rgba(0,0,0,0.48)] ring-1 ring-black/40 backdrop-blur-xl transition-colors duration-300 group cursor-default"
+      >
+        {/* Header Bar (Arrow completely removed) */}
+        <div className="w-full px-4 py-2.5 bg-[#12141c] group-hover:bg-[#1a1c26] flex items-center justify-between gap-4 text-[10px] font-semibold uppercase tracking-wider text-neutral-400 transition-colors duration-300 border-b border-white/12">
           <div className="flex items-center space-x-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="font-sans font-bold tracking-wider text-white text-[11px] uppercase">
               Live Status
             </span>
           </div>
           <div className="flex items-center space-x-1.5">
-            {!isExpanded && (
-              <span className="text-[10px] text-neutral-400 font-medium font-sans">
-                {totalFlights} Active
-              </span>
-            )}
-            {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-neutral-300" />
-            ) : (
-              <ChevronUp className="w-3.5 h-3.5 text-neutral-300" />
-            )}
+            <span className="text-[10px] text-neutral-300 font-medium font-sans">
+              {totalFlights} Active
+            </span>
           </div>
-        </button>
+        </div>
 
-        {/* Expanded Drawer Content - Clean Aviation Data Grid */}
-        {isExpanded && (
+        {/* Hover-Expanded Drawer Content with Smooth Hero UI Motion Transition */}
+        <div
+          style={{
+            transition: isExpanded
+              ? "max-height 340ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms cubic-bezier(0.16, 1, 0.3, 1), transform 340ms cubic-bezier(0.16, 1, 0.3, 1)"
+              : "max-height 280ms cubic-bezier(0.4, 0, 0.2, 1), opacity 240ms cubic-bezier(0.4, 0, 0.2, 1), transform 280ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
+          className={`overflow-hidden transition-all ${
+            isExpanded
+              ? "max-h-28 opacity-100 translate-y-0 pointer-events-auto"
+              : "max-h-0 opacity-0 -translate-y-1 pointer-events-none"
+          }`}
+        >
           <div className="p-3.5 bg-transparent flex items-center gap-4 divide-x divide-white/12 text-left transition-colors duration-300">
             {/* Live Flights */}
             <div className="pr-1">
@@ -113,7 +119,7 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
               </Button>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
