@@ -172,12 +172,14 @@ export default function Home() {
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
       <div className="flex flex-1 w-full h-[calc(100vh-3.5rem)] overflow-hidden relative">
-        {/* Leftmost Screen Boundary Hover Trigger Strip */}
-        <div
-          onMouseEnter={() => setIsSidebarOpen(true)}
-          className="fixed left-0 top-14 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
-          aria-hidden="true"
-        />
+        {/* Leftmost Screen Boundary Hover Trigger Strip (Active only when no details panel occupies the left edge) */}
+        {!selectedFlight && !selectedAirportIdent && (
+          <div
+            onMouseEnter={() => setIsSidebarOpen(true)}
+            className="fixed left-0 top-14 bottom-0 w-3.5 z-30 pointer-events-auto cursor-pointer"
+            aria-hidden="true"
+          />
+        )}
 
         {/* Left Application Sidebar / App Drawer */}
         <AppSidebar
@@ -240,7 +242,7 @@ export default function Home() {
         )}
 
         {/* Interactive Airspace Map (Primary visual surface) */}
-        <main className="flex-1 h-full relative overflow-hidden">
+        <main className="flex-1 min-w-0 h-full relative overflow-hidden">
           <DynamicFlightMap
             flights={flights}
             airports={airports}

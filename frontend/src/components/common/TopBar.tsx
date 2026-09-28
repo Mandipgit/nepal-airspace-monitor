@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import { Avatar } from "@heroui/react";
-import { useAuth } from "@/context/AuthContext";
+import Image from "next/image";
+import Link from "next/link";
 import { Sun, Moon, Layers, Scan, Plane, Globe } from "lucide-react";
 
 interface TopBarProps {
@@ -28,29 +28,25 @@ export const TopBar: React.FC<TopBarProps> = ({
   nepalContextOnly = true,
   onToggleNepalContext,
 }) => {
-  const { user, isAuthenticated } = useAuth();
-
-  // Dynamic user initial & name
-  const userInitial = (user?.first_name || user?.email || "G").charAt(0).toUpperCase();
-  const displayName = user
-    ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
-    : "Guest Mode";
-
   return (
     <header className="h-14 w-full bg-[#111113] border-b border-white/[0.08] shadow-[0_2px_10px_rgba(0,0,0,0.35)] px-4 flex items-center justify-between z-40 shrink-0 select-none font-sans">
-      {/* Left: User Identity / Guest Mode Avatar & Live Status */}
-      <div className="flex items-center space-x-3">
-        <Avatar
-          size="sm"
-          className="w-8 h-8 rounded-full bg-white/[0.08] border border-white/[0.08] text-[#FAFAFA] font-semibold text-xs flex items-center justify-center shadow-sm shrink-0 select-none"
+      {/* Left: Project Brand Logo */}
+      <div className="flex items-center h-full pl-0.5">
+        <Link
+          href="/"
+          className="flex items-center transition-opacity hover:opacity-90 active:scale-[0.98] cursor-pointer"
+          title="AeroTrace - Nepal Airspace Monitor"
         >
-          <Avatar.Fallback>{isAuthenticated ? userInitial : "G"}</Avatar.Fallback>
-        </Avatar>
-        <div className="flex items-center space-x-2.5">
-          <h1 className="text-[15px] font-semibold text-[#FAFAFA] tracking-tight font-sans select-none">
-            {isAuthenticated ? displayName : "Guest Mode"}
-          </h1>
-        </div>
+          <Image
+            src="/aerotrace_logo.jpg"
+            alt="AeroTrace"
+            width={180}
+            height={48}
+            priority
+            unoptimized
+            className="h-9 md:h-11 w-auto object-contain select-none mix-blend-screen"
+          />
+        </Link>
       </div>
 
       {/* Right: Controls - Permanently Dark Shell */}

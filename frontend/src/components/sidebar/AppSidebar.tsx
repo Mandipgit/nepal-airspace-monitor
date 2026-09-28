@@ -64,8 +64,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       style={{
         willChange: "transform",
         transition: isOpen
-          ? "transform 180ms cubic-bezier(0.05, 0.9, 0.2, 1)"
-          : "transform 150ms cubic-bezier(0.4, 0, 0.9, 1)",
+          ? "transform 320ms cubic-bezier(0.16, 1, 0.3, 1)"
+          : "transform 260ms cubic-bezier(0.25, 1, 0.5, 1)",
       }}
       className={`fixed left-0 top-14 bottom-0 z-35 w-[268px] flex flex-col justify-between bg-[#111113] border-r border-y border-white/[0.08] shadow-[0_1px_5px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.22)] rounded-r-2xl select-none overflow-hidden font-sans ${
         isOpen

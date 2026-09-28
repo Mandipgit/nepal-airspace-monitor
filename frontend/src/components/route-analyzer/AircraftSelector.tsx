@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useRef } from "react";
 import { AircraftSpecification } from "@/types/routeAnalyzer";
 import { Search, Plane, X, RefreshCw, Check, AlertCircle } from "lucide-react";
 
@@ -37,6 +37,13 @@ export const AircraftSelector: React.FC<AircraftSelectorProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const categoriesRef = useRef<HTMLDivElement>(null);
+
+  const handleWheelCategories = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (categoriesRef.current && Math.abs(e.deltaY) > 0) {
+      categoriesRef.current.scrollLeft += e.deltaY;
+    }
+  };
 
   const getAircraftKey = useCallback((a: AircraftSpecification): string => {
     return a.id !== undefined && a.id !== null ? `id-${a.id}` : `model-${a.model}`;
@@ -86,12 +93,12 @@ export const AircraftSelector: React.FC<AircraftSelectorProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* Header with Selected Count and Presets */}
+      {/* Header with Selected Count and Clear All */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center space-x-2">
           <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1AA] flex items-center space-x-1.5 font-sans">
             <Plane className="w-3.5 h-3.5 text-[#108AEF]" />
-            <span>Aircraft Comparison Fleet</span>
+            <span>Select Aircrafts</span>
           </label>
           <span
             className={`text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full ${
@@ -104,27 +111,17 @@ export const AircraftSelector: React.FC<AircraftSelectorProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={handleSelectDomesticPreset}
-            className="text-[11px] font-medium text-[#108AEF] hover:text-[#38bdf8] hover:underline cursor-pointer select-none"
-          >
-            Quick Select Nepal Fleet
-          </button>
-          {selectedAircraft.length > 0 && (
-            <>
-              <span className="text-[#71717A] text-xs">•</span>
-              <button
-                type="button"
-                onClick={onClearAll}
-                className="text-[11px] font-medium text-[#71717A] hover:text-[#FAFAFA] hover:underline cursor-pointer select-none"
-              >
-                Clear all
-              </button>
-            </>
-          )}
-        </div>
+        {selectedAircraft.length > 0 && (
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={onClearAll}
+              className="text-[11px] font-medium text-[#71717A] hover:text-[#FAFAFA] hover:underline cursor-pointer select-none"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Selected Aircraft Chips */}
@@ -168,8 +165,12 @@ export const AircraftSelector: React.FC<AircraftSelectorProps> = ({
           />
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Category Navigation with Slider */}
+        <div
+          ref={categoriesRef}
+          onWheel={handleWheelCategories}
+          className="flex items-center space-x-1.5 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-white/15 hover:scrollbar-thumb-white/25 scrollbar-track-transparent scroll-smooth w-full"
+        >
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}

@@ -26,7 +26,16 @@ htmlcov/
 *.env.*
 !.env.example
 
-# IDE
+# Logs
+logs/
+*.log
+
+# Databases & Cache
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE & Temporary Files
 .idea/
 .vscode/
 *.swp
@@ -34,3 +43,6 @@ htmlcov/
 *.tmp
 *.orig
 *.rej
+scratch_*
+*_option*
+

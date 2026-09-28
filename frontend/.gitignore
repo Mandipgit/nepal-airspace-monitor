@@ -28,6 +28,9 @@
 *.orig
 *.rej
 *.swp
+scratch_*
+*_option*
+
 
 # debug
 npm-debug.log*

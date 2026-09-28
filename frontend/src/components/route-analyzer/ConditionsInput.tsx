@@ -24,9 +24,6 @@ export const ConditionsInput: React.FC<ConditionsInputProps> = ({
         <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1AA] flex items-center space-x-1.5 font-sans">
           <span>Flight Assumptions & Conditions</span>
         </label>
-        <span className="text-[10px] text-[#71717A] italic font-mono">
-          Analytical input model (not live weather)
-        </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

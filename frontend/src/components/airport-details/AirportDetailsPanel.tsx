@@ -323,20 +323,15 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
 
   return (
     <aside
-      className={`w-80 md:w-[380px] h-full bg-[#0a0a0a] ${
-        isSidebarOpen
-          ? "order-last border-l border-r-0 shadow-[-4px_0_24px_rgba(0,0,0,0.5)]"
-          : "order-first border-r border-l-0 shadow-[4px_0_24px_rgba(0,0,0,0.3)]"
-      } border-white/8 z-25 flex flex-col shrink-0 select-none overflow-hidden transition-all duration-300 ease-in-out font-sans`}
+      className="w-80 md:w-[380px] h-full bg-[#0a0a0a] order-first border-r border-white/8 shadow-[8px_0_32px_rgba(0,0,0,0.5)] z-25 flex flex-col shrink-0 select-none overflow-hidden transition-all duration-300 ease-in-out font-sans"
     >
       {/* 1. Airport Header */}
       <div className="p-4 border-b border-white/8 bg-[#0e0e0e] shrink-0">
         {/* Top Status Badges & Close Button */}
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-neutral-300 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>{airport ? formatAerodromeType(airport.type) : "NEPAL AIRPORT"}</span>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-sans font-semibold bg-white/5 border border-white/10 text-neutral-300 flex items-center">
+              <span>{airport ? formatAerodromeType(airport.type) : "Nepal Airport"}</span>
             </span>
 
             {airport?.scheduled_service && (
@@ -577,11 +572,10 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
                 className="w-full py-2.5 px-3 rounded-xl bg-[#141414] hover:bg-[#1a1a1a] border border-white/8 text-xs font-semibold text-neutral-200 flex items-center justify-between transition-all cursor-pointer font-sans group"
               >
                 <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="font-bold text-neutral-100">
+                  <span className="font-semibold text-xs text-neutral-100 font-sans">
                     {isRunwaysExpanded ? "Hide Runway Details" : "View Runway Details"}
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-400 group-hover:text-neutral-200">
+                  <span className="text-[11px] font-sans font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-400 group-hover:text-neutral-200">
                     {airport.runways?.length || 0} {airport.runways?.length === 1 ? "runway" : "runways"}
                   </span>
                 </div>
@@ -642,18 +636,18 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
 
                             <div className="flex items-center space-x-1.5">
                               {runway.closed ? (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-red-500/20 text-red-400 border border-red-500/30">
-                                  CLOSED
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold bg-red-500/20 text-red-400 border border-red-500/30">
+                                  Closed
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                  ACTIVE
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                  Active
                                 </span>
                               )}
 
                               {runway.lighted && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                  LIGHTED
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  Lighted
                                 </span>
                               )}
                             </div>

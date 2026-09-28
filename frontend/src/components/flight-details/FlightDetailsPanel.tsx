@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button, Tooltip } from "@heroui/react";
 import { NormalizedFlight, AircraftSpec } from "@/types/flight";
 import { fetchAircraftSpec } from "@/lib/api";
@@ -123,8 +123,21 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
   const [detailedSpec, setDetailedSpec] = useState<AircraftSpec | null>(null);
   const [loadingSpec, setLoadingSpec] = useState<boolean>(false);
 
+  const prevIcaoRef = useRef<string | undefined>(flight?.identification.icao24);
+
   useEffect(() => {
-    setDetailedSpec(flight?.aircraft_spec || null);
+    // If selecting a different aircraft, reset or load its spec
+    if (flight?.identification.icao24 !== prevIcaoRef.current) {
+      prevIcaoRef.current = flight?.identification.icao24;
+      setDetailedSpec(flight?.aircraft_spec || null);
+      setIsDetailsExpanded(false);
+      return;
+    }
+
+    // While viewing the same aircraft, update when a valid spec is provided, but never wipe to null during live polling
+    if (flight?.aircraft_spec) {
+      setDetailedSpec(flight.aircraft_spec);
+    }
   }, [flight?.identification.icao24, flight?.aircraft_spec]);
 
   if (!flight) return null;
@@ -361,17 +374,19 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
   };
 
   return (
-    <aside
-      className={`${
-        isDetailsExpanded ? "w-96 md:w-[540px]" : "w-80 md:w-[380px]"
-      } h-full bg-[#0a0a0a] ${
-        isSidebarOpen
-          ? "order-last border-l border-r-0 shadow-[-4px_0_24px_rgba(0,0,0,0.5)]"
-          : "order-first border-r border-l-0 shadow-[4px_0_24px_rgba(0,0,0,0.3)]"
-      } border-white/8 z-25 flex flex-col shrink-0 select-none overflow-hidden transition-all duration-300 ease-in-out font-sans`}
-    >
-      {/* 1. Panel Header */}
-      <div className="p-4 border-b border-white/8 bg-[#0e0e0e] shrink-0">
+    <div className="h-full w-80 md:w-[380px] shrink-0 relative z-25">
+      <aside
+        style={{
+          width: isDetailsExpanded ? "480px" : "380px",
+          transition: isDetailsExpanded
+            ? "width 480ms cubic-bezier(0.16, 1, 0.3, 1)"
+            : "width 380ms cubic-bezier(0.25, 1, 0.5, 1)",
+          willChange: "width",
+        }}
+        className="absolute top-0 bottom-0 left-0 border-r border-white/8 shadow-[8px_0_32px_rgba(0,0,0,0.5)] h-full bg-[#0a0a0a] z-25 flex flex-col select-none overflow-hidden font-sans"
+      >
+        {/* 1. Panel Header */}
+        <div className="p-4 border-b border-white/8 bg-[#0e0e0e] shrink-0">
         {/* Top Status Chip & Close */}
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-center space-x-2">
@@ -444,7 +459,10 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
       </div>
 
       {/* 2. Scrollable Body Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        style={{ scrollbarGutter: "stable" }}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4"
+      >
         {/* Route Card */}
         <div className="p-3.5 rounded-xl bg-[#141414] border border-white/8 shadow-md">
           <div className="flex items-center justify-between">
@@ -679,10 +697,9 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
             )}
           </div>
 
-          {(effectiveSpec || nepalAircraft) ? (
-            isDetailsExpanded ? (
-              /* Extended Database Profile View: Displays ALL 25+ database fields */
-              <div className="space-y-3 animate-in fade-in duration-200">
+          {(effectiveSpec || nepalAircraft) && (
+            <div className="space-y-2.5">
+              {/* Airframe & Classification Card - Always visible */}
                 {/* Airframe & Classification Card */}
                 {effectiveSpec ? (
                   <div className="p-3 rounded-xl bg-[#141414] border border-white/8 space-y-2.5 text-xs">
@@ -760,6 +777,18 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
                   </div>
                 )}
 
+              {/* Additional In-Depth Specifications: Smooth CSS Accordion Expansion */}
+              <div
+                className="grid overflow-hidden"
+                style={{
+                  gridTemplateRows: isDetailsExpanded ? "1fr" : "0fr",
+                  opacity: isDetailsExpanded ? 1 : 0,
+                  transition: isDetailsExpanded
+                    ? "grid-template-rows 480ms cubic-bezier(0.16, 1, 0.3, 1), opacity 380ms ease"
+                    : "grid-template-rows 380ms cubic-bezier(0.25, 1, 0.5, 1), opacity 240ms ease",
+                }}
+              >
+                <div className="overflow-hidden space-y-3 pt-1">
                 {/* Civil Aviation Authority of Nepal (CAAN) Registry Card */}
                 {nepalAircraft && (
                   <div>
@@ -1178,141 +1207,10 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
                 </div>
               </>
             )}
-          </div>
-        ) : (
-          /* Compact Summary View */
-          <div className="p-3 rounded-xl bg-[#141414] border border-white/6 space-y-2.5 text-xs">
-            <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
-              <span className="text-neutral-400 font-sans">Airframe:</span>
-              <span className="font-bold text-neutral-100 font-sans">
-                {effectiveSpec?.model || nepalAircraft?.model || nepalAircraft?.aircraft_type || identification.aircraft_type_icao || "Aircraft"}
-              </span>
+                </div>
+              </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              {nepalAircraft?.owner && (
-                <AircraftDataCard
-                  label="Registered Owner"
-                  fieldKey="owner"
-                  value={nepalAircraft.owner}
-                  className="col-span-2"
-                />
-              )}
-
-              {effectiveSpec ? (
-                <>
-                  <AircraftDataCard
-                    label="ICAO Type"
-                    fieldKey="icao_type"
-                    value={effectiveSpec.icao_type}
-                  />
-
-                  <AircraftDataCard
-                    label="Category"
-                    fieldKey="category"
-                    value={
-                      effectiveSpec.category
-                        ? effectiveSpec.category.replace(/_/g, " ")
-                        : "Commercial"
-                    }
-                  />
-
-                  <AircraftDataCard
-                    label="Powerplant"
-                    fieldKey="engine_type"
-                    value={effectiveSpec.engine_type || "Turbofan"}
-                  />
-
-                  <AircraftDataCard
-                    label="Engines Count"
-                    fieldKey="number_of_engines"
-                    value={
-                      effectiveSpec.number_of_engines !== undefined &&
-                      effectiveSpec.number_of_engines !== null
-                        ? `${effectiveSpec.number_of_engines}x`
-                        : "2x"
-                    }
-                  />
-
-                  {effectiveSpec.engine_model && (
-                    <AircraftDataCard
-                      label="Engine Model"
-                      fieldKey="engine_model"
-                      value={effectiveSpec.engine_model}
-                      className="col-span-2"
-                    />
-                  )}
-
-                  <AircraftDataCard
-                    label="Capacity"
-                    fieldKey="passenger_capacity"
-                    value={
-                      effectiveSpec.passenger_capacity
-                        ? `${effectiveSpec.passenger_capacity} seats`
-                        : "N/A"
-                    }
-                  />
-
-                  {effectiveSpec.mtow_kg && (
-                    <AircraftDataCard
-                      label="Max Takeoff"
-                      fieldKey="mtow_kg"
-                      value={`${Math.round(effectiveSpec.mtow_kg).toLocaleString()} kg`}
-                    />
-                  )}
-
-                  {effectiveSpec.cruise_speed_kts && (
-                    <AircraftDataCard
-                      label="Cruise Speed"
-                      fieldKey="cruise_speed_kts"
-                      value={`${effectiveSpec.cruise_speed_kts} kts`}
-                    />
-                  )}
-
-                  {effectiveSpec.oew_kg && (
-                    <AircraftDataCard
-                      label="Operating Empty"
-                      fieldKey="oew_kg"
-                      value={`${Math.round(effectiveSpec.oew_kg).toLocaleString()} kg`}
-                    />
-                  )}
-                </>
-              ) : nepalAircraft ? (
-                <>
-                  <AircraftDataCard
-                    label="Registration"
-                    fieldKey="registration"
-                    value={nepalAircraft.registration || flight.identification.registration || "N/A"}
-                  />
-                  {nepalAircraft.status && (
-                    <AircraftDataCard
-                      label="Airworthiness Status"
-                      fieldKey="status"
-                      value={nepalAircraft.status}
-                    />
-                  )}
-                </>
-              ) : null}
-
-              {nepalAircraft?.serial_number && (
-                <AircraftDataCard
-                  label="Serial Number (MSN)"
-                  fieldKey="serial_number"
-                  value={nepalAircraft.serial_number}
-                />
-              )}
-
-              {nepalAircraft?.built_year && (
-                <AircraftDataCard
-                  label="Year Built"
-                  fieldKey="built_year"
-                  value={nepalAircraft.built_year}
-                />
-              )}
-            </div>
-          </div>
-        )
-      ) : null}
+          )}
         </div>
       </div>
 
@@ -1331,5 +1229,6 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
         </div>
       )}
     </aside>
+  </div>
   );
 };

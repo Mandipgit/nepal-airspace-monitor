@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { useAirports } from "@/hooks/useAirports";
 import { AirportSummary } from "@/types/airport";
@@ -31,7 +30,6 @@ import { ComparisonVisualization } from "@/components/route-analyzer/ComparisonV
 import { Play, Sparkles, AlertCircle, RefreshCw, Plane, MapPin } from "lucide-react";
 
 export default function RouteAnalyzerPage() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   // Airports data
   const { airports, loading: airportsLoading } = useAirports();
@@ -324,19 +322,11 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans">
       {/* Operations Workspace */}
       <div className="flex flex-1 w-full h-full overflow-hidden relative">
-        {/* Application Drawer / Sidebar (Hover-to-open disabled on Route Analyzer) */}
-        <AppSidebar
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          onToggle={() => setIsSidebarOpen((prev) => !prev)}
-          activeNav="route-analyzer"
-        />
-
         {/* Main Content Area */}
         <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 space-y-6">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header Section with Explicit Drawer Toggle */}
-            <RouteAnalyzerHeader onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)} />
+            {/* Header Section */}
+            <RouteAnalyzerHeader />
 
             {/* Two-Part Workspace Grid (Map & Route Setup) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -385,18 +375,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
                       }
                     }}
                   />
-                ) : (
-                  /* Empty State Helper */
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-xs text-[#A1A1AA] flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-lg bg-white/[0.05] flex items-center justify-center text-[#108AEF] shrink-0">
-                      <MapPin className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-[#FAFAFA] block">Select Route Endpoints</span>
-                      <span>Pick origin and destination airports via search or by clicking on the map.</span>
-                    </div>
-                  </div>
-                )}
+                ) : null}
 
                 {/* 3. Meteorological Conditions & Descent */}
                 <div className="p-4 md:p-5 rounded-2xl bg-[#111113] border border-white/[0.08] shadow-xl">
@@ -455,11 +434,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
                     )}
                   </button>
 
-                  {!departure || !destination ? (
-                    <p className="text-[11px] text-center text-[#71717A]">
-                      Select departure and destination airports to unlock analysis.
-                    </p>
-                  ) : selectedAircraft.length === 0 ? (
+                  {!departure || !destination ? null : selectedAircraft.length === 0 ? (
                     <p className="text-[11px] text-center text-[#71717A]">
                       Select at least one aircraft specification above.
                     </p>

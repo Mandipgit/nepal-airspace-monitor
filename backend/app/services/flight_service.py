@@ -153,6 +153,24 @@ class FlightService:
             async with self._track_lock:
                 for f in raw_flights:
                     icao = f.identification.icao24
+                    # Preserve previously enriched attributes to avoid specification dropping on cache misses
+                    if icao in self._track_store:
+                        prev_flight, _ = self._track_store[icao]
+                        if not f.aircraft_spec and prev_flight.aircraft_spec:
+                            f.aircraft_spec = prev_flight.aircraft_spec
+                        if not f.nepal_aircraft and prev_flight.nepal_aircraft:
+                            f.nepal_aircraft = prev_flight.nepal_aircraft
+                        if not f.route and prev_flight.route:
+                            f.route = prev_flight.route
+                        if not f.identification.aircraft_type_icao and prev_flight.identification.aircraft_type_icao:
+                            f.identification.aircraft_type_icao = prev_flight.identification.aircraft_type_icao
+                        if not f.identification.registration and prev_flight.identification.registration:
+                            f.identification.registration = prev_flight.identification.registration
+                        if not f.identification.operator_name and prev_flight.identification.operator_name:
+                            f.identification.operator_name = prev_flight.identification.operator_name
+                        if not f.identification.operator_icao and prev_flight.identification.operator_icao:
+                            f.identification.operator_icao = prev_flight.identification.operator_icao
+
                     self._track_store[icao] = (f, now_mono)
                     self._trajectory_last_seen[icao] = now_mono
                     if f.identification.callsign:

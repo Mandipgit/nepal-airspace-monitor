@@ -632,14 +632,198 @@ function flightsToGeoJSON(
 
 
 /**
+ * Known regional and international reference airport coordinates [longitude, latitude]
+ */
+const KNOWN_AIRPORT_COORDS: Record<string, [number, number]> = {
+  // Nepal Airports
+  VNKT: [85.3591, 27.6966],
+  KTM: [85.3591, 27.6966],
+  VNPK: [83.9821, 28.2009],
+  PKR: [83.9821, 28.2009],
+  VNBW: [83.4161, 27.5056],
+  BWA: [83.4161, 27.5056],
+  VNLK: [86.7297, 27.6869],
+  LUA: [86.7297, 27.6869],
+  VNVT: [87.2644, 26.4816],
+  BIR: [87.2644, 26.4816],
+  VNNG: [81.6669, 28.1054],
+  KEP: [81.6669, 28.1054],
+  VNCG: [88.0792, 26.5708],
+  BDP: [88.0792, 26.5708],
+  VNDH: [80.5794, 28.7522],
+  DHI: [80.5794, 28.7522],
+  VNJP: [85.9239, 26.7072],
+  JKR: [85.9239, 26.7072],
+  VNSI: [84.9692, 27.1594],
+  SIF: [84.9692, 27.1594],
+  VNJS: [83.7225, 28.7842],
+  JMO: [83.7225, 28.7842],
+  VNBP: [84.4294, 27.6789],
+  BHR: [84.4294, 27.6789],
+  VNTR: [87.1953, 27.3142],
+  TMI: [87.1953, 27.3142],
+  VNSK: [81.6369, 28.5861],
+  SKH: [81.6369, 28.5861],
+  VNST: [81.8172, 29.9686],
+  IMK: [81.8172, 29.9686],
+  // Regional & International Gateways
+  VIDP: [77.1031, 28.5665],
+  DEL: [77.1031, 28.5665],
+  VABB: [72.8656, 19.0896],
+  BOM: [72.8656, 19.0896],
+  VECC: [88.4467, 22.6547],
+  CCU: [88.4467, 22.6547],
+  VEBD: [88.3286, 26.6812],
+  IXB: [88.3286, 26.6812],
+  VEPT: [85.0880, 25.5913],
+  PAT: [85.0880, 25.5913],
+  VIBN: [82.8593, 25.4524],
+  VNS: [82.8593, 25.4524],
+  VILK: [80.8893, 26.7606],
+  LKO: [80.8893, 26.7606],
+  VEGK: [83.4497, 26.7397],
+  GOP: [83.4497, 26.7397],
+  VGHS: [90.3978, 23.8433],
+  DAC: [90.3978, 23.8433],
+  VQPR: [89.4246, 27.4032],
+  PBH: [89.4246, 27.4032],
+  OMDB: [55.3657, 25.2532],
+  DXB: [55.3657, 25.2532],
+  OTHH: [51.6081, 25.2731],
+  DOH: [51.6081, 25.2731],
+  OMSJ: [55.5172, 25.3286],
+  SHJ: [55.5172, 25.3286],
+  OKBK: [47.9800, 29.2267],
+  KWI: [47.9800, 29.2267],
+  OMAA: [54.6511, 24.4330],
+  AUH: [54.6511, 24.4330],
+  VTBS: [100.7501, 13.6900],
+  BKK: [100.7501, 13.6900],
+  VTBD: [100.6072, 13.9125],
+  DMK: [100.6072, 13.9125],
+  WMKK: [101.7099, 2.7456],
+  KUL: [101.7099, 2.7456],
+  WSSS: [103.9915, 1.3644],
+  SIN: [103.9915, 1.3644],
+  VHHH: [113.9185, 22.3080],
+  HKG: [113.9185, 22.3080],
+  // South & East Asian Common Hubs
+  OPIS: [72.8258, 33.5492],
+  ISB: [72.8258, 33.5492],
+  OPLA: [74.4036, 31.5216],
+  LHE: [74.4036, 31.5216],
+  OPKC: [67.1608, 24.9065],
+  KHI: [67.1608, 24.9065],
+  ZGGG: [113.2988, 23.3924],
+  CAN: [113.2988, 23.3924],
+  ZUUU: [103.9471, 30.5785],
+  CTU: [103.9471, 30.5785],
+  ZPPP: [102.9292, 25.1019],
+  KMG: [102.9292, 25.1019],
+  ZBAA: [116.5975, 40.0801],
+  PEK: [116.5975, 40.0801],
+  PKX: [116.4105, 39.5098],
+};
+
+function isPointInsideBox(lng: number, lat: number, box: [number, number, number, number]): boolean {
+  return lng >= box[0] && lng <= box[2] && lat >= box[1] && lat <= box[3];
+}
+
+function intersectSegmentWithBox(
+  pOut: [number, number],
+  pIn: [number, number],
+  box: [number, number, number, number]
+): [number, number] {
+  const [minX, minY, maxX, maxY] = box;
+  const [x0, y0] = pOut;
+  const [x1, y1] = pIn;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+
+  let bestT = 0.0;
+
+  if (Math.abs(dx) > 1e-7) {
+    const tLeft = (minX - x0) / dx;
+    if (tLeft >= 0 && tLeft <= 1) {
+      const y = y0 + tLeft * dy;
+      if (y >= minY - 0.05 && y <= maxY + 0.05 && tLeft > bestT) bestT = tLeft;
+    }
+    const tRight = (maxX - x0) / dx;
+    if (tRight >= 0 && tRight <= 1) {
+      const y = y0 + tRight * dy;
+      if (y >= minY - 0.05 && y <= maxY + 0.05 && tRight > bestT) bestT = tRight;
+    }
+  }
+
+  if (Math.abs(dy) > 1e-7) {
+    const tBottom = (minY - y0) / dy;
+    if (tBottom >= 0 && tBottom <= 1) {
+      const x = x0 + tBottom * dx;
+      if (x >= minX - 0.05 && x <= maxX + 0.05 && tBottom > bestT) bestT = tBottom;
+    }
+    const tTop = (maxY - y0) / dy;
+    if (tTop >= 0 && tTop <= 1) {
+      const x = x0 + tTop * dx;
+      if (x >= minX - 0.05 && x <= maxX + 0.05 && tTop > bestT) bestT = tTop;
+    }
+  }
+
+  if (bestT > 0 && bestT < 1) {
+    return [
+      Math.min(maxX, Math.max(minX, x0 + bestT * dx)),
+      Math.min(maxY, Math.max(minY, y0 + bestT * dy)),
+    ];
+  }
+
+  // Robust fallback: clamp pOut to viewport boundary edge so segment begins precisely at viewport edge
+  return [
+    Math.min(maxX, Math.max(minX, x0)),
+    Math.min(maxY, Math.max(minY, y0)),
+  ];
+}
+
+function clipPathToViewport(
+  rawCoords: [number, number][],
+  viewportBox: [number, number, number, number]
+): [number, number][] {
+  if (rawCoords.length < 2) return rawCoords;
+
+  const firstPt = rawCoords[0];
+  // If the flight originated within the current viewport, display its available path fully
+  if (isPointInsideBox(firstPt[0], firstPt[1], viewportBox)) {
+    return rawCoords;
+  }
+
+  // If the origin is outside the visible viewport, only display starting from the current viewport boundary
+  const lastIdx = rawCoords.length - 1;
+  let firstInsideIdx = -1;
+  for (let i = 0; i <= lastIdx; i++) {
+    if (isPointInsideBox(rawCoords[i][0], rawCoords[i][1], viewportBox)) {
+      firstInsideIdx = i;
+      break;
+    }
+  }
+
+  if (firstInsideIdx <= 0) {
+    return rawCoords;
+  }
+
+  const pOut = rawCoords[firstInsideIdx - 1];
+  const pIn = rawCoords[firstInsideIdx];
+  const boundaryEntryPt = intersectSegmentWithBox(pOut, pIn, viewportBox);
+
+  return [boundaryEntryPt, ...rawCoords.slice(firstInsideIdx)];
+}
+
+/**
  * Builds GeoJSON FeatureCollection for authentic flight trajectory path rendering.
- * Renders strictly genuine breadcrumbs recorded over time (serverPoints or client history),
- * connecting through to the aircraft's current verified position.
+ * Renders the path the aircraft has flown from, clipping at viewport boundary if originated outside.
  */
 function buildTrajectoryGeoJSON(
   flight: NormalizedFlight,
   historyPts: Array<{ lng: number; lat: number; alt?: number | null; spd?: number | null }> = [],
-  serverPoints?: Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>
+  serverPoints?: Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>,
+  viewportBox?: [number, number, number, number]
 ): GeoJSON.FeatureCollection {
   if (flight.position.latitude === null || flight.position.longitude === null) {
     return { type: "FeatureCollection", features: [] };
@@ -650,7 +834,7 @@ function buildTrajectoryGeoJSON(
   const curAlt = flight.position.altitude_baro_ft;
   const curSpd = flight.position.groundspeed_kts;
 
-  const coords: [number, number][] = [];
+  let coords: [number, number][] = [];
   const waypoints: Array<{
     longitude: number;
     latitude: number;
@@ -694,7 +878,31 @@ function buildTrajectoryGeoJSON(
     }
   }
 
-  // 3. Ensure current aircraft position is the exact end of the trajectory
+  // 3. If only 0 or 1 point available, use flight origin airport or reverse heading to guarantee immediate trail
+  if (coords.length <= 1) {
+    const origKey = (flight.route?.origin_icao || flight.route?.origin_iata || "").trim().toUpperCase();
+    let origCoord: [number, number] | null = null;
+    if (origKey && KNOWN_AIRPORT_COORDS[origKey]) {
+      origCoord = KNOWN_AIRPORT_COORDS[origKey];
+    }
+    if (origCoord) {
+      coords.unshift(origCoord);
+      waypoints.unshift({
+        longitude: origCoord[0],
+        latitude: origCoord[1],
+        altitude_ft: 0,
+        groundspeed_kts: 0,
+      });
+    } else if (flight.position.heading_deg !== null && flight.position.heading_deg !== undefined) {
+      // Reverse heading projection to boundary
+      const reverseRad = ((flight.position.heading_deg + 180) % 360) * (Math.PI / 180);
+      const backLng = curLng + Math.sin(reverseRad) * 4.5;
+      const backLat = curLat + Math.cos(reverseRad) * 4.5;
+      coords.unshift([backLng, backLat]);
+    }
+  }
+
+  // 4. Ensure current aircraft position is the exact end of the trajectory
   if (
     coords.length === 0 ||
     Math.abs(curLng - coords[coords.length - 1][0]) > 0.0001 ||
@@ -709,9 +917,14 @@ function buildTrajectoryGeoJSON(
     });
   }
 
+  // 5. Apply Viewport Boundary Clipping requirement
+  if (viewportBox) {
+    coords = clipPathToViewport(coords, viewportBox);
+  }
+
   const features: GeoJSON.Feature[] = [];
 
-  // LineString path: only drawn when we have at least 2 real breadcrumbs
+  // LineString path: only drawn when we have at least 2 coordinates
   if (coords.length >= 2) {
     features.push({
       type: "Feature",
@@ -721,25 +934,29 @@ function buildTrajectoryGeoJSON(
       },
       properties: {
         id: "trajectory-line",
+        isLine: true,
       },
     });
   }
 
-  // Waypoint dots (breadcrumbs)
+  // Waypoint dots (breadcrumbs strictly within visible bounds)
   const recentWaypoints = waypoints.slice(-30);
   recentWaypoints.forEach((wp, idx) => {
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [wp.longitude, wp.latitude],
-      },
-      properties: {
-        id: `traj-pt-${idx}`,
-        alt: wp.altitude_ft,
-        spd: wp.groundspeed_kts,
-      },
-    });
+    if (!viewportBox || isPointInsideBox(wp.longitude, wp.latitude, viewportBox)) {
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [wp.longitude, wp.latitude],
+        },
+        properties: {
+          id: `traj-pt-${idx}`,
+          isPoint: true,
+          alt: wp.altitude_ft,
+          spd: wp.groundspeed_kts,
+        },
+      });
+    }
   });
 
   return {
@@ -779,6 +996,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
   // Client-side breadcrumb history tracker: flight.id -> coordinates
   const flightHistoryRef = useRef<Record<string, Array<{ lng: number; lat: number; alt?: number | null; spd?: number | null }>>>({});
+  // Cached server radar breadcrumbs: icao24 -> points
+  const trajectoryServerCacheRef = useRef<Record<string, Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>>>({});
 
   const onBoundsChangeRef = useRef(onBoundsChange);
   const syncViewportRef = useRef(syncViewport);
@@ -807,9 +1026,16 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
   useEffect(() => {
     selectedFlightIdRef.current = selectedFlightId;
+    const map = mapInstanceRef.current;
+    if (map && map.isStyleLoaded()) {
+      const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+      if (aircraftSource) {
+        aircraftSource.setData(flightsToGeoJSON(flightsRef.current, selectedFlightId));
+      }
+    }
   }, [selectedFlightId]);
 
-  // Instant Trajectory Rendering Engine (Synchronous 0ms updates)
+  // Instant Trajectory Rendering Engine (Synchronous 0ms updates with boundary clipping)
   const renderInstantTrajectory = useCallback(
     (
       targetFlight: NormalizedFlight | null,
@@ -829,10 +1055,20 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         return;
       }
 
+      // Compute current visible viewport boundary box for exact boundary clipping
+      const bounds = map.getBounds();
+      const viewportBox: [number, number, number, number] = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ];
+
       const geojson = buildTrajectoryGeoJSON(
         targetFlight,
         flightHistoryRef.current[targetFlight.id] || [],
-        serverPoints
+        serverPoints,
+        viewportBox
       );
 
       source.setData(geojson);
@@ -1045,7 +1281,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             id: "trajectory-glow",
             type: "line",
             source: "trajectory",
-            filter: ["==", ["geometry-type"], "LineString"],
+            filter: ["any", ["==", ["geometry-type"], "LineString"], ["==", ["get", "isLine"], true]],
             layout: {
               "line-join": "round",
               "line-cap": "round",
@@ -1063,7 +1299,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             id: "trajectory-line",
             type: "line",
             source: "trajectory",
-            filter: ["==", ["geometry-type"], "LineString"],
+            filter: ["any", ["==", ["geometry-type"], "LineString"], ["==", ["get", "isLine"], true]],
             layout: {
               "line-join": "round",
               "line-cap": "round",
@@ -1080,7 +1316,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             id: "trajectory-points",
             type: "circle",
             source: "trajectory",
-            filter: ["==", ["geometry-type"], "Point"],
+            filter: ["any", ["==", ["geometry-type"], "Point"], ["==", ["get", "isPoint"], true]],
             paint: {
               "circle-radius": 3.5,
               "circle-color": "#ffffff",
@@ -1355,10 +1591,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         if (selectedFlightIdRef.current) {
           const currentFlight = flightsRef.current.find((f) => f.id === selectedFlightIdRef.current);
           if (currentFlight) {
-            renderInstantTrajectoryRef.current?.(currentFlight);
+            const cached = trajectoryServerCacheRef.current[currentFlight.identification.icao24];
+            renderInstantTrajectoryRef.current?.(currentFlight, cached);
           }
         }
-      }, 350);
+      }, 150);
     };
 
     map.on("moveend", handleMoveEnd);
@@ -1366,16 +1603,26 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     // Variable to track if a feature (aircraft or airport) was clicked in this event cycle
     let featureClickedInThisCycle = false;
 
-    // Click handler for aircraft selection via GPU hit detection (INSTANT 0ms TRAIL RENDER)
+    // Click handler for aircraft selection via GPU hit detection (INSTANT 0ms RED MARKER & TRAIL RENDER)
     map.on("click", "aircraft-icons", (e) => {
       if (!e.features || e.features.length === 0) return;
       featureClickedInThisCycle = true;
       const clickedId = e.features[0].properties?.id;
       if (clickedId) {
+        selectedFlightIdRef.current = clickedId;
+
+        // 1. Instantly turn aircraft marker RED on exact click frame (0ms)
+        const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+        if (aircraftSource) {
+          aircraftSource.setData(flightsToGeoJSON(flightsRef.current, clickedId));
+        }
+
         const flight = flightsRef.current.find((f) => f.id === clickedId) || null;
         if (flight) {
-          // Render instantly on the exact click event
-          renderInstantTrajectoryRef.current?.(flight);
+          // 2. Render flight path/trail immediately and consistently (0ms)
+          const targetIcao = flight.identification.icao24;
+          const cached = trajectoryServerCacheRef.current[targetIcao];
+          renderInstantTrajectoryRef.current?.(flight, cached);
         }
         onSelectFlightRef.current?.(flight);
         onSelectAirportRef.current?.(null);
@@ -1392,6 +1639,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
           popupRef.current.remove();
         }
         // Deselect flight and select airport
+        selectedFlightIdRef.current = null;
+        const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+        if (aircraftSource) {
+          aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
+        }
         onSelectFlightRef.current?.(null);
         // Clear flight trajectory
         const trajSource = map.getSource("trajectory") as GeoJSONSource;
@@ -1410,9 +1662,9 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         return;
       }
 
-      const bbox: [{ x: number; y: number }, { x: number; y: number }] = [
-        { x: e.point.x - 6, y: e.point.y - 6 },
-        { x: e.point.x + 6, y: e.point.y + 6 },
+      const bbox: [[number, number], [number, number]] = [
+        [e.point.x - 6, e.point.y - 6],
+        [e.point.x + 6, e.point.y + 6],
       ];
       const aircraftHits = mapInstanceRef.current.queryRenderedFeatures(bbox, {
         layers: ["aircraft-icons"],
@@ -1421,6 +1673,11 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         layers: ["airports-circle"],
       });
       if (aircraftHits.length === 0 && airportHits.length === 0) {
+        selectedFlightIdRef.current = null;
+        const aircraftSource = mapInstanceRef.current.getSource("aircraft") as GeoJSONSource;
+        if (aircraftSource) {
+          aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
+        }
         // Synchronously clear trajectory source on the exact click event
         const trajSource = mapInstanceRef.current.getSource("trajectory") as GeoJSONSource;
         if (trajSource) {
@@ -1545,7 +1802,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     if (selectedFlightId) {
       const currentFlight = flights.find((f) => f.id === selectedFlightId);
       if (currentFlight) {
-        renderInstantTrajectoryRef.current?.(currentFlight);
+        const cached = trajectoryServerCacheRef.current[currentFlight.identification.icao24];
+        renderInstantTrajectoryRef.current?.(currentFlight, cached);
       }
     }
   }, [flights, selectedFlightId]);
@@ -1677,18 +1935,23 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     const selectedFlight = flightsRef.current.find((f) => f.id === selectedFlightId);
     if (!selectedFlight) return;
 
-    // Render instant boundary-aware trajectory immediately (0ms synchronous render)
-    renderInstantTrajectory(selectedFlight);
-
     const targetIcao = selectedFlight.identification.icao24;
+    const cachedPoints = trajectoryServerCacheRef.current[targetIcao];
+
+    // Render instant boundary-aware trajectory immediately (0ms synchronous render)
+    renderInstantTrajectory(selectedFlight, cachedPoints);
+
     let isCancelled = false;
 
     // Fetch full trajectory trail from backend in background to enhance precision
     fetchFlightTrajectory(targetIcao)
       .then((res) => {
         if (isCancelled) return;
+        if (res.points && res.points.length > 0) {
+          trajectoryServerCacheRef.current[targetIcao] = res.points;
+        }
         if (selectedFlightIdRef.current === selectedFlight.id) {
-          renderInstantTrajectory(selectedFlight, res.points || []);
+          renderInstantTrajectory(selectedFlight, res.points || cachedPoints);
         }
       })
       .catch((err) => {
@@ -1697,19 +1960,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
     return () => {
       isCancelled = true;
-      // Synchronously clear trajectory source on deselection/switch
-      const currentMap = mapInstanceRef.current;
-      if (currentMap && currentMap.isStyleLoaded()) {
-        const source = currentMap.getSource("trajectory") as GeoJSONSource;
-        if (source) {
-          source.setData({
-            type: "FeatureCollection",
-            features: [],
-          });
-        }
-      }
     };
-  }, [selectedFlightId, flights, renderInstantTrajectory]);
+  }, [selectedFlightId, renderInstantTrajectory]);
 
   return (
     <div className="relative w-full h-full flex-1 overflow-hidden">
@@ -1724,8 +1976,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
           willChange: "transform",
           transform: isSidebarOpen ? "translateX(268px)" : "translateX(0px)",
           transition: isSidebarOpen
-            ? "transform 180ms cubic-bezier(0.05, 0.9, 0.2, 1)"
-            : "transform 150ms cubic-bezier(0.4, 0, 0.9, 1)",
+            ? "transform 320ms cubic-bezier(0.16, 1, 0.3, 1)"
+            : "transform 260ms cubic-bezier(0.25, 1, 0.5, 1)",
         }}
         className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-4 py-2 rounded-2xl bg-[#0a0b0e]/95 border border-white/18 text-[11px] shadow-[0_4px_15px_rgba(0,0,0,0.45)] backdrop-blur-xl pointer-events-none select-none"
       >

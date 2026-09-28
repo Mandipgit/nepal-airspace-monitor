@@ -95,6 +95,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # --- Data & Large Database Files ---
+*.sqlite
 *.sqlite3
 *.db
 *.xls
@@ -107,6 +108,11 @@ data/raw/*.xlsx
 !data/raw/.gitkeep
 !data/backup/.gitkeep
 !data/schemas/**
+
+# --- Temporary Assets & Image Generation Scratches ---
+scratch_*
+*_option*
+*.temp.*
 
 # --- IDE & Operating System Artifacts ---
 .idea/
