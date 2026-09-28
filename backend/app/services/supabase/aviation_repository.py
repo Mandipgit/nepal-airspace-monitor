@@ -481,9 +481,40 @@ class AviationRepository:
         self._fallback_runways: Optional[Dict[str, List[RunwaySchema]]] = None
         self._fallback_aircraft_specs: Optional[List[AircraftSpecificationSchema]] = None
         self._fallback_nepal_aircraft: Optional[List[NepalAircraftDetailSchema]] = None
+        self._image_map: Dict[str, str] = {}
+
+        # Load manifest-based airport image mapping for instant resolution
+        for candidate_manifest in [
+            Path(__file__).resolve().parent.parent.parent.parent.parent / "airport-images" / "manifest.csv",
+            Path("airport-images/manifest.csv").resolve(),
+            Path("../airport-images/manifest.csv").resolve(),
+        ]:
+            if candidate_manifest.exists():
+                try:
+                    with open(candidate_manifest, mode="r", encoding="utf-8-sig") as mf:
+                        for row in csv.DictReader(mf):
+                            ident = (row.get("ident") or "").strip().upper()
+                            loc_type = (row.get("type") or "airport").strip().lower()
+                            if ident:
+                                folder = "airports" if loc_type == "airport" else "heliports"
+                                self._image_map[ident] = f"{folder}/{ident}.webp"
+                    break
+                except Exception as e:
+                    logger.warning(f"Could not load airport-images/manifest.csv: {e}")
 
     def _get_client(self):
         return get_supabase_client()
+
+    def _get_public_image_url(self, image_path: Optional[str]) -> Optional[str]:
+        """Generate canonical public Supabase Storage URL for airport image."""
+        if not image_path:
+            return None
+        from app.config import get_settings
+        base_url = get_settings().get_canonical_supabase_url()
+        if not base_url:
+            return None
+        clean_path = image_path.lstrip("/")
+        return f"{base_url}/storage/v1/object/public/airport-images/{clean_path}"
 
     def _get_raw_data_dir(self) -> Path:
         for candidate in [
@@ -508,6 +539,8 @@ class AviationRepository:
                 with open(airports_file, mode="r", encoding="utf-8", errors="ignore") as f:
                     for row in csv.DictReader(f):
                         try:
+                            apt_ident = row["ident"].strip().upper()
+                            img_path = row.get("image_path") or self._image_map.get(apt_ident)
                             loaded.append(AirportSummarySchema(
                                 ident=row["ident"].strip(),
                                 type=row.get("type"),
@@ -522,7 +555,9 @@ class AviationRepository:
                                 scheduled_service=str(row.get("scheduled_service", "")).lower() in ["yes", "true", "1"],
                                 gps_code=row.get("gps_code"),
                                 iata_code=row.get("iata_code"),
-                                local_code=row.get("local_code")
+                                local_code=row.get("local_code"),
+                                image_path=img_path,
+                                image_url=self._get_public_image_url(img_path)
                             ))
                         except Exception:
                             continue
@@ -530,7 +565,14 @@ class AviationRepository:
                 logger.warning(f"Could not parse offline airports.xls: {e}")
 
         if not loaded:
-            loaded = [AirportSummarySchema(**a) for a in FALLBACK_NEPAL_AIRPORTS]
+            loaded = []
+            for a in FALLBACK_NEPAL_AIRPORTS:
+                a_copy = dict(a)
+                fb_ident = a_copy["ident"].upper()
+                fb_img_path = self._image_map.get(fb_ident)
+                a_copy["image_path"] = fb_img_path
+                a_copy["image_url"] = self._get_public_image_url(fb_img_path)
+                loaded.append(AirportSummarySchema(**a_copy))
 
         self._fallback_airports = loaded
         return self._fallback_airports
@@ -771,7 +813,7 @@ class AviationRepository:
         try:
             client = self._get_client()
             builder = client.table("airports").select(
-                "ident, type, name, latitude_deg, longitude_deg, elevation_ft, continent, iso_country, iso_region, municipality, scheduled_service, gps_code, iata_code, local_code",
+                "ident, type, name, latitude_deg, longitude_deg, elevation_ft, continent, iso_country, iso_region, municipality, scheduled_service, gps_code, iata_code, local_code, image_path",
                 count="exact"
             )
 
@@ -786,7 +828,14 @@ class AviationRepository:
             builder = builder.order("scheduled_service", desc=True).order("name").range(offset, offset + limit - 1)
             res = builder.execute()
 
-            airports = [AirportSummarySchema(**item) for item in res.data]
+            airports = []
+            for item in res.data:
+                d = dict(item)
+                img_path = d.get("image_path") or self._image_map.get((d.get("ident") or "").upper())
+                d["image_path"] = img_path
+                d["image_url"] = self._get_public_image_url(img_path)
+                airports.append(AirportSummarySchema(**d))
+
             total = res.count if res.count is not None else len(airports)
             if airports:
                 return AirportListResponse(total=total, airports=airports)
@@ -830,7 +879,11 @@ class AviationRepository:
             client = self._get_client()
             apt_res = client.table("airports").select("*").eq("ident", target_ident).limit(1).execute()
             if apt_res.data:
-                apt_data = apt_res.data[0]
+                apt_data = dict(apt_res.data[0])
+                img_path = apt_data.get("image_path") or self._image_map.get(target_ident)
+                apt_data["image_path"] = img_path
+                apt_data["image_url"] = self._get_public_image_url(img_path)
+
                 runways_res = client.table("runways").select("*").eq("airport_ident", target_ident).order("length_ft", desc=True).execute()
                 runways = [RunwaySchema(**r) for r in runways_res.data]
                 detail = AirportDetailSchema(**apt_data, runways=runways)
@@ -859,7 +912,11 @@ class AviationRepository:
                             he_ident="20" if target_ident == "VNKT" else "19"
                         )
                     ]
-                detail = AirportDetailSchema(**apt.model_dump(), runways=runways)
+                detail_dict = apt.model_dump()
+                img_path = detail_dict.get("image_path") or self._image_map.get(target_ident)
+                detail_dict["image_path"] = img_path
+                detail_dict["image_url"] = self._get_public_image_url(img_path)
+                detail = AirportDetailSchema(**detail_dict, runways=runways)
                 self._airport_cache[target_ident] = detail
                 return detail
 

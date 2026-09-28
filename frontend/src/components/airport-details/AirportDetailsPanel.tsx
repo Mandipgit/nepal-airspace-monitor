@@ -438,8 +438,14 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
             {/* 2.1. Airport Project Image (Full Available Width, Visually Balanced 16:9 Aspect) */}
             <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden border border-white/8 bg-[#141414] shadow-md group">
               <img
-                src="/airport_image.jpg"
-                alt="Nepal aerodrome facilities and flight operations"
+                src={airport.image_url || "/airport_image.jpg"}
+                alt={`${airport.name} (${airport.ident}) facilities and flight operations`}
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (target.src !== `${window.location.origin}/airport_image.jpg`) {
+                    target.src = "/airport_image.jpg";
+                  }
+                }}
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                 loading="lazy"
               />

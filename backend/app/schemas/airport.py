@@ -49,6 +49,8 @@ class AirportSummarySchema(BaseModel):
     gps_code: Optional[str] = None
     iata_code: Optional[str] = None
     local_code: Optional[str] = None
+    image_path: Optional[str] = Field(default=None, description="Relative path in Supabase Storage (e.g. airports/VNKT.webp)")
+    image_url: Optional[str] = Field(default=None, description="Publicly accessible URL for the airport image")
 
 class AirportDetailSchema(AirportSummarySchema):
     """Comprehensive airport information with runways and external links."""

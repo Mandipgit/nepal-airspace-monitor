@@ -44,6 +44,8 @@ export interface AirportSummary {
   gps_code: string | null;
   iata_code: string | null;
   local_code: string | null;
+  image_path?: string | null;
+  image_url?: string | null;
 }
 
 export interface AirportDetail extends AirportSummary {
