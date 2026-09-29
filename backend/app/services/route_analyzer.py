@@ -34,7 +34,7 @@ NAUTICAL_MILES_TO_KM = 1.852
 
 class RouteAnalyzerService:
     """
-    Core business logic and domain calculation service for aircraft route analysis.
+    Refined Core business logic and domain calculation service for aircraft route analysis.
     Completely decoupled from HTTP request/response handling.
     """
 
