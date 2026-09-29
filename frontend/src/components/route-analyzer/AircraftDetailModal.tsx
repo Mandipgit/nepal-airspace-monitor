@@ -8,12 +8,8 @@ import { fetchAircraftSpec } from "@/lib/api";
 import {
   X,
   Plane,
-  Clock,
-  Gauge,
-  Milestone,
   CheckCircle2,
   AlertTriangle,
-  Shield,
   ChevronDown,
   ChevronUp,
   Loader2,
@@ -26,6 +22,77 @@ interface AircraftDetailModalProps {
 }
 
 import { SPEC_EXPLANATIONS, SpecExplanation } from "@/lib/aircraftSpecs";
+
+interface UpperMetricCardProps {
+  label: string;
+  tooltipTitle: string;
+  tooltipBadge: string;
+  tooltipDesc: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+  subValue?: React.ReactNode;
+}
+
+const UpperMetricCard: React.FC<UpperMetricCardProps> = ({
+  label,
+  tooltipTitle,
+  tooltipBadge,
+  tooltipDesc,
+  value,
+  valueClassName = "text-white",
+  subValue,
+}) => (
+  <div className="relative p-2.5 sm:p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] flex flex-col justify-between group hover:border-white/15 transition-colors font-sans">
+    <div className="flex items-start justify-between gap-1 mb-1">
+      <span
+        className="text-[10px] text-[#A1A1AA] uppercase tracking-wider block font-sans truncate font-medium"
+        title={label}
+      >
+        {label}
+      </span>
+      <div className="shrink-0">
+        <Tooltip closeDelay={100}>
+          <Tooltip.Trigger>
+            <button
+              type="button"
+              aria-label={`Explanation for ${tooltipTitle}`}
+              className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold font-sans text-[#A1A1AA] hover:text-white bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+            >
+              i
+            </button>
+          </Tooltip.Trigger>
+          <Tooltip.Content
+            placement="top"
+            className="z-[9999] max-w-[280px] p-3 rounded-xl bg-[#1c1c1f]/95 border border-white/20 shadow-2xl backdrop-blur-md text-left"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-1 mb-1.5 gap-2">
+              <span className="text-[11px] font-bold text-neutral-100 font-sans tracking-tight">
+                {tooltipTitle}
+              </span>
+              <span className="text-[9px] font-mono text-emerald-400 font-semibold shrink-0">
+                {tooltipBadge}
+              </span>
+            </div>
+            <p className="text-[10px] text-neutral-300 font-sans leading-relaxed">
+              {tooltipDesc}
+            </p>
+          </Tooltip.Content>
+        </Tooltip>
+      </div>
+    </div>
+
+    <div>
+      <div className={`text-base font-bold font-mono truncate ${valueClassName}`}>
+        {value ?? "—"}
+      </div>
+      {subValue && (
+        <div className="text-[10px] text-neutral-400 font-sans mt-0.5 truncate">
+          {subValue}
+        </div>
+      )}
+    </div>
+  </div>
+);
 
 interface AircraftDataCardProps {
   label: string;
@@ -209,113 +276,102 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
 
         {/* Detailed Route Comparison Metrics Grid */}
         <div className="grid grid-cols-2 gap-3 text-xs">
-          {/* Estimated Flight Time */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#A1A1AA]">
-              <Clock className="w-3.5 h-3.5 text-[#108AEF]" />
-              <span>Est. Flight Time</span>
-            </div>
-            <div className="text-base font-bold font-mono text-white">
-              {typeof result.estimated_flight_time_min === "number"
+          <UpperMetricCard
+            label="Est. Flight Time"
+            tooltipTitle="Estimated Flight Time"
+            tooltipBadge="MINUTES"
+            tooltipDesc="Modeled block flight time including cruise at ground speed and descent at approach speed."
+            value={
+              typeof result.estimated_flight_time_min === "number"
                 ? `${Math.round(result.estimated_flight_time_min)} min`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              Cruise + climb & descent phases
-            </div>
-          </div>
+                : "—"
+            }
+            subValue="Cruise + descent modeling"
+          />
 
-          {/* Cruise True Airspeed */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#A1A1AA]">
-              <Gauge className="w-3.5 h-3.5 text-[#108AEF]" />
-              <span>Cruise Speed</span>
-            </div>
-            <div className="text-base font-bold font-mono text-white">
-              {typeof result.cruise_speed_kmh === "number"
+          <UpperMetricCard
+            label="Cruise Speed"
+            tooltipTitle="Cruise True Airspeed"
+            tooltipBadge="KM/H (TAS)"
+            tooltipDesc="Design cruising true airspeed in kilometers per hour based on aircraft specification data."
+            value={
+              typeof result.cruise_speed_kmh === "number"
                 ? `${Math.round(result.cruise_speed_kmh)} km/h`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              True Airspeed (TAS)
-            </div>
-          </div>
+                : "—"
+            }
+            subValue="True Airspeed (TAS)"
+          />
 
-          {/* Nominal Range */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#A1A1AA]">
-              <Milestone className="w-3.5 h-3.5 text-[#108AEF]" />
-              <span>Nominal Range</span>
-            </div>
-            <div className="text-base font-bold font-mono text-white">
-              {typeof result.nominal_range_km === "number"
+          <UpperMetricCard
+            label="Nominal Range"
+            tooltipTitle="Nominal Operating Range"
+            tooltipBadge="KM"
+            tooltipDesc="Manufacturer standard operational range under standard atmospheric conditions."
+            value={
+              typeof result.nominal_range_km === "number"
                 ? `${Math.round(result.nominal_range_km).toLocaleString()} km`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              Route: {typeof routeDistanceKm === "number" ? `${Math.round(routeDistanceKm)} km` : "—"}
-            </div>
-          </div>
+                : "—"
+            }
+            subValue={
+              typeof routeDistanceKm === "number"
+                ? `Route: ${Math.round(routeDistanceKm)} km`
+                : "—"
+            }
+          />
 
-          {/* Range Margin */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <div className="flex items-center space-x-1.5 text-[11px] text-[#A1A1AA]">
-              <Shield className="w-3.5 h-3.5 text-[#108AEF]" />
-              <span>Range Margin</span>
-            </div>
-            <div
-              className={`text-base font-bold font-mono ${
-                typeof result.range_margin_km === "number" && result.range_margin_km >= 0
-                  ? "text-emerald-400"
-                  : "text-rose-400"
-              }`}
-            >
-              {typeof result.range_margin_km === "number"
+          <UpperMetricCard
+            label="Range Margin"
+            tooltipTitle="Route Range Margin"
+            tooltipBadge="KM"
+            tooltipDesc="Remaining operational range buffer above the great-circle route distance."
+            value={
+              typeof result.range_margin_km === "number"
                 ? `${result.range_margin_km >= 0 ? "+" : ""}${Math.round(result.range_margin_km).toLocaleString()} km`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              Excess capability above route
-            </div>
-          </div>
+                : "—"
+            }
+            valueClassName={
+              typeof result.range_margin_km === "number" && result.range_margin_km >= 0
+                ? "text-emerald-400"
+                : "text-rose-400"
+            }
+            subValue="Excess capability above route"
+          />
 
-          {/* Takeoff Runway Margin */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <span className="text-[11px] text-[#A1A1AA] block">Takeoff Margin (TOFL)</span>
-            <div
-              className={`text-base font-bold font-mono ${
-                typeof result.takeoff_runway_margin_m === "number" && result.takeoff_runway_margin_m >= 0
-                  ? "text-emerald-400"
-                  : "text-rose-400"
-              }`}
-            >
-              {typeof result.takeoff_runway_margin_m === "number"
+          <UpperMetricCard
+            label="Takeoff Margin (TOFL)"
+            tooltipTitle="Takeoff Runway Margin"
+            tooltipBadge="METERS"
+            tooltipDesc="Departure airport longest active runway length minus the aircraft's required Takeoff Field Length (TOFL)."
+            value={
+              typeof result.takeoff_runway_margin_m === "number"
                 ? `${result.takeoff_runway_margin_m >= 0 ? "+" : ""}${Math.round(result.takeoff_runway_margin_m)} m`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              Runway length minus TOFL
-            </div>
-          </div>
+                : "—"
+            }
+            valueClassName={
+              typeof result.takeoff_runway_margin_m === "number" && result.takeoff_runway_margin_m >= 0
+                ? "text-emerald-400"
+                : "text-rose-400"
+            }
+            subValue="Departure runway minus TOFL"
+          />
 
-          {/* Landing Runway Margin */}
-          <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
-            <span className="text-[11px] text-[#A1A1AA] block">Landing Margin (LFL)</span>
-            <div
-              className={`text-base font-bold font-mono ${
-                typeof result.landing_runway_margin_m === "number" && result.landing_runway_margin_m >= 0
-                  ? "text-emerald-400"
-                  : "text-rose-400"
-              }`}
-            >
-              {typeof result.landing_runway_margin_m === "number"
+          <UpperMetricCard
+            label="Landing Margin (LFL)"
+            tooltipTitle="Landing Runway Margin"
+            tooltipBadge="METERS"
+            tooltipDesc="Destination airport longest active runway length minus the aircraft's required Landing Field Length (LFL)."
+            value={
+              typeof result.landing_runway_margin_m === "number"
                 ? `${result.landing_runway_margin_m >= 0 ? "+" : ""}${Math.round(result.landing_runway_margin_m)} m`
-                : "—"}
-            </div>
-            <div className="text-[10px] text-[#71717A]">
-              Runway length minus LFL
-            </div>
-          </div>
+                : "—"
+            }
+            valueClassName={
+              typeof result.landing_runway_margin_m === "number" && result.landing_runway_margin_m >= 0
+                ? "text-emerald-400"
+                : "text-rose-400"
+            }
+            subValue="Destination runway minus LFL"
+          />
         </div>
 
         {/* Database Aircraft Specification Section with Toggle */}

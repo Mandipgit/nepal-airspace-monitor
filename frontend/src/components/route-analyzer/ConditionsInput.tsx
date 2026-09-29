@@ -61,7 +61,7 @@ export const ConditionsInput: React.FC<ConditionsInputProps> = ({
             <span className="text-xs text-[#71717A] font-mono shrink-0">km/h</span>
           </div>
 
-          <p className="text-[10px] text-[#71717A] leading-tight">
+          <p className="text-[10px] text-[#71717A] leading-tight font-sans">
             Positive (+) = Headwind (slows ground speed) • Negative (-) = Tailwind (increases ground speed).
           </p>
         </div>
@@ -69,7 +69,7 @@ export const ConditionsInput: React.FC<ConditionsInputProps> = ({
         {/* Descent Distance Input */}
         <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1.5 text-xs font-medium text-[#FAFAFA]">
+            <div className="flex items-center space-x-1.5 text-xs font-medium text-[#FAFAFA] font-sans">
               <Navigation className="w-3.5 h-3.5 text-[#108AEF]" />
               <span>Descent Distance</span>
             </div>
@@ -92,7 +92,7 @@ export const ConditionsInput: React.FC<ConditionsInputProps> = ({
             <span className="text-xs text-[#71717A] font-mono shrink-0">km</span>
           </div>
 
-          <p className="text-[10px] text-[#71717A] leading-tight">
+          <p className="text-[10px] text-[#71717A] leading-tight font-sans">
             Allocated distance for approach & descent profiling (default: 50 km).
           </p>
         </div>

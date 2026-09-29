@@ -777,28 +777,84 @@ class AviationRepository:
             existing_models = {s.model.upper() for s in loaded}
             curr_id = len(loaded) + 1
             for fb in FALLBACK_AIRCRAFT_SPECS:
-                fb_icao = fb.get("icao_type", "").upper()
                 fb_model = fb.get("model", "").upper()
-                if fb_icao not in existing_icaos and fb_model not in existing_models:
+                if fb_model not in existing_models:
                     fb_copy = dict(fb)
                     fb_copy["id"] = curr_id
                     curr_id += 1
                     loaded.append(AircraftSpecificationSchema(**fb_copy))
+                    existing_models.add(fb_model)
+                    if fb.get("icao_type"):
+                        existing_icaos.add(fb["icao_type"].upper())
 
         self._fallback_aircraft_specs = loaded
         return self._fallback_aircraft_specs
 
     def _find_fallback_spec(self, identifier: str) -> Optional[AircraftSpecificationSchema]:
-        """Find matching spec in offline catalog by model or ICAO code."""
+        """
+        Find matching aircraft specification in catalog using prioritized multi-stage resolution:
+        1. Exact case-insensitive model match
+        2. Exact alphanumeric normalized model match (e.g. ATR72-500Basic vs ATR72500BASIC)
+        3. Exact ICAO typecode match (e.g. AT72, DHC6, A20N)
+        4. Model prefix / extension match (ranked by closest length)
+        5. Substring model match (ranked by closest length)
+        6. Token overlap match (e.g. DHC-6-400 Twin Otter vs DHC-6 Twin Otter)
+        """
         specs = self._load_fallback_aircraft_specs()
-        clean_key = re.sub(r"[^A-Z0-9]", "", identifier.upper().strip())
+        raw_key = identifier.strip()
+        clean_key = re.sub(r"[^A-Z0-9]", "", raw_key.upper())
         if not clean_key:
             return None
+
+        # Pass 1: Exact case-insensitive model match
+        for s in specs:
+            if s.model.strip().upper() == raw_key.upper():
+                return s
+
+        # Pass 2: Exact normalized clean model match
         for s in specs:
             clean_model = re.sub(r"[^A-Z0-9]", "", s.model.upper())
-            clean_icao = re.sub(r"[^A-Z0-9]", "", (s.icao_type or "").upper())
-            if clean_key in clean_model or clean_key in clean_icao or (clean_icao and clean_icao in clean_key):
+            if clean_model == clean_key:
                 return s
+
+        # Pass 3: Exact ICAO code match
+        for s in specs:
+            clean_icao = re.sub(r"[^A-Z0-9]", "", (s.icao_type or "").upper())
+            if clean_icao and clean_icao == clean_key:
+                return s
+
+        # Pass 4: Model prefix / starts-with match
+        prefix_cands = []
+        for s in specs:
+            clean_model = re.sub(r"[^A-Z0-9]", "", s.model.upper())
+            if clean_model.startswith(clean_key) or clean_key.startswith(clean_model):
+                prefix_cands.append((abs(len(clean_model) - len(clean_key)), s))
+        if prefix_cands:
+            prefix_cands.sort(key=lambda x: x[0])
+            return prefix_cands[0][1]
+
+        # Pass 5: Model substring containment
+        sub_cands = []
+        for s in specs:
+            clean_model = re.sub(r"[^A-Z0-9]", "", s.model.upper())
+            if clean_key in clean_model or clean_model in clean_key:
+                sub_cands.append((abs(len(clean_model) - len(clean_key)), s))
+        if sub_cands:
+            sub_cands.sort(key=lambda x: x[0])
+            return sub_cands[0][1]
+
+        # Pass 6: Token overlap
+        key_tokens = set(re.findall(r"[A-Z0-9]+", raw_key.upper()))
+        token_cands = []
+        for s in specs:
+            model_tokens = set(re.findall(r"[A-Z0-9]+", s.model.upper()))
+            overlap = key_tokens & model_tokens
+            if overlap and (overlap == model_tokens or overlap == key_tokens or len(overlap) >= 2):
+                token_cands.append((len(overlap), abs(len(s.model) - len(raw_key)), s))
+        if token_cands:
+            token_cands.sort(key=lambda x: (-x[0], x[1]))
+            return token_cands[0][2]
+
         return None
 
     async def get_airports(

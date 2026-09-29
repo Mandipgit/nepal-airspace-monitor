@@ -142,10 +142,6 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
   const [descentDistanceKm, setDescentDistanceKm] = useState<number>(50);
   const [selectedAircraft, setSelectedAircraft] = useState<AircraftSpecification[]>([]);
 
-  // Map selection mode
-  const [isMapSelectMode, setIsMapSelectMode] = useState<boolean>(false);
-  const [mapSelectionTarget, setMapSelectionTarget] = useState<"departure" | "destination" | null>(null);
-
   // Route Info State (fetched from GET /api/v1/route-analyzer/route)
   const [routeInfo, setRouteInfo] = useState<RouteInformationResponse | null>(null);
   const [routeInfoLoading, setRouteInfoLoading] = useState<boolean>(false);
@@ -210,44 +206,20 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
     setAnalysis(null);
   };
 
-  // Map select mode toggle
-  const handleToggleMapSelectMode = () => {
-    if (isMapSelectMode) {
-      setIsMapSelectMode(false);
-      setMapSelectionTarget(null);
-    } else {
-      setIsMapSelectMode(true);
-      setMapSelectionTarget(departure ? "destination" : "departure");
-    }
-  };
-
+  // Map selection: First clicked airport -> Departure. Next clicked airport -> Destination.
   const handleAirportMapClick = (apt: AirportSummary) => {
-    if (!isMapSelectMode) {
-      // If clicked without explicitly toggling select mode, set departure if unset, else destination
-      if (!departure) {
-        setDeparture(apt);
-      } else if (!destination && apt.ident !== departure.ident) {
-        setDestination(apt);
-      } else {
-        setDeparture(apt);
-      }
-      return;
-    }
-
-    if (mapSelectionTarget === "departure") {
+    if (!departure) {
       setDeparture(apt);
-      if (!destination) {
-        setMapSelectionTarget("destination");
-      } else {
-        setIsMapSelectMode(false);
-        setMapSelectionTarget(null);
+    } else if (!destination) {
+      if (apt.ident !== departure.ident) {
+        setDestination(apt);
       }
     } else {
-      if (departure && apt.ident === departure.ident) return;
-      setDestination(apt);
-      setIsMapSelectMode(false);
-      setMapSelectionTarget(null);
+      // Both endpoints already selected: start a fresh route with this airport as departure
+      setDeparture(apt);
+      setDestination(null);
     }
+    setAnalysis(null);
   };
 
   // Aircraft multi-selection with composite key matching
@@ -336,13 +308,7 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
                   airports={airports}
                   departure={departure}
                   destination={destination}
-                  isMapSelectMode={isMapSelectMode}
-                  mapSelectionTarget={mapSelectionTarget}
                   onAirportMapClick={handleAirportMapClick}
-                  onExitMapSelectMode={() => {
-                    setIsMapSelectMode(false);
-                    setMapSelectionTarget(null);
-                  }}
                 />
               </div>
 
@@ -357,9 +323,6 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
                     onSelectDeparture={handleSelectDeparture}
                     onSelectDestination={handleSelectDestination}
                     onSwapAirports={handleSwapAirports}
-                    isMapSelectMode={isMapSelectMode}
-                    onToggleMapSelectMode={handleToggleMapSelectMode}
-                    mapSelectionTarget={mapSelectionTarget}
                   />
                 </div>
 
@@ -468,6 +431,10 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
               <ComparisonVisualization
                 results={analysis.results}
                 routeDistanceKm={analysis.route.distance_km}
+                departureRunwayM={analysis.departure_runway?.runway_length_m}
+                destinationRunwayM={analysis.destination_runway?.runway_length_m}
+                departureIdent={analysis.route.departure.ident}
+                destinationIdent={analysis.route.destination.ident}
               />
             )}
           </div>

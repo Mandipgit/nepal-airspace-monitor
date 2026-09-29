@@ -312,6 +312,60 @@ class RouteAircraftAnalyzerTestCase(unittest.TestCase):
         self.assertGreater(data["departure_runway"]["runway_length_m"], 3000)
         self.assertGreater(data["destination_runway"]["runway_length_m"], 1000)
 
+    def test_runway_margins_vncg_to_vnkt_departure_takeoff_vs_destination_landing(self):
+        """
+        Verify takeoff margin is evaluated against departure runway (VNCG ~1500m)
+        and landing margin against destination runway (VNKT ~3350m).
+        """
+        payload = {
+            "departure_ident": "VNCG",
+            "destination_ident": "VNKT",
+            "aircraft_identifiers": ["ATR72-500Basic"]
+        }
+        res = self.client.post("/api/v1/route-analyzer/analyze", json=payload, headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+
+        dep_rwy = data["departure_runway"]["runway_length_m"]
+        dest_rwy = data["destination_runway"]["runway_length_m"]
+        self.assertAlmostEqual(dep_rwy, 1500.0, delta=1.0)
+        self.assertAlmostEqual(dest_rwy, 3350.1, delta=1.0)
+
+        ac = data["results"][0]
+        # ATR72-500Basic: TOFL = 1223m, LFL = 1048m
+        # Takeoff margin at VNCG = 1500 - 1223 = ~277m (NOT ~2127m!)
+        # Landing margin at VNKT = 3350.1 - 1048 = ~2302.1m
+        self.assertAlmostEqual(ac["takeoff_runway_margin_m"], 277.0, delta=2.0)
+        self.assertAlmostEqual(ac["landing_runway_margin_m"], 2302.1, delta=2.0)
+
+    def test_multi_aircraft_independent_specification_calculation(self):
+        """
+        Verify each selected aircraft calculates using its own specifications,
+        avoiding cross-model overwriting or incorrect loose matching.
+        """
+        payload = {
+            "departure_ident": "VNKT",
+            "destination_ident": "VNPK",
+            "aircraft_identifiers": ["Airbus A320-200", "Airbus A320-200neo", "Boeing 737-800", "ATR72-500Basic"]
+        }
+        res = self.client.post("/api/v1/route-analyzer/analyze", json=payload, headers=self.headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(len(data["results"]), 4)
+
+        by_ident = {r["aircraft_identifier"]: r for r in data["results"]}
+        self.assertIn("Airbus A320-200", by_ident)
+        self.assertIn("Airbus A320-200neo", by_ident)
+        self.assertIn("Boeing 737-800", by_ident)
+        self.assertIn("ATR72-500Basic", by_ident)
+
+        # Airbus A320-200 vs A320-200neo specs must not be identical corporate jetliner
+        a320 = by_ident["Airbus A320-200"]
+        a320neo = by_ident["Airbus A320-200neo"]
+        self.assertEqual(a320["aircraft_name"], "Airbus A320-200")
+        self.assertEqual(a320neo["aircraft_name"], "Airbus A320-200neo")
+        self.assertNotEqual(a320["nominal_range_km"], a320neo["nominal_range_km"])
+
 
 if __name__ == "__main__":
     unittest.main()

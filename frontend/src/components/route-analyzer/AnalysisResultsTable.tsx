@@ -48,12 +48,12 @@ export const AnalysisResultsTable: React.FC<AnalysisResultsTableProps> = ({
   const outsideCount = results.length - withinCount;
 
   return (
-    <div className="rounded-2xl bg-[#111113] border border-white/[0.08] shadow-2xl p-4 md:p-6 space-y-6">
+    <div className="rounded-2xl bg-[#111113] border border-white/[0.08] shadow-2xl p-4 md:p-6 space-y-6 font-sans">
       {/* Top Results Summary Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/[0.08] gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-bold text-[#FAFAFA] tracking-tight">
+            <h2 className="text-lg font-bold text-[#FAFAFA] tracking-tight font-sans">
               Route Suitability Results
             </h2>
             <span className="font-mono text-xs text-[#108AEF] bg-[#108AEF]/15 border border-[#108AEF]/30 px-2 py-0.5 rounded-full font-bold">
@@ -71,7 +71,7 @@ export const AnalysisResultsTable: React.FC<AnalysisResultsTableProps> = ({
         </div>
 
         {/* Counter Pills */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center space-x-2 shrink-0 font-sans">
           <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-xs font-semibold">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>{withinCount} Within Limits</span>
@@ -88,7 +88,7 @@ export const AnalysisResultsTable: React.FC<AnalysisResultsTableProps> = ({
 
       {/* Missing Aircraft Notification */}
       {missing_aircraft && missing_aircraft.length > 0 && (
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center space-x-2">
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center space-x-2 font-sans">
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
           <span>
             Notice: No database records found for {missing_aircraft.join(", ")}. These were omitted from analytical modeling.
@@ -98,9 +98,9 @@ export const AnalysisResultsTable: React.FC<AnalysisResultsTableProps> = ({
 
       {/* Results Table (Responsive desktop table + card view on mobile) */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[720px]">
+        <table className="w-full text-left border-collapse min-w-[720px] font-sans">
           <thead>
-            <tr className="border-b border-white/[0.08] text-[11px] font-semibold text-[#71717A] uppercase tracking-wider">
+            <tr className="border-b border-white/[0.08] text-[11px] font-semibold text-[#71717A] uppercase tracking-wider font-sans">
               <th className="pb-3 pl-2">Aircraft</th>
               <th className="pb-3 text-center">Status</th>
               <th className="pb-3 text-right">Est. Flight Time</th>

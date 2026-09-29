@@ -136,7 +136,7 @@ class AircraftAnalysisResult(BaseModel):
     estimated_flight_time_min: Optional[float] = Field(default=None, description="Calculated block/flight time in minutes")
     range_margin_km: Optional[float] = Field(default=None, description="Nominal range minus route distance in km")
 
-    takeoff_runway_margin_m: Optional[float] = Field(default=None, description="Destination runway length minus TOFL in meters")
+    takeoff_runway_margin_m: Optional[float] = Field(default=None, description="Departure runway length minus TOFL in meters")
     landing_runway_margin_m: Optional[float] = Field(default=None, description="Destination runway length minus LFL in meters")
 
     within_calculated_limits: bool = Field(description="Whether the aircraft meets modelled range and runway criteria")

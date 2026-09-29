@@ -9,7 +9,6 @@ import {
   X,
   Compass,
   Check,
-  MousePointerClick,
 } from "lucide-react";
 
 interface AirportSelectorProps {
@@ -19,9 +18,6 @@ interface AirportSelectorProps {
   onSelectDeparture: (airport: AirportSummary | null) => void;
   onSelectDestination: (airport: AirportSummary | null) => void;
   onSwapAirports: () => void;
-  isMapSelectMode: boolean;
-  onToggleMapSelectMode: () => void;
-  mapSelectionTarget: "departure" | "destination" | null;
 }
 
 export const AirportSelector: React.FC<AirportSelectorProps> = ({
@@ -31,9 +27,6 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
   onSelectDeparture,
   onSelectDestination,
   onSwapAirports,
-  isMapSelectMode,
-  onToggleMapSelectMode,
-  mapSelectionTarget,
 }) => {
   const [depQuery, setDepQuery] = useState<string>("");
   const [destQuery, setDestQuery] = useState<string>("");
@@ -102,27 +95,11 @@ export const AirportSelector: React.FC<AirportSelectorProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Top Header & Map Select Mode Action */}
+      {/* Top Header */}
       <div className="flex items-center justify-between">
         <label className="text-xs font-semibold uppercase tracking-wider text-[#A1A1AA] flex items-center space-x-1.5 font-sans">
           <span>Route Endpoints</span>
         </label>
-        <button
-          type="button"
-          onClick={onToggleMapSelectMode}
-          className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
-            isMapSelectMode
-              ? "bg-[#108AEF] text-white border-[#108AEF] shadow-[0_0_12px_rgba(16,138,239,0.35)]"
-              : "bg-white/[0.04] text-[#A1A1AA] border-white/[0.08] hover:text-[#FAFAFA] hover:bg-white/[0.08]"
-          }`}
-        >
-          <MousePointerClick className="w-3.5 h-3.5" />
-          <span>
-            {isMapSelectMode
-              ? `Picking ${mapSelectionTarget === "departure" ? "Departure" : "Destination"} on Map`
-              : "Select on Map"}
-          </span>
-        </button>
       </div>
 
       {/* Airport Inputs Container */}

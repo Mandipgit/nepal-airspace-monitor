@@ -185,12 +185,15 @@ class RouteAnalyzerService:
         identifier: str,
         spec: AircraftSpecificationSchema,
         route_distance_km: float,
-        runway_length_m: float,
+        departure_runway_length_m: float,
+        destination_runway_length_m: float,
         wind_kmh: float,
         descent_distance_km: float
     ) -> AircraftAnalysisResult:
         """
         Evaluate route compatibility, margins, and estimated flight time for a single aircraft.
+        Takeoff margin is calculated against departure runway length (departure_runway_length_m - TOFL).
+        Landing margin is calculated against destination runway length (destination_runway_length_m - LFL).
         """
         # Convert speeds and ranges from specification units
         cruise_speed_kmh: Optional[float] = (
@@ -214,11 +217,11 @@ class RouteAnalyzerService:
             if nominal_range_km is not None else None
         )
         tofl_margin_m: Optional[float] = (
-            round(runway_length_m - tofl_m, 1)
+            round(departure_runway_length_m - tofl_m, 1)
             if tofl_m is not None else None
         )
         lfl_margin_m: Optional[float] = (
-            round(runway_length_m - lfl_m, 1)
+            round(destination_runway_length_m - lfl_m, 1)
             if lfl_m is not None else None
         )
 
@@ -305,12 +308,12 @@ class RouteAnalyzerService:
         within_limits = range_ok and tofl_ok and lfl_ok
 
         limiting_factors = []
-        if not range_ok:
-            limiting_factors.append(f"Route distance exceeds nominal range by {abs(range_margin_km):.1f} km")
-        if not tofl_ok:
-            limiting_factors.append(f"Destination runway is {abs(tofl_margin_m):.1f} m shorter than required TOFL")
-        if not lfl_ok:
-            limiting_factors.append(f"Destination runway is {abs(lfl_margin_m):.1f} m shorter than required LFL")
+        if not range_ok and range_margin_km is not None:
+            limiting_factors.append(f"Route distance ({route_distance_km:.1f} km) exceeds nominal range ({nominal_range_km:.1f} km) by {abs(range_margin_km):.1f} km")
+        if not tofl_ok and tofl_margin_m is not None:
+            limiting_factors.append(f"Departure runway ({departure_runway_length_m:.1f} m) is {abs(tofl_margin_m):.1f} m shorter than required TOFL ({tofl_m} m)")
+        if not lfl_ok and lfl_margin_m is not None:
+            limiting_factors.append(f"Destination runway ({destination_runway_length_m:.1f} m) is {abs(lfl_margin_m):.1f} m shorter than required LFL ({lfl_m} m)")
 
         notes = "; ".join(limiting_factors) if limiting_factors else None
 
@@ -412,7 +415,8 @@ class RouteAnalyzerService:
                 identifier=ident,
                 spec=spec,
                 route_distance_km=distance_km,
-                runway_length_m=destination_runway.runway_length_m,
+                departure_runway_length_m=departure_runway.runway_length_m,
+                destination_runway_length_m=destination_runway.runway_length_m,
                 wind_kmh=request.wind_kmh,
                 descent_distance_km=request.descent_distance_km
             )

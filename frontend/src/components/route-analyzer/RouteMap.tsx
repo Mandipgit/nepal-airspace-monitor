@@ -10,7 +10,7 @@ import {
   LngLatBounds,
 } from "maplibre-gl";
 import { AirportSummary } from "@/types/airport";
-import { MousePointerClick, Maximize2, Compass, Layers } from "lucide-react";
+import { Maximize2, Compass, Layers } from "lucide-react";
 
 if (typeof window !== "undefined") {
   setWorkerUrl("/maplibre-gl-worker.mjs");
@@ -20,10 +20,7 @@ interface RouteMapProps {
   airports: AirportSummary[];
   departure: AirportSummary | null;
   destination: AirportSummary | null;
-  isMapSelectMode: boolean;
-  mapSelectionTarget: "departure" | "destination" | null;
   onAirportMapClick: (airport: AirportSummary) => void;
-  onExitMapSelectMode: () => void;
 }
 
 const NEPAL_CENTER: [number, number] = [84.1240, 28.3949];
@@ -34,24 +31,23 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   airports,
   departure,
   destination,
-  isMapSelectMode,
-  mapSelectionTarget,
   onAirportMapClick,
-  onExitMapSelectMode,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
   const popupRef = useRef<Popup | null>(null);
 
-  const isMapSelectModeRef = useRef(isMapSelectMode);
-  const mapSelectionTargetRef = useRef(mapSelectionTarget);
+  const departureRef = useRef(departure);
+  const destinationRef = useRef(destination);
   const onAirportMapClickRef = useRef(onAirportMapClick);
+  const airportsRef = useRef(airports);
 
   useEffect(() => {
-    isMapSelectModeRef.current = isMapSelectMode;
-    mapSelectionTargetRef.current = mapSelectionTarget;
+    departureRef.current = departure;
+    destinationRef.current = destination;
     onAirportMapClickRef.current = onAirportMapClick;
-  }, [isMapSelectMode, mapSelectionTarget, onAirportMapClick]);
+    airportsRef.current = airports;
+  }, [departure, destination, onAirportMapClick, airports]);
 
   // Setup / update Route line GeoJSON
   const updateRouteLine = useCallback(() => {
@@ -308,21 +304,55 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           },
         });
 
-        // Interactive Airport Click
-        map.on("click", "airports-circles", (e) => {
+        // Interactive Airport Click (supports clicking circles and labels)
+        const handleAirportClick = (e: any) => {
           if (!e.features || e.features.length === 0) return;
           const feat = e.features[0];
-          const props = feat.properties as { ident: string };
-          if (props?.ident) {
-            const matched = airports.find((a) => a.ident === props.ident);
-            if (matched) {
-              onAirportMapClickRef.current(matched);
-            }
-          }
-        });
+          const props = feat.properties as {
+            ident: string;
+            name?: string;
+            iata?: string;
+            city?: string;
+            elevation?: number;
+          };
+          if (!props?.ident) return;
 
-        // Pointer cursor & tooltips
-        map.on("mouseenter", "airports-circles", (e) => {
+          const matched = airportsRef.current.find((a) => a.ident === props.ident);
+          if (matched) {
+            onAirportMapClickRef.current(matched);
+          } else {
+            // Fallback from feature properties if airportsRef is still populating
+            const coords = (feat.geometry as GeoJSON.Point).coordinates;
+            const fallback: AirportSummary = {
+              id: 0,
+              ident: props.ident,
+              type: "medium_airport",
+              name: props.name || props.ident,
+              latitude_deg: coords[1],
+              longitude_deg: coords[0],
+              elevation_ft: Number(props.elevation) || 0,
+              continent: "AS",
+              iso_country: "NP",
+              iso_region: "NP",
+              municipality: props.city || "Nepal",
+              iata_code: props.iata || null,
+              gps_code: props.ident,
+              local_code: props.ident,
+            };
+            onAirportMapClickRef.current(fallback);
+          }
+
+          if (popupRef.current) {
+            popupRef.current.remove();
+            popupRef.current = null;
+          }
+        };
+
+        map.on("click", "airports-circles", handleAirportClick);
+        map.on("click", "airports-labels", handleAirportClick);
+
+        // Pointer cursor & tooltips (supports circles and labels)
+        const handleAirportHover = (e: any) => {
           map.getCanvas().style.cursor = "pointer";
           if (!e.features || e.features.length === 0) return;
           const feat = e.features[0];
@@ -336,40 +366,70 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           };
           const coords = (feat.geometry as GeoJSON.Point).coordinates;
 
-          const isSelecting = isMapSelectModeRef.current;
-          const target = mapSelectionTargetRef.current;
+          const dep = departureRef.current;
+          const dest = destinationRef.current;
+          let actionText = "Click to set as Departure";
+          let isTargetDest = false;
 
-          const actionPrompt = isSelecting
-            ? `<div class="mt-1 text-[#108AEF] font-bold text-[10px]">👉 Click to select as ${target === "departure" ? "Departure" : "Destination"}</div>`
-            : "";
+          if (dep && !dest) {
+            if (p.ident === dep.ident) {
+              actionText = "Selected as Departure";
+            } else {
+              actionText = "Click to set as Destination";
+              isTargetDest = true;
+            }
+          } else if (dep && dest) {
+            if (p.ident === dep.ident) {
+              actionText = "Selected as Departure";
+            } else if (p.ident === dest.ident) {
+              actionText = "Selected as Destination";
+              isTargetDest = true;
+            } else {
+              actionText = "Click to set as Departure";
+            }
+          }
+
+          if (popupRef.current) {
+            popupRef.current.remove();
+            popupRef.current = null;
+          }
 
           popupRef.current = new Popup({
             closeButton: false,
             closeOnClick: false,
             offset: 12,
+            className: "pointer-events-none route-map-popup",
           })
             .setLngLat(coords as [number, number])
             .setHTML(`
-              <div class="text-xs p-1 select-none font-sans">
-                <div class="font-bold text-white flex items-center space-x-1">
-                  <span>${p.ident}</span>
-                  ${p.iata ? `<span class="text-[#38bdf8] font-mono text-[10px]">(${p.iata})</span>` : ""}
+              <div style="font-family: inherit;" class="select-none text-xs p-1 space-y-0.5">
+                <div class="flex items-center space-x-1.5 font-bold text-white text-xs">
+                  <span class="tracking-wide">${p.ident}</span>
+                  ${p.iata ? `<span class="text-[#38bdf8] font-mono text-[11px] font-semibold">(${p.iata})</span>` : ""}
                 </div>
-                <div class="text-[11px] text-neutral-300">${p.name}</div>
-                <div class="text-[10px] text-neutral-400 mt-0.5">${p.city} • ${p.elevation} ft</div>
-                ${actionPrompt}
+                <div class="text-[11px] text-neutral-300 font-normal leading-tight">${p.name}</div>
+                <div class="text-[10px] text-neutral-400 font-normal">${p.city} • ${Number(p.elevation || 0).toLocaleString()} ft</div>
+                <div class="pt-1 text-[11px] font-semibold ${isTargetDest ? "text-[#FB7185]" : "text-[#108AEF]"}">
+                  ${actionText}
+                </div>
               </div>
             `)
             .addTo(map);
-        });
+        };
 
-        map.on("mouseleave", "airports-circles", () => {
+        map.on("mouseenter", "airports-circles", handleAirportHover);
+        map.on("mouseenter", "airports-labels", handleAirportHover);
+
+        const handleAirportLeave = () => {
           map.getCanvas().style.cursor = "";
           if (popupRef.current) {
             popupRef.current.remove();
             popupRef.current = null;
           }
-        });
+        };
+
+        map.on("mouseleave", "airports-circles", handleAirportLeave);
+        map.on("mouseleave", "airports-labels", handleAirportLeave);
       }
 
       // Initial data injection
@@ -408,26 +468,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     <div className="relative w-full h-full min-h-[360px] rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl bg-[#08080a]">
       {/* Map Canvas */}
       <div ref={mapContainerRef} className="w-full h-full" />
-
-      {/* Floating Mode Banner when "Select on Map" is active */}
-      {isMapSelectMode && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 flex items-center space-x-2.5 px-3.5 py-1.5 rounded-full bg-[#111113]/95 border border-[#108AEF] shadow-[0_4px_20px_rgba(16,138,239,0.4)] backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
-          <span className="w-2 h-2 rounded-full bg-[#108AEF] animate-pulse" />
-          <span className="text-xs font-semibold text-white">
-            Click any airport marker to set{" "}
-            <strong className="text-[#38bdf8] uppercase">
-              {mapSelectionTarget === "departure" ? "Departure" : "Destination"}
-            </strong>
-          </span>
-          <button
-            type="button"
-            onClick={onExitMapSelectMode}
-            className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-white/[0.10] hover:bg-white/[0.20] text-neutral-300 hover:text-white transition-colors cursor-pointer ml-1"
-          >
-            Done
-          </button>
-        </div>
-      )}
 
       {/* Floating Bottom Reset View Button */}
       <div className="absolute bottom-3 right-3 z-10">

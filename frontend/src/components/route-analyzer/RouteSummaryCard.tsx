@@ -142,10 +142,10 @@ export const RouteSummaryCard: React.FC<RouteSummaryCardProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center space-x-1.5 text-[10px] text-[#71717A]">
+      <div className="flex items-center space-x-1.5 text-[10px] text-[#71717A] font-sans">
         <Info className="w-3 h-3 text-[#108AEF] shrink-0" />
         <span>
-          Destination field length reflects the longest active runway evaluated by the analytical backend model.
+          Departure and destination field lengths reflect the longest active runways evaluated for takeoff and landing margins respectively.
         </span>
       </div>
     </div>
