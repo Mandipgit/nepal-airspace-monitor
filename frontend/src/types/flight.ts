@@ -166,3 +166,47 @@ export interface FlightTrajectoryResponse {
   points: TrajectoryPoint[];
 }
 
+export function createNormalizedFlightFromNepalAircraft(ac: NepalAircraft): NormalizedFlight {
+  return {
+    id: `nepal-${ac.registration || ac.icao24}`,
+    provider: "nepal_registry",
+    identification: {
+      icao24: (ac.icao24 || "").toLowerCase(),
+      callsign: ac.registration || ac.operator_callsign || null,
+      flight_number: null,
+      registration: ac.registration || null,
+      aircraft_type_icao: ac.typecode || null,
+      operator_icao: ac.operator_icao || null,
+      operator_name: ac.operator || null,
+      origin_country: "Nepal",
+      is_nepal_registered: true,
+      squawk: null,
+      category: null,
+      category_name: ac.icao_aircraft_class || "Civil Aircraft",
+      position_source: "CAAN Registry",
+      spi: false,
+    },
+    position: {
+      latitude: null,
+      longitude: null,
+      altitude_baro_m: null,
+      altitude_geo_m: null,
+      groundspeed_mps: null,
+      heading_deg: null,
+      vertical_rate_mps: null,
+      on_ground: true,
+      timestamp: new Date().toISOString(),
+      altitude_baro_ft: null,
+      groundspeed_kts: null,
+      vertical_rate_fpm: null,
+    },
+    route: null,
+    nearest_airport: null,
+    nearest_airport_distance_km: null,
+    aircraft_spec: ac.specification || null,
+    nepal_aircraft: ac,
+    last_contact: null,
+    data_freshness_seconds: 0,
+  };
+}
+

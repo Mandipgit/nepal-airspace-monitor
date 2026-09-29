@@ -38,10 +38,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const userEmail = user?.email || (isAuthenticated ? "" : "Not signed in");
 
   const isRouteAnalyzerActive = activeNav === "route-analyzer";
-  const isDirectoryActive = !isRouteAnalyzerActive && (activeNav === "directory" || isSearchOpen);
+  const isNepalAircraftActive = activeNav === "nepal-aircraft";
+  const isDirectoryActive = !isRouteAnalyzerActive && !isNepalAircraftActive && (activeNav === "directory" || isSearchOpen);
 
   const handleDirectoryClick = () => {
-    if (activeNav === "route-analyzer") {
+    if (activeNav === "route-analyzer" || activeNav === "nepal-aircraft") {
       router.push("/");
     } else if (onToggleSearch) {
       onToggleSearch();
@@ -51,6 +52,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const handleRouteAnalyzerClick = () => {
     if (activeNav !== "route-analyzer") {
       router.push("/route-analyzer");
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleNepalAircraftClick = () => {
+    if (activeNav !== "nepal-aircraft") {
+      router.push("/nepal-aircraft");
     }
     if (onClose) {
       onClose();
@@ -147,6 +157,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               {/* Context Badge */}
               <span className="rounded-full px-2 py-0.5 text-[10px] font-mono tracking-wider text-[#108AEF] bg-[#108AEF]/10 border border-[#108AEF]/20 font-semibold uppercase">
                 Tool
+              </span>
+            </button>
+
+            {/* 3. Nepal Aircraft Nav Row */}
+            <button
+              type="button"
+              suppressHydrationWarning
+              onClick={handleNepalAircraftClick}
+              className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+                isNepalAircraftActive
+                  ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
+                  : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
+              }`}
+            >
+              <span className="leading-none">Nepal Aircraft</span>
+              {/* Context Badge */}
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-mono tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-semibold uppercase">
+                Fleet
               </span>
             </button>
           </div>

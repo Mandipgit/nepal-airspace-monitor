@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { Button, Tooltip } from "@heroui/react";
 import { AirportDetail, AirportSummary, Runway } from "@/types/airport";
 import { fetchAirportDetail, fetchAirportRunways } from "@/lib/api";
@@ -322,9 +323,14 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
   };
 
   return (
-    <aside
-      className="w-80 md:w-[380px] h-full bg-[#0a0a0a] order-first border-r border-white/8 shadow-[8px_0_32px_rgba(0,0,0,0.5)] z-25 flex flex-col shrink-0 select-none overflow-hidden transition-all duration-300 ease-in-out font-sans"
+    <motion.aside
+      initial={{ opacity: 0, x: -28, width: 0 }}
+      animate={{ opacity: 1, x: 0, width: "380px" }}
+      exit={{ opacity: 0, x: -28, width: 0 }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="h-full bg-[#0a0a0a] border-r border-white/8 shadow-[8px_0_32px_rgba(0,0,0,0.5)] z-24 flex flex-col shrink-0 select-none overflow-hidden font-sans"
     >
+      <div className="w-[380px] h-full flex flex-col min-w-[380px] overflow-hidden">
       {/* 1. Airport Header */}
       <div className="p-4 border-b border-white/8 bg-[#0e0e0e] shrink-0">
         {/* Top Status Badges & Close Button */}
@@ -785,7 +791,8 @@ export const AirportDetailsPanel: React.FC<AirportDetailsPanelProps> = ({
           </Button>
         </div>
       )}
-    </aside>
+      </div>
+    </motion.aside>
   );
 };
 

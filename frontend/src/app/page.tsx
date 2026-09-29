@@ -97,14 +97,14 @@ export default function Home() {
     }
   }, []);
 
-  const handleSelectAirport = useCallback((ident: string | null) => {
+  const handleSelectAirport = useCallback((ident: string | null, keepFlight: boolean = false) => {
     setSelectedAirportIdent((prev) => {
       if (!ident || prev === ident) {
         return null;
       }
       return ident;
     });
-    if (ident) {
+    if (ident && !keepFlight) {
       setSelectedFlight(null);
     }
   }, []);
@@ -168,6 +168,36 @@ export default function Home() {
         onToggleSyncViewport={handleToggleSyncViewport}
         nepalContextOnly={nepalContextOnly}
         onToggleNepalContext={() => setNepalContextOnly((prev) => !prev)}
+        flights={flights}
+        airports={airports}
+        onSelectFlight={handleSelectFlight}
+        onSelectAirport={(ident) => handleSelectAirport(ident, true)}
+        onCenterFlight={(flt) => {
+          if (typeof window !== "undefined") {
+            const map = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+            if (map && flt.position.latitude && flt.position.longitude) {
+              map.flyTo({
+                center: [flt.position.longitude, flt.position.latitude],
+                zoom: Math.max(map.getZoom(), 10),
+                essential: true,
+                duration: 1200,
+              });
+            }
+          }
+        }}
+        onCenterAirport={(lat, lon) => {
+          if (typeof window !== "undefined") {
+            const map = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+            if (map && lat && lon) {
+              map.flyTo({
+                center: [lon, lat],
+                zoom: Math.max(map.getZoom(), 11),
+                essential: true,
+                duration: 1200,
+              });
+            }
+          }
+        }}
       />
 
       {/* 2. Operations Workspace (Sidebar | Flight Details | Live Map) */}
@@ -200,6 +230,20 @@ export default function Home() {
           <FlightDetailsPanel
             flight={selectedFlight}
             onClose={() => setSelectedFlight(null)}
+            onSelectAirport={(ident) => handleSelectAirport(ident, true)}
+            onCenterFlight={(flt) => {
+              if (typeof window !== "undefined") {
+                const map = (window as unknown as { __map?: import("maplibre-gl").Map }).__map;
+                if (map && flt.position.latitude && flt.position.longitude) {
+                  map.flyTo({
+                    center: [flt.position.longitude, flt.position.latitude],
+                    zoom: Math.max(map.getZoom(), 10),
+                    essential: true,
+                    duration: 1200,
+                  });
+                }
+              }
+            }}
             isSidebarOpen={isSidebarOpen}
           />
         )}

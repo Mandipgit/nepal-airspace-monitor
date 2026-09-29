@@ -27,6 +27,7 @@ interface FlightDetailsPanelProps {
   flight: NormalizedFlight | null;
   onClose: () => void;
   onCenterFlight?: (flight: NormalizedFlight) => void;
+  onSelectAirport?: (airportIdent: string) => void;
   isSidebarOpen?: boolean;
 }
 
@@ -116,6 +117,7 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
   flight,
   onClose,
   onCenterFlight,
+  onSelectAirport,
   isSidebarOpen = false,
 }) => {
   const [copied, setCopied] = useState<boolean>(false);
@@ -221,6 +223,9 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
   const originName = route?.origin_name || "N/A";
   const destinationCode = route?.destination_iata || route?.destination_icao || "N/A";
   const destinationName = route?.destination_name || "N/A";
+
+  const originIdent = route?.origin_icao || route?.origin_iata || (originCode !== "N/A" ? originCode : null);
+  const destinationIdent = route?.destination_icao || route?.destination_iata || (destinationCode !== "N/A" ? destinationCode : null);
 
   const squawk = identification.squawk || "N/A";
   const positionSource = identification.position_source || "ADS-B";
@@ -374,7 +379,15 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
   };
 
   return (
-    <div className="h-full w-80 md:w-[380px] shrink-0 relative z-25">
+    <div
+      style={{
+        width: isDetailsExpanded ? "480px" : "380px",
+        transition: isDetailsExpanded
+          ? "width 480ms cubic-bezier(0.16, 1, 0.3, 1)"
+          : "width 380ms cubic-bezier(0.25, 1, 0.5, 1)",
+      }}
+      className="h-full shrink-0 relative z-25"
+    >
       <aside
         style={{
           width: isDetailsExpanded ? "480px" : "380px",
@@ -467,11 +480,40 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
         <div className="p-3.5 rounded-xl bg-[#141414] border border-white/8 shadow-md">
           <div className="flex items-center justify-between">
             {/* Origin */}
-            <div className="text-left flex-1 min-w-0 pr-2">
-              <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider font-sans">
-                Origin
-              </span>
-              <span className="text-xl font-black font-sans text-neutral-100 tracking-tight block">
+            <div
+              role={originIdent ? "button" : undefined}
+              tabIndex={originIdent ? 0 : undefined}
+              onClick={() => {
+                if (originIdent && onSelectAirport) {
+                  onSelectAirport(originIdent);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (originIdent && onSelectAirport && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onSelectAirport(originIdent);
+                }
+              }}
+              className={`text-left flex-1 min-w-0 pr-2 ${
+                originIdent
+                  ? "group/origin cursor-pointer hover:bg-white/5 p-1.5 -m-1.5 rounded-lg transition-all"
+                  : ""
+              }`}
+              title={
+                originIdent
+                  ? `View ${originName !== "N/A" ? originName : originCode} airport specifications`
+                  : undefined
+              }
+            >
+              <div className="flex items-center space-x-1">
+                <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider font-sans group-hover/origin:text-neutral-300">
+                  Origin
+                </span>
+                {originIdent && (
+                  <ArrowUpRight className="w-3 h-3 text-neutral-500 group-hover/origin:text-emerald-400 transition-colors" />
+                )}
+              </div>
+              <span className="text-xl font-black font-sans text-neutral-100 tracking-tight block group-hover/origin:text-emerald-400 transition-colors">
                 {originCode}
               </span>
               <span className="text-xs text-neutral-400 font-medium truncate block font-sans" title={originName}>
@@ -494,11 +536,40 @@ export const FlightDetailsPanel: React.FC<FlightDetailsPanelProps> = ({
             </div>
 
             {/* Destination */}
-            <div className="text-right flex-1 min-w-0 pl-2">
-              <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider font-sans">
-                Destination
-              </span>
-              <span className="text-xl font-black font-sans text-emerald-400 tracking-tight block">
+            <div
+              role={destinationIdent ? "button" : undefined}
+              tabIndex={destinationIdent ? 0 : undefined}
+              onClick={() => {
+                if (destinationIdent && onSelectAirport) {
+                  onSelectAirport(destinationIdent);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (destinationIdent && onSelectAirport && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  onSelectAirport(destinationIdent);
+                }
+              }}
+              className={`text-right flex-1 min-w-0 pl-2 ${
+                destinationIdent
+                  ? "group/dest cursor-pointer hover:bg-white/5 p-1.5 -m-1.5 rounded-lg transition-all"
+                  : ""
+              }`}
+              title={
+                destinationIdent
+                  ? `View ${destinationName !== "N/A" ? destinationName : destinationCode} airport specifications`
+                  : undefined
+              }
+            >
+              <div className="flex items-center justify-end space-x-1">
+                <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider font-sans group-hover/dest:text-neutral-300">
+                  Destination
+                </span>
+                {destinationIdent && (
+                  <ArrowDownRight className="w-3 h-3 text-neutral-500 group-hover/dest:text-emerald-400 transition-colors" />
+                )}
+              </div>
+              <span className="text-xl font-black font-sans text-emerald-400 tracking-tight block group-hover/dest:text-emerald-300 transition-colors">
                 {destinationCode}
               </span>
               <span className="text-xs text-neutral-400 font-medium truncate block font-sans" title={destinationName}>
