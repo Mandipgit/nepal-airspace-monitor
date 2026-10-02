@@ -1,17 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import {
-  Search,
-  X,
-  Plane,
-  MapPin,
-  Shield,
-  Radio,
-  Building2,
-  Loader2,
-  CornerDownLeft,
-} from "lucide-react";
+import { Search, CornerDownLeft } from "lucide-react";
 import { NormalizedFlight, NepalAircraft, createNormalizedFlightFromNepalAircraft } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
 import { fetchNepalAircraftFleet } from "@/lib/api";
@@ -240,10 +230,10 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
 
   return (
     <div ref={containerRef} className={`relative select-none font-sans ${className}`}>
-      {/* Search Input Container */}
+      {/* Search Input Container - Clean HeroUI-style pill without rightmost icon */}
       <div className="relative flex items-center">
         <div className="relative w-56 sm:w-64 md:w-72 transition-all duration-300">
-          <div className="relative flex items-center w-full h-8 bg-white/[0.05] hover:bg-white/[0.09] focus-within:bg-[#141416] border border-white/[0.08] focus-within:border-white/25 rounded-full px-2.5 shadow-inner transition-all">
+          <div className="relative flex items-center w-full h-8 bg-white/[0.05] hover:bg-white/[0.09] focus-within:bg-[#141416] border border-white/[0.08] focus-within:border-white/25 rounded-full px-3 shadow-inner transition-all">
             <Search className="w-3.5 h-3.5 text-neutral-400 shrink-0 select-none pointer-events-none mr-2" />
             <input
               ref={inputRef}
@@ -259,29 +249,6 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
               onKeyDown={handleKeyDown}
               className="w-full bg-transparent text-xs font-sans text-neutral-100 placeholder:text-neutral-500 font-normal focus:outline-none"
             />
-            <div className="flex items-center space-x-1 shrink-0 ml-1.5">
-              {isLoadingDb && (
-                <Loader2 className="w-3.5 h-3.5 text-neutral-400 animate-spin mr-1" />
-              )}
-              {isQueryActive ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setNepalDbResults([]);
-                    inputRef.current?.focus();
-                  }}
-                  className="p-0.5 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Clear search input"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              ) : (
-                <kbd className="hidden md:inline-flex items-center px-1.5 py-0.5 text-[9px] font-mono font-medium text-neutral-500 bg-white/[0.06] border border-white/10 rounded">
-                  ⌘K
-                </kbd>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -299,14 +266,11 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
             </div>
           )}
 
-          {/* Section 1: Live Airspace Traffic */}
+          {/* Section 1: Live Airspace Traffic (No green blinking dot) */}
           {matchedFlights.length > 0 && (
             <div className="mb-2.5">
               <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider font-sans border-b border-white/5 mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Live Airspace Traffic</span>
-                </div>
+                <span>Live Airspace Traffic</span>
                 <span className="font-mono text-[9px] text-neutral-500">
                   {matchedFlights.length} ACTIVE
                 </span>
@@ -324,42 +288,56 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                   const altFt = f.position.altitude_baro_ft;
                   const speedKts = f.position.groundspeed_kts;
 
+                  const callsignUpper = (f.identification.callsign || "").trim().toUpperCase();
+                  const regUpper = (f.identification.registration || "").trim().toUpperCase();
+                  const opUpper = (f.identification.operator_icao || "").trim().toUpperCase();
+                  const originLower = (f.identification.origin_country || "").trim().toLowerCase();
+
+                  const isNepalFlight =
+                    Boolean(f.identification.is_nepal_registered) ||
+                    originLower === "nepal" ||
+                    callsignUpper.startsWith("9N") ||
+                    callsignUpper.startsWith("9-N") ||
+                    regUpper.startsWith("9N") ||
+                    regUpper.startsWith("9-N") ||
+                    ["BHA", "NYT", "SHA", "RNA", "HRA", "TRA", "SMT", "GKR", "HIM", "GBL"].includes(opUpper) ||
+                    ["BHA", "NYT", "SHA", "RNA", "HRA", "TRA", "SMT", "GKR", "HIM", "GBL"].some((prefix) =>
+                      callsignUpper.startsWith(prefix)
+                    );
+
+                  const flightNoColor = isNepalFlight ? "text-emerald-400" : "text-yellow-400";
+
                   return (
                     <div
-                      key={`flight-${f.id}`}
+                      key={`flight-${f.id}-${idx}`}
                       role="button"
                       tabIndex={0}
                       onClick={() => handleSelectResult({ type: "flight", data: f })}
                       onMouseEnter={() => setSelectedIndex(globalIdx)}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left cursor-pointer transition-colors ${
                         isHighlighted
                           ? "bg-white/10 text-white"
                           : "hover:bg-white/[0.06] text-neutral-300"
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
-                          <Plane className="w-3.5 h-3.5 rotate-45" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-bold font-sans text-neutral-100 truncate">
-                              {callsign}
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center space-x-1.5">
+                          <span className={`text-xs font-bold font-sans truncate ${flightNoColor}`}>
+                            {callsign}
+                          </span>
+                          {flightNum && flightNum !== callsign && (
+                            <span className={`text-[10px] font-mono ${flightNoColor} opacity-90`}>
+                              ({flightNum})
                             </span>
-                            {flightNum && flightNum !== callsign && (
-                              <span className="text-[10px] font-mono text-neutral-400">
-                                ({flightNum})
-                              </span>
-                            )}
-                            {f.identification.is_nepal_registered && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-                                9N
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
-                            {operator} • {model} {reg && `• ${reg}`}
-                          </div>
+                          )}
+                          {isNepalFlight && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                              9N
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
+                          {operator} • {model} {reg && `• ${reg}`}
                         </div>
                       </div>
 
@@ -380,14 +358,11 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
             </div>
           )}
 
-          {/* Section 2: Nepal Airports */}
+          {/* Section 2: Nepal Airports (No icons beside title or items) */}
           {matchedAirports.length > 0 && (
             <div className="mb-2.5">
               <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider font-sans border-b border-white/5 mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <MapPin className="w-3 h-3 text-sky-400" />
-                  <span>Nepal Airports</span>
-                </div>
+                <span>NEPAL AIRPORTS</span>
                 <span className="font-mono text-[9px] text-neutral-500">
                   {matchedAirports.length} MATCH{matchedAirports.length === 1 ? "" : "ES"}
                 </span>
@@ -400,40 +375,35 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
 
                   return (
                     <div
-                      key={`airport-${a.ident}`}
+                      key={`airport-${a.ident}-${idx}`}
                       role="button"
                       tabIndex={0}
                       onClick={() => handleSelectResult({ type: "airport", data: a })}
                       onMouseEnter={() => setSelectedIndex(globalIdx)}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left cursor-pointer transition-colors ${
                         isHighlighted
                           ? "bg-white/10 text-white"
                           : "hover:bg-white/[0.06] text-neutral-300"
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                        <div className="w-7 h-7 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 text-sky-400">
-                          <Building2 className="w-3.5 h-3.5" />
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-xs font-bold font-sans text-neutral-100 truncate">
+                            {a.name}
+                          </span>
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-bold font-sans text-neutral-100 truncate">
-                              {a.name}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
-                            {a.municipality || "Nepal"} • {a.type?.replace(/_/g, " ") || "Aerodrome"}
-                          </div>
+                        <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
+                          {a.municipality || "Nepal"} • {a.type?.replace(/_/g, " ") || "Aerodrome"}
                         </div>
                       </div>
 
                       <div className="flex items-center space-x-1.5 shrink-0 font-mono">
                         {a.iata_code && (
-                          <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-white/10 border border-white/15 text-neutral-200">
+                          <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-white/10 border border-white/15 text-neutral-200">
                             {a.iata_code}
                           </span>
                         )}
-                        <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                        <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-white/5 border border-white/10 text-neutral-300">
                           {a.ident}
                         </span>
                       </div>
@@ -444,14 +414,11 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
             </div>
           )}
 
-          {/* Section 3: Nepal Fleet (CAAN Registry) */}
+          {/* Section 3: Nepal Fleet (CAAN REGISTRY) (No icons, existing typography) */}
           {nepalDbResults.length > 0 && (
             <div>
               <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider font-sans border-b border-white/5 mb-1">
-                <div className="flex items-center space-x-1.5">
-                  <Shield className="w-3 h-3 text-emerald-400" />
-                  <span>Nepal Fleet (CAAN Registry)</span>
-                </div>
+                <span>Nepal Fleet (CAAN REGISTRY)</span>
                 <span className="font-mono text-[9px] text-neutral-500">
                   {nepalDbResults.length} FLEET
                 </span>
@@ -478,34 +445,29 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                       tabIndex={0}
                       onClick={() => handleSelectResult({ type: "nepal_aircraft", data: ac })}
                       onMouseEnter={() => setSelectedIndex(globalIdx)}
-                      className={`w-full flex items-center justify-between p-2 rounded-xl text-left cursor-pointer transition-colors ${
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left cursor-pointer transition-colors ${
                         isHighlighted
                           ? "bg-white/10 text-white"
                           : "hover:bg-white/[0.06] text-neutral-300"
                       }`}
                     >
-                      <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-400">
-                          <Plane className="w-3.5 h-3.5" />
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold font-sans text-neutral-100 truncate">
+                            {ac.registration || ac.icao24}
+                          </span>
+                          <span className="text-xs font-normal font-sans text-neutral-300 truncate">
+                            {ac.operator || "Nepal Airline"}
+                          </span>
+                          {isLiveInAirspace && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-medium bg-white/10 text-neutral-300 border border-white/15">
+                              LIVE
+                            </span>
+                          )}
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center space-x-1.5">
-                            <span className="text-xs font-mono font-bold text-emerald-400 tracking-wider">
-                              {ac.registration || ac.icao24}
-                            </span>
-                            <span className="text-xs font-bold font-sans text-neutral-200 truncate">
-                              {ac.operator || "Nepal Airline"}
-                            </span>
-                            {isLiveInAirspace && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse">
-                                LIVE
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
-                            {ac.model || ac.typecode || "Airframe"} • MSN {ac.serial_number || "N/A"}{" "}
-                            {ac.built_year && `• Built ${ac.built_year}`}
-                          </div>
+                        <div className="text-[10px] text-neutral-400 font-sans truncate mt-0.5">
+                          {ac.model || ac.typecode || "Airframe"} • MSN {ac.serial_number || "N/A"}{" "}
+                          {ac.built_year && `• Built ${ac.built_year}`}
                         </div>
                       </div>
 

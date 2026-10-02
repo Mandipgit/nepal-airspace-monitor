@@ -224,7 +224,22 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
         ) : (
           filteredFlights.map((flight) => {
             const isSelected = flight.id === selectedFlightId;
-            const isNepal = flight.identification.is_nepal_registered;
+            const callsignUpper = (flight.identification.callsign || "").trim().toUpperCase();
+            const regUpper = (flight.identification.registration || "").trim().toUpperCase();
+            const opUpper = (flight.identification.operator_icao || "").trim().toUpperCase();
+            const originLower = (flight.identification.origin_country || "").trim().toLowerCase();
+
+            const isNepal =
+              Boolean(flight.identification.is_nepal_registered) ||
+              originLower === "nepal" ||
+              callsignUpper.startsWith("9N") ||
+              callsignUpper.startsWith("9-N") ||
+              regUpper.startsWith("9N") ||
+              regUpper.startsWith("9-N") ||
+              ["BHA", "NYT", "SHA", "RNA", "HRA", "TRA", "SMT", "GKR", "HIM", "GBL"].includes(opUpper) ||
+              ["BHA", "NYT", "SHA", "RNA", "HRA", "TRA", "SMT", "GKR", "HIM", "GBL"].some((prefix) =>
+                callsignUpper.startsWith(prefix)
+              );
             const onGround = flight.position.on_ground;
 
             const altFt =
@@ -262,7 +277,7 @@ export const FlightSearchDrawer: React.FC<FlightSearchDrawerProps> = ({
                           : "bg-[#FACC15]"
                         }`}
                     />
-                    <span className="font-mono-avionics text-sm font-bold text-[#FAFAFA] tracking-wider truncate">
+                    <span className={`font-mono-avionics text-sm font-bold tracking-wider truncate ${isNepal ? "text-emerald-400" : "text-yellow-400"}`}>
                       {flight.identification.callsign || flight.identification.icao24.toUpperCase()}
                     </span>
                     {isNepal && (

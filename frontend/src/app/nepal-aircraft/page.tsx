@@ -2,26 +2,17 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Button, Chip, Tooltip } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { NepalAircraft } from "@/types/flight";
 import { fetchNepalAircraftFleet } from "@/lib/api";
 import { getUserFriendlyErrorMessage } from "@/lib/errors";
 import {
   ArrowLeft,
   Search,
-  Plane,
   RefreshCw,
   AlertCircle,
-  Building2,
-  Calendar,
-  Layers,
   ChevronRight,
-  Info,
   X,
-  Gauge,
-  ShieldCheck,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
 
@@ -31,10 +22,7 @@ export default function NepalAircraftPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedOperator, setSelectedOperator] = useState<string>("all");
-  const [page, setPage] = useState<number>(1);
   const [selectedAircraft, setSelectedAircraft] = useState<NepalAircraft | null>(null);
-
-  const rowsPerPage = 12;
 
   // Load Nepal fleet from database via API
   const loadFleet = useCallback(async () => {
@@ -99,336 +87,229 @@ export default function NepalAircraftPage() {
     });
   }, [fleet, searchQuery, selectedOperator]);
 
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, selectedOperator]);
-
-  // Pagination calculation
-  const totalPages = Math.ceil(filteredFleet.length / rowsPerPage) || 1;
-  const currentItems = useMemo(() => {
-    const start = (page - 1) * rowsPerPage;
-    return filteredFleet.slice(start, start + rowsPerPage);
-  }, [filteredFleet, page, rowsPerPage]);
-
   return (
-    <div className="flex flex-col min-h-screen bg-[var(--page-bg)] text-[var(--text-primary)] font-sans">
-      {/* Top Application Header */}
-      <header className="h-14 w-full bg-[#111113] border-b border-white/[0.08] px-4 sm:px-6 flex items-center justify-between shrink-0 select-none">
-        <div className="flex items-center space-x-3">
-          <Link
-            href="/"
-            className="flex items-center space-x-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Dashboard</span>
-          </Link>
-          <span className="text-neutral-600">/</span>
-          <div className="flex items-center space-x-2">
-            <Plane className="w-4 h-4 text-emerald-400" />
-            <h1 className="text-sm font-bold text-white tracking-tight font-sans">
-              Nepal Aircraft
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-            {fleet.length} REGISTERED
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            onPress={loadFleet}
-            isLoading={loading}
-            className="text-xs text-neutral-300 hover:text-white hover:bg-white/5 border border-white/10"
-          >
-            <RefreshCw className="w-3.5 h-3.5 mr-1" />
-            Refresh
-          </Button>
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Page Intro Card */}
-        <div className="p-6 rounded-2xl bg-[#111113] border border-white/[0.08] shadow-2xl relative overflow-hidden">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="px-2 py-0.5 rounded text-[10px] font-sans font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 uppercase tracking-wider">
-                  Civil Aviation Registry (CAAN 9N)
-                </span>
-              </div>
-              <h2 className="text-2xl font-black text-white tracking-tight font-sans">
-                Nepal Registered Aircraft
-              </h2>
-              <p className="text-xs text-[#A1A1AA] max-w-2xl mt-1 font-sans">
-                Complete database of active, commercial, and general aviation aircraft officially
-                registered in Nepal. Browse fleet airframes, registration marks, airline operators,
-                and linked engineering specifications.
-              </p>
-            </div>
-
-            {/* Quick Stat Highlights */}
-            <div className="flex items-center space-x-3 shrink-0 font-sans">
-              <div className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-center">
-                <span className="block text-[10px] uppercase font-bold text-[#71717A] tracking-wider font-sans">
-                  Total Fleet
-                </span>
-                <span className="text-lg font-black text-white font-mono">
-                  {fleet.length}
-                </span>
-              </div>
-
-              <div className="px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-center">
-                <span className="block text-[10px] uppercase font-bold text-[#71717A] tracking-wider font-sans">
-                  Operators
-                </span>
-                <span className="text-lg font-black text-emerald-400 font-mono">
-                  {availableOperators.length}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filter & Search Bar */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans">
-          {/* Search Box */}
-          <div className="w-full sm:w-80">
-            <div className="relative flex items-center w-full h-9 bg-white/[0.05] hover:bg-white/[0.08] focus-within:bg-[#141416] border border-white/[0.08] focus-within:border-white/25 rounded-xl px-3 transition-all">
-              <Search className="w-4 h-4 text-neutral-400 shrink-0 mr-2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search registration, model, operator..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent text-xs font-sans text-white placeholder:text-neutral-500 focus:outline-none"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="p-0.5 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
-                  aria-label="Clear search"
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans">
+      {/* Operations Workspace Container */}
+      <div className="flex flex-1 w-full h-full overflow-hidden relative">
+        {/* Main Content Area with smooth scrolling */}
+        <main className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8 space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6 pb-20">
+            {/* Header Section with Route Aircraft Analyzer Back Button */}
+            <div className="relative flex items-center justify-between pb-4 border-b border-white/[0.08]">
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-neutral-300 hover:text-white transition-all duration-150 active:scale-95 shadow-sm group shrink-0 cursor-pointer"
+                  title="Return to Live Airspace Map"
+                  aria-label="Return to Live Airspace Map"
                 >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Operator Dropdown Filter */}
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-[#71717A] font-medium font-sans shrink-0">
-              Filter Operator:
-            </span>
-            <select
-              aria-label="Filter by airline or operator"
-              value={selectedOperator}
-              onChange={(e) => setSelectedOperator(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-[#141416] border border-white/[0.12] text-xs font-medium text-neutral-200 focus:outline-none focus:border-white/30 cursor-pointer font-sans"
-            >
-              <option value="all">All Airlines & Operators ({availableOperators.length})</option>
-              {availableOperators.map((op) => (
-                <option key={op} value={op}>
-                  {op}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center space-x-3 font-sans">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Structured Aircraft Table */}
-        <div className="rounded-2xl bg-[#111113] border border-white/[0.08] shadow-2xl overflow-hidden p-1">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px] font-sans">
-              <thead>
-                <tr className="border-b border-white/[0.08] bg-[#18181B] text-[#A1A1AA] text-xs font-semibold uppercase tracking-wider font-sans">
-                  <th className="py-3.5 px-4">Registration</th>
-                  <th className="py-3.5 px-4">Model & Type</th>
-                  <th className="py-3.5 px-4">Airline / Operator</th>
-                  <th className="py-3.5 px-4">Manufacturer & Serial</th>
-                  <th className="py-3.5 px-4">Built</th>
-                  <th className="py-3.5 px-4">Capacity</th>
-                  <th className="py-3.5 px-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.04] text-xs font-sans">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[#A1A1AA] font-sans">
-                      <div className="flex items-center justify-center space-x-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-[#108AEF]" />
-                        <span>Loading civil aircraft records from database...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : currentItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-xs text-[#71717A] font-sans">
-                      {searchQuery || selectedOperator !== "all"
-                        ? "No aircraft matched your filters."
-                        : "No aircraft records found in the database."}
-                    </td>
-                  </tr>
-                ) : (
-                  currentItems.map((ac) => {
-                    const spec = ac.specification;
-                    return (
-                      <tr
-                        key={ac.registration || ac.icao24 || Math.random().toString()}
-                        onClick={() => setSelectedAircraft(ac)}
-                        className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
-                      >
-                        {/* Registration */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-mono font-bold text-sm text-white group-hover:text-[#108AEF] transition-colors">
-                              {ac.registration || "N/A"}
-                            </span>
-                            {ac.icao24 && (
-                              <span className="font-mono text-[10px] text-[#108AEF] bg-[#108AEF]/15 border border-[#108AEF]/25 px-1.5 py-0.5 rounded">
-                                {ac.icao24.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        {/* Model & Type */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-white font-sans">
-                            {ac.model || spec?.model || "Standard Airframe"}
-                          </div>
-                          <div className="text-[10px] font-mono text-[#71717A]">
-                            {ac.typecode ? `ICAO: ${ac.typecode}` : ac.aircraft_type || "—"}
-                          </div>
-                        </td>
-
-                        {/* Airline / Operator */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-[#E4E4E7] font-sans">
-                            {ac.operator || ac.owner || "Private / Unlisted"}
-                          </div>
-                          {ac.operator_callsign && (
-                            <div className="text-[10px] font-mono text-[#71717A]">
-                              Callsign: {ac.operator_callsign}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Manufacturer & Serial */}
-                        <td className="py-3.5 px-4">
-                          <div className="text-neutral-300 font-sans">
-                            {ac.manufacturer_name || "—"}
-                          </div>
-                          <div className="text-[10px] font-mono text-[#71717A]">
-                            {ac.serial_number ? `MSN ${ac.serial_number}` : "—"}
-                          </div>
-                        </td>
-
-                        {/* Built Year */}
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono text-neutral-300">
-                            {ac.built_year || "—"}
-                          </span>
-                        </td>
-
-                        {/* Capacity */}
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono text-neutral-300">
-                            {spec?.passenger_capacity ? `${spec.passenger_capacity} seats` : "—"}
-                          </span>
-                        </td>
-
-                        {/* Action Details */}
-                        <td className="py-3.5 px-4 text-right">
-                          <Button
-                            size="sm"
-                            variant="flat"
-                            onPress={() => setSelectedAircraft(ac)}
-                            className="bg-white/[0.05] hover:bg-white/[0.12] text-xs font-semibold text-neutral-200 border border-white/[0.08]"
-                          >
-                            <span>Specs</span>
-                            <ChevronRight className="w-3 h-3 ml-0.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="p-4 border-t border-white/[0.08] flex items-center justify-between flex-wrap gap-2 font-sans">
-              <span className="text-xs text-[#71717A] font-sans font-medium">
-                Showing {Math.min(filteredFleet.length, (page - 1) * rowsPerPage + 1)}–
-                {Math.min(filteredFleet.length, page * rowsPerPage)} of {filteredFleet.length} aircraft
-              </span>
+                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-neutral-300 group-hover:text-white" />
+                </Link>
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold tracking-tight text-[#FAFAFA] font-sans">
+                    Nepal Aircraft
+                  </h1>
+                </div>
+              </div>
 
               <div className="flex items-center space-x-2">
+                <span className="px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-white/[0.06] border border-white/[0.12] text-neutral-300">
+                  {fleet.length} Aircraft
+                </span>
                 <Button
                   size="sm"
-                  variant="flat"
-                  onPress={() => setPage((p) => Math.max(1, p - 1))}
-                  isDisabled={page === 1}
-                  className="bg-white/[0.04] text-[#A1A1AA] hover:text-white border border-white/[0.08] text-xs font-semibold rounded-lg"
+                  variant="ghost"
+                  onPress={loadFleet}
+                  isLoading={loading}
+                  className="text-xs text-neutral-300 hover:text-white hover:bg-white/5 border border-white/10"
                 >
-                  <ChevronLeftIcon className="w-3.5 h-3.5 mr-0.5" />
-                  Previous
-                </Button>
-
-                <div className="flex items-center space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum = i + 1;
-                    if (totalPages > 5 && page > 3) {
-                      pageNum = Math.min(totalPages - 4, page - 2) + i;
-                    }
-                    const isActive = page === pageNum;
-                    return (
-                      <button
-                        key={pageNum}
-                        type="button"
-                        onClick={() => setPage(pageNum)}
-                        className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
-                          isActive
-                            ? "bg-[#108AEF] text-white shadow-sm"
-                            : "bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06]"
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="flat"
-                  onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  isDisabled={page === totalPages}
-                  className="bg-white/[0.04] text-[#A1A1AA] hover:text-white border border-white/[0.08] text-xs font-semibold rounded-lg"
-                >
-                  Next
-                  <ChevronRightIcon className="w-3.5 h-3.5 ml-0.5" />
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                  Refresh
                 </Button>
               </div>
             </div>
-          )}
-        </div>
-      </main>
+
+            {/* Filter & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 font-sans">
+              {/* Search Box */}
+              <div className="w-full sm:w-80">
+                <div className="relative flex items-center w-full h-9 bg-white/[0.05] hover:bg-white/[0.08] focus-within:bg-[#141416] border border-white/[0.08] focus-within:border-white/25 rounded-xl px-3 transition-all">
+                  <Search className="w-4 h-4 text-neutral-400 shrink-0 mr-2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search registration, model, operator..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-transparent text-xs font-sans text-white placeholder:text-neutral-500 focus:outline-none"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="p-0.5 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Operator Dropdown Filter */}
+              <div className="flex items-center space-x-2">
+                <span className="text-xs text-[#71717A] font-medium font-sans shrink-0">
+                  Filter Operator:
+                </span>
+                <select
+                  aria-label="Filter by airline or operator"
+                  value={selectedOperator}
+                  onChange={(e) => setSelectedOperator(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-[#141416] border border-white/[0.12] text-xs font-medium text-neutral-200 focus:outline-none focus:border-white/30 cursor-pointer font-sans"
+                >
+                  <option value="all">All Airlines & Operators ({availableOperators.length})</option>
+                  {availableOperators.map((op) => (
+                    <option key={op} value={op}>
+                      {op}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs flex items-center space-x-3 font-sans">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Structured Aircraft Table */}
+            <div className="rounded-2xl bg-[#111113] border border-white/[0.08] shadow-2xl overflow-hidden p-1">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[760px] font-sans">
+                  <thead>
+                    <tr className="border-b border-white/[0.08] bg-[#18181B] text-[#A1A1AA] text-xs font-semibold uppercase tracking-wider font-sans">
+                      <th className="py-3.5 px-4">Registration</th>
+                      <th className="py-3.5 px-4">Model & Type</th>
+                      <th className="py-3.5 px-4">Airline / Operator</th>
+                      <th className="py-3.5 px-4">Manufacturer & Serial</th>
+                      <th className="py-3.5 px-4">Built</th>
+                      <th className="py-3.5 px-4">Capacity</th>
+                      <th className="py-3.5 px-4 text-right">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04] text-xs font-sans">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-xs text-[#A1A1AA] font-sans">
+                          <div className="flex items-center justify-center space-x-2">
+                            <RefreshCw className="w-4 h-4 animate-spin text-[#108AEF]" />
+                            <span>Loading civil aircraft records from database...</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredFleet.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-xs text-[#71717A] font-sans">
+                          {searchQuery || selectedOperator !== "all"
+                            ? "No aircraft matched your filters."
+                            : "No aircraft records found in the database."}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredFleet.map((ac, idx) => {
+                        const spec = ac.specification;
+                        const rowKey = `nepal-ac-${ac.id ?? ac.registration ?? ac.icao24 ?? "item"}-${idx}`;
+                        return (
+                          <tr
+                            key={rowKey}
+                            onClick={() => setSelectedAircraft(ac)}
+                            className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                          >
+                            {/* Registration (Callsign only, NO ICAO HEX) */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono font-bold text-sm text-white group-hover:text-[#108AEF] transition-colors">
+                                {ac.registration || "N/A"}
+                              </span>
+                            </td>
+
+                            {/* Model & Type */}
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-white font-sans">
+                                {ac.model || spec?.model || "Standard Airframe"}
+                              </div>
+                              <div className="text-[10px] font-mono text-[#71717A]">
+                                {ac.typecode ? `ICAO: ${ac.typecode}` : ac.aircraft_type || "—"}
+                              </div>
+                            </td>
+
+                            {/* Airline / Operator */}
+                            <td className="py-3.5 px-4">
+                              <div className="font-semibold text-[#E4E4E7] font-sans">
+                                {ac.operator || ac.owner || "Private / Unlisted"}
+                              </div>
+                              {ac.operator_callsign && (
+                                <div className="text-[10px] font-mono text-[#71717A]">
+                                  Callsign: {ac.operator_callsign}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Manufacturer & Serial */}
+                            <td className="py-3.5 px-4">
+                              <div className="text-neutral-300 font-sans">
+                                {ac.manufacturer_name || "—"}
+                              </div>
+                              <div className="text-[10px] font-mono text-[#71717A]">
+                                {ac.serial_number ? `MSN ${ac.serial_number}` : "—"}
+                              </div>
+                            </td>
+
+                            {/* Built Year */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono text-neutral-300">
+                                {ac.built_year || "—"}
+                              </span>
+                            </td>
+
+                            {/* Capacity */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-mono text-neutral-300">
+                                {spec?.passenger_capacity ? `${spec.passenger_capacity} seats` : "—"}
+                              </span>
+                            </td>
+
+                            {/* Action Details */}
+                            <td className="py-3.5 px-4 text-right">
+                              <Button
+                                size="sm"
+                                variant="flat"
+                                onPress={() => setSelectedAircraft(ac)}
+                                className="bg-white/[0.05] hover:bg-white/[0.12] text-xs font-semibold text-neutral-200 border border-white/[0.08]"
+                              >
+                                <span>Specs</span>
+                                <ChevronRight className="w-3 h-3 ml-0.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Footer Summary */}
+              <div className="p-4 border-t border-white/[0.08] flex items-center justify-between font-sans">
+                <span className="text-xs text-[#71717A] font-sans font-medium">
+                  Showing {filteredFleet.length} of {fleet.length} registered aircraft
+                </span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
 
       {/* Aircraft Technical Details Modal */}
       {selectedAircraft && (
@@ -441,12 +322,7 @@ export default function NepalAircraftPage() {
                   <h2 className="text-xl font-bold text-white font-sans">
                     {selectedAircraft.registration || "Aircraft Detail"}
                   </h2>
-                  {selectedAircraft.icao24 && (
-                    <span className="font-mono text-xs text-[#108AEF] bg-[#108AEF]/15 border border-[#108AEF]/25 px-2 py-0.5 rounded">
-                      {selectedAircraft.icao24.toUpperCase()}
-                    </span>
-                  )}
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-sans font-medium bg-white/10 border border-white/15 text-neutral-300">
                     9N Registry
                   </span>
                 </div>
