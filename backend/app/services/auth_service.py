@@ -157,6 +157,94 @@ class AuthService:
             return await self.repo.revoke_refresh_token(token_hash)
         return True
 
+    async def verify_google_session(
+        self,
+        supabase_token: str,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None
+    ) -> TokenResponseSchema:
+        """
+        Verify a Google-authenticated Supabase session, create or update the user's
+        AeroTrace profile, and issue AeroTrace session JWT tokens.
+        """
+        from app.services.supabase.client import get_supabase_client
+        supabase = get_supabase_client()
+        try:
+            auth_response = supabase.auth.get_user(supabase_token.strip())
+            supabase_user = auth_response.user
+            if not supabase_user or not supabase_user.email:
+                raise AppError(message="Invalid Google authentication session.", status_code=401)
+        except Exception as e:
+            logger.error(f"Supabase auth token verification error: {e}")
+            raise AppError(message="Could not verify Google authentication session.", status_code=401)
+
+        email = supabase_user.email.strip().lower()
+        user_id = str(supabase_user.id)
+
+        # Derive first and last name:
+        # Prefer user's explicitly submitted profile data (as instructed)
+        # Fallback to Google user_metadata if available
+        user_meta = supabase_user.user_metadata or {}
+        g_full_name = user_meta.get("full_name") or user_meta.get("name") or ""
+        g_given_name = user_meta.get("given_name") or ""
+        g_family_name = user_meta.get("family_name") or ""
+
+        final_first_name = (first_name or "").strip()
+        if not final_first_name:
+            if g_given_name:
+                final_first_name = g_given_name
+            elif g_full_name:
+                final_first_name = g_full_name.split()[0]
+            else:
+                final_first_name = email.split("@")[0].capitalize()
+
+        final_last_name = (last_name or "").strip()
+        if not final_last_name:
+            if g_family_name:
+                final_last_name = g_family_name
+            elif g_full_name and len(g_full_name.split()) > 1:
+                final_last_name = " ".join(g_full_name.split()[1:])
+            else:
+                final_last_name = "User"
+
+        # Check if AeroTrace profile already exists by user_id or by email
+        existing_user = await self.repo.get_by_id(user_id)
+        if not existing_user:
+            existing_user = await self.repo.get_by_email(email)
+
+        if existing_user:
+            user_record = existing_user
+            logger.info(f"Existing user authenticated via Google: {email} (ID: {user_record['id']})")
+        else:
+            now_iso = datetime.now(timezone.utc).isoformat()
+            user_data = {
+                "id": user_id,
+                "email": email,
+                "password_hash": "",
+                "first_name": final_first_name,
+                "last_name": final_last_name,
+                "is_active": True,
+                "created_at": now_iso,
+                "updated_at": now_iso
+            }
+            try:
+                client = self.repo._get_client()
+                res = client.table("users").insert(user_data).execute()
+                if res.data:
+                    user_record = res.data[0]
+                else:
+                    user_record = user_data
+            except Exception as e:
+                logger.error(f"Error persisting new Google user to Supabase: {e}")
+                user_record = user_data
+
+            self.repo._in_memory_users[user_record["id"]] = user_record
+            self.repo._in_memory_by_email[email] = user_record["id"]
+            logger.info(f"New user created via Google: {email} (ID: {user_record['id']})")
+
+        return await self._build_token_response(user_record)
+
+
     async def _build_token_response(self, user_record: Dict[str, Any]) -> TokenResponseSchema:
         """Helper to create JWT access token, persist hashed refresh token, and return envelope."""
         settings = get_settings()

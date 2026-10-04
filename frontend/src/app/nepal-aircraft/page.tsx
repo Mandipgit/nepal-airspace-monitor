@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Button } from "@heroui/react";
+import { Button, Dropdown } from "@heroui/react";
 import { NepalAircraft } from "@/types/flight";
 import { fetchNepalAircraftFleet } from "@/lib/api";
 import { getUserFriendlyErrorMessage } from "@/lib/errors";
@@ -12,6 +12,8 @@ import {
   RefreshCw,
   AlertCircle,
   ChevronRight,
+  ChevronDown,
+  Check,
   X,
 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -160,19 +162,68 @@ export default function NepalAircraftPage() {
                 <span className="text-xs text-[#71717A] font-medium font-sans shrink-0">
                   Filter Operator:
                 </span>
-                <select
-                  aria-label="Filter by airline or operator"
-                  value={selectedOperator}
-                  onChange={(e) => setSelectedOperator(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-[#141416] border border-white/[0.12] text-xs font-medium text-neutral-200 focus:outline-none focus:border-white/30 cursor-pointer font-sans"
-                >
-                  <option value="all">All Airlines & Operators ({availableOperators.length})</option>
-                  {availableOperators.map((op) => (
-                    <option key={op} value={op}>
-                      {op}
-                    </option>
-                  ))}
-                </select>
+                <Dropdown>
+                  <Dropdown.Trigger className="inline-flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.12] hover:border-white/20 text-xs font-semibold text-neutral-200 hover:text-white transition-all duration-200 cursor-pointer font-sans shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[#006FEE] max-w-[260px]">
+                    <span className="truncate">
+                      {selectedOperator === "all"
+                        ? `All Airlines & Operators (${availableOperators.length})`
+                        : selectedOperator}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-200" />
+                  </Dropdown.Trigger>
+                  <Dropdown.Popover
+                    placement="bottom end"
+                    className="z-50 min-w-[240px] max-h-72 overflow-y-auto p-1.5 rounded-2xl bg-[#141416]/98 border border-white/12 shadow-2xl backdrop-blur-xl font-sans transition-all duration-300 ease-out data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95 data-[entering]:duration-300 data-[exiting]:animate-out data-[exiting]:fade-out data-[exiting]:zoom-out-95 data-[exiting]:duration-200"
+                  >
+                    <Dropdown.Menu
+                      aria-label="Filter by airline or operator"
+                      selectionMode="single"
+                      selectedKeys={new Set([selectedOperator])}
+                      onSelectionChange={(keys) => {
+                        const val = Array.from(keys)[0];
+                        if (val) setSelectedOperator(String(val));
+                      }}
+                      className="outline-none space-y-0.5"
+                    >
+                      <Dropdown.Item
+                        key="all"
+                        id="all"
+                        textValue={`All Airlines & Operators (${availableOperators.length})`}
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer outline-none transition-colors duration-150 data-[focused]:bg-white/[0.08] data-[focused]:text-white ${
+                          selectedOperator === "all"
+                            ? "bg-[#006FEE]/15 text-[#006FEE] font-semibold"
+                            : "text-neutral-300 hover:text-white hover:bg-white/[0.08]"
+                        }`}
+                      >
+                        <span className="truncate">All Airlines & Operators ({availableOperators.length})</span>
+                        {selectedOperator === "all" && (
+                          <Check className="w-3.5 h-3.5 text-[#006FEE] shrink-0 ml-2" />
+                        )}
+                      </Dropdown.Item>
+
+                      {availableOperators.map((op) => {
+                        const isSelected = selectedOperator === op;
+                        return (
+                          <Dropdown.Item
+                            key={op}
+                            id={op}
+                            textValue={op}
+                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium cursor-pointer outline-none transition-colors duration-150 data-[focused]:bg-white/[0.08] data-[focused]:text-white ${
+                              isSelected
+                                ? "bg-[#006FEE]/15 text-[#006FEE] font-semibold"
+                                : "text-neutral-300 hover:text-white hover:bg-white/[0.08]"
+                            }`}
+                          >
+                            <span className="truncate">{op}</span>
+                            {isSelected && (
+                              <Check className="w-3.5 h-3.5 text-[#006FEE] shrink-0 ml-2" />
+                            )}
+                          </Dropdown.Item>
+                        );
+                      })}
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown>
               </div>
             </div>
 

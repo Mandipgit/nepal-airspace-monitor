@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/common/TopBar";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import { FlightDetailsPanel } from "@/components/flight-details/FlightDetailsPanel";
@@ -17,6 +18,25 @@ import { getUserFriendlyErrorMessage } from "@/lib/errors";
 import { List } from "lucide-react";
 
 export default function Home() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading || !isAuthenticated) {
+    return (
+      <div className="fixed inset-0 bg-[#000000] z-50 flex items-center justify-center" />
+    );
+  }
+
+  return <DashboardView />;
+}
+
+function DashboardView() {
   const { isAuthenticated } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(true);

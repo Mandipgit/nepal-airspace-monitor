@@ -79,6 +79,14 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., min_length=10, description="Active refresh token")
 
 
+class GoogleAuthVerifyRequest(BaseModel):
+    """Payload to verify Supabase Google OAuth session and issue AeroTrace tokens."""
+    supabase_token: str = Field(..., description="Supabase user access token obtained after Google OAuth")
+    first_name: Optional[str] = Field(None, description="Explicit first name entered on registration form")
+    last_name: Optional[str] = Field(None, description="Explicit last name entered on registration form")
+
+
 class MessageResponseSchema(BaseModel):
     """Generic status/message response."""
     message: str
+

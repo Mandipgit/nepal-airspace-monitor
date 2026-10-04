@@ -189,6 +189,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             onClick={async () => {
               if (onClose) onClose();
               await logout();
+              router.push("/login");
             }}
             className="w-full py-2.5 px-3 rounded-xl text-xs font-semibold text-[#FB7185] hover:bg-[rgba(244,63,94,0.14)] border border-transparent hover:border-[#FB7185]/20 flex items-center space-x-2.5 transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm"
           >

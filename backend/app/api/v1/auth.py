@@ -13,11 +13,31 @@ from app.schemas.auth import (
     UserResponseSchema,
     TokenResponseSchema,
     RefreshTokenRequest,
+    GoogleAuthVerifyRequest,
     MessageResponseSchema
 )
 from app.services.auth_service import auth_service
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+@router.post(
+    "/google/verify",
+    response_model=TokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Verify Google OAuth session and issue AeroTrace tokens"
+)
+async def verify_google(req: GoogleAuthVerifyRequest):
+    """
+    Verify authenticated Google session from Supabase, create/update AeroTrace
+    user profile, and issue valid application session JWT tokens.
+    """
+    return await auth_service.verify_google_session(
+        supabase_token=req.supabase_token,
+        first_name=req.first_name,
+        last_name=req.last_name
+    )
+
 
 
 @router.post(

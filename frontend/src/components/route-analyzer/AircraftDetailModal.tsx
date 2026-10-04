@@ -8,8 +8,6 @@ import { fetchAircraftSpec } from "@/lib/api";
 import {
   X,
   Plane,
-  CheckCircle2,
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Loader2,
@@ -219,23 +217,18 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
       >
         {/* Header */}
         <div className="flex items-start justify-between pb-3 border-b border-white/[0.08]">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-[#108AEF]/15 border border-[#108AEF]/30 flex items-center justify-center text-[#108AEF]">
-              <Plane className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-base md:text-lg font-bold text-white tracking-tight">
-                {result.aircraft_name}
-              </h3>
-              <div className="flex items-center space-x-2 text-xs text-[#A1A1AA] font-mono mt-0.5">
-                <span>Model ID: {result.aircraft_identifier}</span>
-                {result.passenger_capacity && (
-                  <>
-                    <span>•</span>
-                    <span>{result.passenger_capacity} Passengers</span>
-                  </>
-                )}
-              </div>
+          <div>
+            <h3 className="text-base md:text-lg font-bold text-white tracking-tight font-sans">
+              {result.aircraft_name}
+            </h3>
+            <div className="flex items-center space-x-2 text-xs text-[#A1A1AA] font-mono mt-0.5">
+              <span>Model ID: {result.aircraft_identifier}</span>
+              {result.passenger_capacity && (
+                <>
+                  <span>•</span>
+                  <span>{result.passenger_capacity} Passengers</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -248,30 +241,12 @@ export const AircraftDetailModal: React.FC<AircraftDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Status Callout Banner */}
-        <div
-          className={`p-3.5 rounded-xl border flex items-center space-x-3 ${
-            isWithin
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-              : "bg-rose-500/10 border-rose-500/30 text-rose-300"
-          }`}
-        >
-          {isWithin ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          ) : (
-            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-          )}
-          <div className="text-xs">
-            <div className="font-bold uppercase tracking-wider text-[11px]">
-              {isWithin ? "Within Calculated Limits" : "Outside Calculated Limits"}
-            </div>
-            <p className="text-[11px] opacity-90 mt-0.5">
-              {result.notes ||
-                (isWithin
-                  ? "Meets calculated aerodynamic range requirements and available destination runway lengths."
-                  : "Field length or range criteria exceeds modelled static capability.")}
-            </p>
-          </div>
+        {/* Remark Text (No colored background, badge, tick icon, or decoration) */}
+        <div className="text-xs sm:text-sm font-sans">
+          <span className="text-neutral-400">Remark: </span>
+          <span className={isWithin ? "text-emerald-400 font-medium" : "text-rose-400 font-medium"}>
+            {isWithin ? "Within Calculated Limit" : "Outside Calculated Limit"}
+          </span>
         </div>
 
         {/* Detailed Route Comparison Metrics Grid */}
