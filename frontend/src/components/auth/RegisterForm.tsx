@@ -15,7 +15,7 @@ import {
   Separator,
 } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { User as UserIcon, Mail, Lock, Eye, EyeOff, UserPlus, ShieldAlert } from "lucide-react";
+import { User as UserIcon, Mail, Lock, Eye, EyeOff, ShieldAlert, ArrowLeft } from "lucide-react";
 import { GoogleLogo } from "@/components/auth/GoogleLogo";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 
@@ -190,21 +190,21 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
   return (
     <Card className="w-full max-w-md border border-white/8 bg-[#0a0a0a] text-neutral-100 shadow-2xl rounded-2xl overflow-hidden">
       {/* Header */}
-      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-white/8 bg-[#0e0e0e]">
-        <div className="flex items-center space-x-2 text-neutral-300 mb-1">
-          <div className="p-2 rounded-xl bg-white/5 border border-white/10">
-            <UserPlus className="w-4 h-4 text-neutral-300" />
-          </div>
-          <span className="text-xs font-semibold tracking-wider uppercase font-mono-avionics text-neutral-400">
-            Nepal Airspace Monitor
-          </span>
-        </div>
-        <Card.Title className="text-xl font-bold tracking-tight text-white">
+      <Card.Header className="relative px-7 pt-6 pb-5 flex items-center justify-center border-b border-white/8 bg-[#0e0e0e]">
+        {onSwitchToLogin && (
+          <button
+            type="button"
+            onClick={onSwitchToLogin}
+            className="absolute left-7 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/20 text-neutral-300 hover:text-white transition-all duration-150 active:scale-95 shadow-sm group shrink-0 cursor-pointer"
+            title="Back to Sign In"
+            aria-label="Back to Sign In"
+          >
+            <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5 text-neutral-300 group-hover:text-white" />
+          </button>
+        )}
+        <Card.Title className="text-xl font-bold tracking-tight text-white text-center">
           Create Account
         </Card.Title>
-        <Card.Description className="text-xs text-neutral-400 leading-relaxed">
-          Join the Nepalese aviation monitoring community to track flights and inspect avionics.
-        </Card.Description>
       </Card.Header>
 
       {/* Body / Form */}

@@ -15,7 +15,7 @@ import {
   Separator,
 } from "@heroui/react";
 import { useAuth } from "@/context/AuthContext";
-import { Mail, Lock, Eye, EyeOff, ShieldCheck, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { GoogleLogo } from "@/components/auth/GoogleLogo";
 import { getSupabaseBrowserClient } from "@/lib/supabaseClient";
 
@@ -135,21 +135,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   return (
     <Card className="w-full max-w-md border border-white/8 bg-[#0a0a0a] text-neutral-100 shadow-2xl rounded-2xl overflow-hidden">
       {/* Header */}
-      <Card.Header className="px-7 pt-7 pb-4 flex flex-col items-start gap-1.5 border-b border-white/8 bg-[#0e0e0e]">
-        <div className="flex items-center space-x-2 text-neutral-300 mb-1">
-          <div className="p-2 rounded-xl bg-white/5 border border-white/10">
-            <ShieldCheck className="w-4 h-4 text-neutral-300" />
-          </div>
-          <span className="text-xs font-semibold tracking-wider uppercase font-mono-avionics text-neutral-400">
-            Nepal Airspace Monitor
-          </span>
-        </div>
-        <Card.Title className="text-xl font-bold tracking-tight text-white">
+      <Card.Header className="px-7 pt-6 pb-5 flex items-center justify-center border-b border-white/8 bg-[#0e0e0e]">
+        <Card.Title className="text-xl font-bold tracking-tight text-white text-center">
           Sign In
         </Card.Title>
-        <Card.Description className="text-xs text-neutral-400 leading-relaxed">
-          Access real-time Kathmandu FIR tracking, ADS-B telemetry, and fleet analytics.
-        </Card.Description>
       </Card.Header>
 
       {/* Body / Form */}
@@ -285,7 +274,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
           {/* Divider */}
           <div className="relative my-1 flex items-center justify-center">
             <Separator orientation="horizontal" className="w-full bg-white/8" />
-            <span className="absolute bg-[#0a0a0a] px-3 text-[11px] font-mono-avionics uppercase text-neutral-400">
+            <span className="absolute bg-[#0a0a0a] px-3 text-[11px] font-sans font-medium uppercase text-neutral-400">
               or
             </span>
           </div>

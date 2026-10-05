@@ -17,10 +17,10 @@ api_v1_router = APIRouter()
 # Public endpoints
 api_v1_router.include_router(health_router)
 api_v1_router.include_router(auth_router)
+api_v1_router.include_router(airports_router)
 
 # Protected endpoints - Require active JWT authentication
 api_v1_router.include_router(flights_router, dependencies=[Depends(get_current_user)])
-api_v1_router.include_router(airports_router, dependencies=[Depends(get_current_user)])
 api_v1_router.include_router(aircraft_router, dependencies=[Depends(get_current_user)])
 api_v1_router.include_router(route_analyzer_router, dependencies=[Depends(get_current_user)])
 

@@ -21,7 +21,7 @@ from app.models.flight import (
 )
 from app.services.providers.base import BaseFlightProvider
 from app.services.providers.opensky import OpenSkyProvider
-from app.services.enrichment import enrichment_service
+from app.services.enrichment import enrichment_service, get_airport_coords
 from app.services.nepal_airspace import should_display_flight_in_nepal_context
 
 logger = logging.getLogger(__name__)
@@ -299,7 +299,7 @@ class FlightService:
         live_res = await self.get_live_flights(nepal_context_only=False)
         for flight in live_res.flights:
             if flight.identification.icao24 == target_icao:
-                if not flight.aircraft_spec:
+                if not flight.route or not flight.aircraft_spec:
                     await enrichment_service.enrich_flight(flight)
                 return flight
         return None
@@ -335,11 +335,27 @@ class FlightService:
         if not stored_points:
             return None
 
+        orig_icao = flight.route.origin_icao if flight and flight.route else None
+        orig_iata = flight.route.origin_iata if flight and flight.route else None
+        orig_name = flight.route.origin_name if flight and flight.route else None
+        orig_lat = flight.route.origin_latitude if flight and flight.route else None
+        orig_lon = flight.route.origin_longitude if flight and flight.route else None
+
+        if (orig_lat is None or orig_lon is None) and (orig_icao or orig_iata):
+            coords = get_airport_coords(orig_icao or orig_iata)
+            if coords:
+                orig_lat, orig_lon = coords
+
         return FlightTrajectoryResponse(
             icao24=target_icao,
             callsign=callsign,
             total_points=len(stored_points),
-            points=stored_points
+            points=stored_points,
+            origin_icao=orig_icao,
+            origin_iata=orig_iata,
+            origin_name=orig_name,
+            origin_latitude=orig_lat,
+            origin_longitude=orig_lon,
         )
 
 

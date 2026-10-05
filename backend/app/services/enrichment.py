@@ -197,6 +197,106 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return r * c
 
 
+def get_airport_coords(ident_or_iata: Optional[str]) -> Optional[Tuple[float, float]]:
+    """Lookup exact airport latitude and longitude from repository catalog and reference coordinates."""
+    if not ident_or_iata:
+        return None
+    key = ident_or_iata.strip().upper()
+    if key in AIRPORT_COORDS:
+        return AIRPORT_COORDS[key]
+    try:
+        from app.services.supabase.aviation_repository import aviation_repo
+        catalog = aviation_repo._load_fallback_airports()
+        for apt in catalog:
+            if (apt.ident and apt.ident.upper() == key) or (apt.iata_code and apt.iata_code.upper() == key):
+                coords = (apt.latitude_deg, apt.longitude_deg)
+                AIRPORT_COORDS[key] = coords
+                return coords
+    except Exception:
+        pass
+    return None
+
+
+def get_airport_metadata(ident_or_iata: Optional[str]) -> Dict[str, Any]:
+    """
+    Retrieve verified ICAO, IATA, airport name, and coordinates.
+    Dynamically searches AIRPORT_REGISTRY and global OurAirports repository catalog.
+    """
+    if not ident_or_iata:
+        return {"icao": None, "iata": None, "name": None, "coords": None}
+    key = ident_or_iata.strip().upper()
+    if key in AIRPORT_REGISTRY:
+        reg = AIRPORT_REGISTRY[key]
+        coords = get_airport_coords(reg.get("icao") or key)
+        return {
+            "icao": reg.get("icao") or key,
+            "iata": reg.get("iata") or key,
+            "name": reg.get("name") or key,
+            "coords": coords
+        }
+    try:
+        from app.services.supabase.aviation_repository import aviation_repo
+        catalog = aviation_repo._load_fallback_airports()
+        for apt in catalog:
+            if (apt.ident and apt.ident.upper() == key) or (apt.iata_code and apt.iata_code.upper() == key):
+                coords = (apt.latitude_deg, apt.longitude_deg) if (apt.latitude_deg and apt.longitude_deg) else None
+                iata = apt.iata_code or apt.local_code or (key if len(key) == 3 else apt.ident)
+                name = apt.name or apt.ident
+                AIRPORT_REGISTRY[key] = {"iata": iata, "icao": apt.ident, "name": name}
+                if coords:
+                    AIRPORT_COORDS[key] = coords
+                    if apt.ident:
+                        AIRPORT_COORDS[apt.ident] = coords
+                return {
+                    "icao": apt.ident,
+                    "iata": iata,
+                    "name": name,
+                    "coords": coords
+                }
+    except Exception:
+        pass
+    coords = get_airport_coords(key)
+    return {"icao": key, "iata": key, "name": key, "coords": coords}
+
+
+def _is_route_plausible(
+    route: Optional[FlightRoute],
+    cur_lat: Optional[float],
+    cur_lon: Optional[float]
+) -> bool:
+    """
+    Validate whether a flight route is geometrically and physically plausible
+    given the aircraft's current real-time coordinates.
+    Protects against stale, reused, or erroneous schedule database matches.
+    """
+    if not route or cur_lat is None or cur_lon is None:
+        return True
+
+    orig_coords = (route.origin_latitude, route.origin_longitude)
+    if None in orig_coords:
+        orig_coords = get_airport_coords(route.origin_icao) or get_airport_coords(route.origin_iata)
+
+    dest_coords = (route.destination_latitude, route.destination_longitude)
+    if None in dest_coords:
+        dest_coords = get_airport_coords(route.destination_icao) or get_airport_coords(route.destination_iata)
+
+    # If coordinates for either endpoint cannot be resolved, cannot falsify geometrically
+    if not orig_coords or None in orig_coords or not dest_coords or None in dest_coords:
+        return True
+
+    d_route = haversine_km(orig_coords[0], orig_coords[1], dest_coords[0], dest_coords[1])
+    d_orig = haversine_km(orig_coords[0], orig_coords[1], cur_lat, cur_lon)
+    d_dest = haversine_km(cur_lat, cur_lon, dest_coords[0], dest_coords[1])
+
+    detour = d_orig + d_dest
+    # Flight corridors, SIDs/STARs, holding patterns can add reasonable detour margin
+    max_allowed_detour = max(1.6 * d_route + 350.0, 500.0)
+    min_endpoint_dist = min(d_orig, d_dest)
+    max_allowed_endpoint = max(1.3 * d_route, 700.0)
+
+    return (detour <= max_allowed_detour) and (min_endpoint_dist <= max_allowed_endpoint)
+
+
 def _make_route(
     orig_key: str,
     dest_key: str,
@@ -205,22 +305,34 @@ def _make_route(
     orig_iata: Optional[str] = None,
     dest_iata: Optional[str] = None
 ) -> FlightRoute:
-    """Build a FlightRoute domain object from airport registry keys or explicit API data."""
-    orig_info = AIRPORT_REGISTRY.get(orig_key, {"iata": orig_iata or orig_key, "icao": orig_key, "name": orig_name or orig_key})
-    dest_info = AIRPORT_REGISTRY.get(dest_key, {"iata": dest_iata or dest_key, "icao": dest_key, "name": dest_name or dest_key})
+    """Build a FlightRoute domain object from airport registry keys, OurAirports catalog, or explicit API data."""
+    orig_meta = get_airport_metadata(orig_key) if orig_key else {}
+    dest_meta = get_airport_metadata(dest_key) if dest_key else {}
 
-    final_dest_icao = dest_info.get("icao", dest_key) if dest_key else None
-    final_dest_iata = dest_iata or (dest_info.get("iata") if dest_key else None)
-    final_dest_name = dest_name or (dest_info.get("name") if dest_key else None)
+    final_orig_icao = orig_meta.get("icao") or orig_key or None
+    final_orig_iata = orig_iata or orig_meta.get("iata") or orig_key or None
+    final_orig_name = orig_name or orig_meta.get("name") or orig_key or None
+
+    final_dest_icao = dest_meta.get("icao") or dest_key or None
+    final_dest_iata = dest_iata or dest_meta.get("iata") or dest_key or None
+    final_dest_name = dest_name or dest_meta.get("name") or dest_key or None
+
+    orig_coords = orig_meta.get("coords") or get_airport_coords(final_orig_icao or orig_key) or get_airport_coords(final_orig_iata or orig_iata)
+    dest_coords = dest_meta.get("coords") or get_airport_coords(final_dest_icao or dest_key) or get_airport_coords(final_dest_iata or dest_iata)
 
     return FlightRoute(
-        origin_icao=orig_info.get("icao", orig_key) if orig_key else None,
-        origin_iata=orig_iata or (orig_info.get("iata") if orig_key else None),
-        origin_name=orig_name or (orig_info.get("name") if orig_key else None),
+        origin_icao=final_orig_icao,
+        origin_iata=final_orig_iata,
+        origin_name=final_orig_name,
+        origin_latitude=orig_coords[0] if orig_coords else None,
+        origin_longitude=orig_coords[1] if orig_coords else None,
         destination_icao=final_dest_icao,
         destination_iata=final_dest_iata,
         destination_name=final_dest_name,
+        destination_latitude=dest_coords[0] if dest_coords else None,
+        destination_longitude=dest_coords[1] if dest_coords else None,
     )
+
 
 
 class FlightEnrichmentService:
@@ -231,7 +343,8 @@ class FlightEnrichmentService:
         self._spec_cache: Dict[str, Optional[Dict[str, Any]]] = {}
         self._route_cache: Dict[str, Optional[FlightRoute]] = {}
         self._route_cache_timestamps: Dict[str, float] = {}
-        self._route_ttl_seconds: float = 3600.0  # 1 hour cache for resolved routes
+        self._route_ttl_seconds: float = 1800.0  # 30 minutes cache for resolved routes
+        self._route_negative_ttl_seconds: float = 30.0  # Short 30s negative cache to prevent locking out live flights
         self._route_negative_ttl_seconds: float = 30.0  # Short 30s negative cache to prevent locking out live flights
         self._aircraft_meta_cache: Dict[str, Optional[Dict[str, Any]]] = {}
         self._aircraft_meta_timestamps: Dict[str, float] = {}
@@ -260,18 +373,29 @@ class FlightEnrichmentService:
         else:
             return f"{base_url.rstrip('/')}/{clean_hex}"
 
-    def _is_route_cached(self, callsign: str) -> bool:
-        """Check if callsign has a valid non-expired route cache entry."""
+    def _is_route_cached(
+        self,
+        callsign: str,
+        cur_lat: Optional[float] = None,
+        cur_lon: Optional[float] = None
+    ) -> bool:
+        """Check if callsign has a valid non-expired and geographically plausible route cache entry."""
         if not callsign:
             return False
         cs_clean = callsign.strip().upper()
         cs_alnum = "".join(c for c in cs_clean if c.isalnum())
+        now = time.monotonic()
         for key in (cs_clean, cs_alnum):
             if key in self._route_cache:
                 cached_ts = self._route_cache_timestamps.get(key, 0.0)
-                is_positive = self._route_cache[key] is not None
+                cached_route = self._route_cache[key]
+                is_positive = cached_route is not None
                 ttl = self._route_ttl_seconds if is_positive else self._route_negative_ttl_seconds
-                if (time.monotonic() - cached_ts) < ttl:
+                if (now - cached_ts) < ttl:
+                    if is_positive and cur_lat is not None and cur_lon is not None:
+                        if not _is_route_plausible(cached_route, cur_lat, cur_lon):
+                            # Stale or implausible route for current aircraft position; treat as uncached
+                            return False
                     return True
         return False
 
@@ -532,49 +656,132 @@ class FlightEnrichmentService:
             close_client = True
 
         try:
-            # 1. Primary: Batch query ADS-B community route registry (used by tar1090/OpenSky map)
+            # 1. Primary: Batch query OpenSky Network official route service (flightroutes.opensky-network.org)
+            # Used directly by official OpenSky Network real-time map (tar1090)
+            planes_payload = []
+            for cs in clean_callsigns:
+                fl = flights_map.get(cs) if flights_map else None
+                lat = fl.position.latitude if (fl and fl.position.latitude is not None) else None
+                lon = fl.position.longitude if (fl and fl.position.longitude is not None) else None
+                plane_entry: Dict[str, Any] = {"callsign": cs}
+                if lat is not None and lon is not None:
+                    plane_entry["lat"] = round(lat, 4)
+                    plane_entry["lng"] = round(lon, 4)
+                planes_payload.append(plane_entry)
+
             try:
                 resp = await client.post(
-                    "https://adsb.im/api/0/routeset",
-                    json={"planes": [{"callsign": cs} for cs in clean_callsigns]},
-                    headers={"User-Agent": "NepalFlightTracker/1.0"},
-                    timeout=4.0
+                    "https://flightroutes.opensky-network.org/api/routeset",
+                    json={"planes": planes_payload},
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                        "Origin": "https://map.opensky-network.org",
+                        "Referer": "https://map.opensky-network.org/",
+                        "Accept": "application/json, text/plain, */*"
+                    },
+                    timeout=5.0
                 )
                 if resp.status_code == 200:
                     data = resp.json()
-                    for item in data:
-                        cs = (item.get("callsign") or "").strip().upper()
-                        airports = item.get("_airports") or []
-                        if cs and len(airports) >= 2:
+                    if isinstance(data, list):
+                        for item in data:
+                            cs = (item.get("callsign") or "").strip().upper()
+                            if not cs:
+                                continue
                             flight = flights_map.get(cs) if flights_map else None
                             cur_lat = flight.position.latitude if flight else None
                             cur_lon = flight.position.longitude if flight else None
                             heading = flight.position.heading_deg if flight else None
 
-                            dep, arr = self._pick_active_leg(airports, cur_lat, cur_lon, heading)
-                            orig_icao = dep.get("icao") or dep.get("ident")
-                            orig_iata = dep.get("iata") or orig_icao
-                            orig_name = dep.get("name") or orig_icao
-                            dest_icao = arr.get("icao") or arr.get("ident")
-                            dest_iata = arr.get("iata") or dest_icao
-                            dest_name = arr.get("name") or dest_icao
+                            airport_codes_str = item.get("airport_codes")
+                            iata_codes_str = item.get("_airport_codes_iata")
+                            plausible = item.get("plausible", 1)
 
-                            if orig_icao and dest_icao:
-                                route = _make_route(
-                                    orig_key=orig_icao,
-                                    dest_key=dest_icao,
-                                    orig_name=orig_name,
-                                    dest_name=dest_name,
-                                    orig_iata=orig_iata,
-                                    dest_iata=dest_iata
-                                )
-                                self._route_cache[cs] = route
-                                cs_alnum = "".join(c for c in cs if c.isalnum())
-                                if cs_alnum:
-                                    self._route_cache[cs_alnum] = route
-                                self._route_cache_timestamps[cs] = now
+                            # Schema A: OpenSky hyphen-separated format ("VIDP-VEAZ", "DEL-VEAZ")
+                            if airport_codes_str and airport_codes_str != "unknown" and "-" in airport_codes_str:
+                                icao_tokens = [c.strip().upper() for c in airport_codes_str.split("-") if c.strip()]
+                                iata_tokens = [c.strip().upper() for c in iata_codes_str.split("-") if c.strip()] if (iata_codes_str and iata_codes_str != "unknown") else []
+
+                                if len(icao_tokens) == 2:
+                                    orig_icao, dest_icao = icao_tokens[0], icao_tokens[1]
+                                    orig_iata = iata_tokens[0] if len(iata_tokens) == 2 else None
+                                    dest_iata = iata_tokens[1] if len(iata_tokens) == 2 else None
+
+                                    route = _make_route(
+                                        orig_key=orig_icao,
+                                        dest_key=dest_icao,
+                                        orig_iata=orig_iata,
+                                        dest_iata=dest_iata
+                                    )
+                                    if plausible == 1 or _is_route_plausible(route, cur_lat, cur_lon):
+                                        self._route_cache[cs] = route
+                                        cs_alnum = "".join(c for c in cs if c.isalnum())
+                                        if cs_alnum:
+                                            self._route_cache[cs_alnum] = route
+                                        self._route_cache_timestamps[cs] = now
+
+                                elif len(icao_tokens) > 2:
+                                    # Multi-hop route (e.g. Paro - Kathmandu - Delhi)
+                                    leg_airports = []
+                                    for idx, ic in enumerate(icao_tokens):
+                                        ia = iata_tokens[idx] if idx < len(iata_tokens) else None
+                                        meta = get_airport_metadata(ic)
+                                        coords = meta.get("coords")
+                                        leg_airports.append({
+                                            "icao": ic,
+                                            "iata": ia or meta.get("iata"),
+                                            "name": meta.get("name"),
+                                            "lat": coords[0] if coords else None,
+                                            "lon": coords[1] if coords else None,
+                                        })
+                                    dep_apt, arr_apt = self._pick_active_leg(leg_airports, cur_lat, cur_lon, heading)
+                                    orig_icao = dep_apt.get("icao") or icao_tokens[0]
+                                    dest_icao = arr_apt.get("icao") or icao_tokens[-1]
+                                    orig_iata = dep_apt.get("iata")
+                                    dest_iata = arr_apt.get("iata")
+                                    route = _make_route(
+                                        orig_key=orig_icao,
+                                        dest_key=dest_icao,
+                                        orig_iata=orig_iata,
+                                        dest_iata=dest_iata,
+                                        orig_name=dep_apt.get("name"),
+                                        dest_name=arr_apt.get("name")
+                                    )
+                                    if plausible == 1 or _is_route_plausible(route, cur_lat, cur_lon):
+                                        self._route_cache[cs] = route
+                                        cs_alnum = "".join(c for c in cs if c.isalnum())
+                                        if cs_alnum:
+                                            self._route_cache[cs_alnum] = route
+                                        self._route_cache_timestamps[cs] = now
+
+                            # Schema B: Fallback parser for array of airport dicts (_airports)
+                            airports = item.get("_airports") or []
+                            if cs and len(airports) >= 2 and (cs not in self._route_cache or self._route_cache[cs] is None):
+                                dep, arr = self._pick_active_leg(airports, cur_lat, cur_lon, heading)
+                                orig_icao = dep.get("icao") or dep.get("ident")
+                                orig_iata = dep.get("iata") or orig_icao
+                                orig_name = dep.get("name") or orig_icao
+                                dest_icao = arr.get("icao") or arr.get("ident")
+                                dest_iata = arr.get("iata") or dest_icao
+                                dest_name = arr.get("name") or dest_icao
+
+                                if orig_icao and dest_icao:
+                                    route = _make_route(
+                                        orig_key=orig_icao,
+                                        dest_key=dest_icao,
+                                        orig_name=orig_name,
+                                        dest_name=dest_name,
+                                        orig_iata=orig_iata,
+                                        dest_iata=dest_iata
+                                    )
+                                    if _is_route_plausible(route, cur_lat, cur_lon):
+                                        self._route_cache[cs] = route
+                                        cs_alnum = "".join(c for c in cs if c.isalnum())
+                                        if cs_alnum:
+                                            self._route_cache[cs_alnum] = route
+                                        self._route_cache_timestamps[cs] = now
             except Exception as e:
-                logger.debug(f"Batch routeset query encountered error: {e}")
+                logger.debug(f"OpenSky routeset query encountered error: {e}")
 
             # 2. Tier 2: Concurrent query to api.adsbdb.com for unresolved callsigns
             unresolved = [cs for cs in clean_callsigns if cs not in self._route_cache or self._route_cache[cs] is None]
@@ -585,6 +792,9 @@ class FlightEnrichmentService:
                     clean_cs = "".join(c for c in cs_item if c.isalnum())
                     if not clean_cs:
                         return cs_item, None
+                    flight = flights_map.get(cs_item) if flights_map else None
+                    c_lat = flight.position.latitude if flight else None
+                    c_lon = flight.position.longitude if flight else None
                     async with sem:
                         try:
                             r = await client.get(f"https://api.adsbdb.com/v0/callsign/{clean_cs}", timeout=3.0)
@@ -603,7 +813,14 @@ class FlightEnrichmentService:
                                         orig_iata=orig_info.get("iata_code"),
                                         dest_iata=dest_info.get("iata_code")
                                     )
-                                    return cs_item, route
+                                    # Strictly validate geometric plausibility against live aircraft coordinates
+                                    if _is_route_plausible(route, c_lat, c_lon):
+                                        return cs_item, route
+                                    else:
+                                        logger.debug(
+                                            f"Rejecting geometrically implausible route from adsbdb for {cs_item}: "
+                                            f"{orig_icao}->{dest_icao} vs live pos ({c_lat}, {c_lon})"
+                                        )
                         except Exception as err:
                             logger.debug(f"adsbdb lookup error for {cs_item}: {err}")
                     return cs_item, None
@@ -636,6 +853,8 @@ class FlightEnrichmentService:
                     icao24 = (fl.identification.icao24 or "").lower().strip()
                     if not icao24:
                         return cs_item, None
+                    c_lat = fl.position.latitude
+                    c_lon = fl.position.longitude
                     async with os_sem:
                         try:
                             os_url = f"{opensky.settings.OPENSKY_BASE_URL}/flights/aircraft"
@@ -651,13 +870,13 @@ class FlightEnrichmentService:
                                     latest = records[-1]
                                     dep = (latest.get("estDepartureAirport") or "").upper().strip()
                                     arr = (latest.get("estArrivalAirport") or "").upper().strip()
-                                    if dep or arr:
+                                    if dep and arr:
                                         route = _make_route(
-                                            orig_key=dep or "VNKT",
-                                            dest_key=arr or "",
-                                            dest_name="En Route" if not arr else None
+                                            orig_key=dep,
+                                            dest_key=arr
                                         )
-                                        return cs_item, route
+                                        if _is_route_plausible(route, c_lat, c_lon):
+                                            return cs_item, route
                         except Exception as e:
                             logger.debug(f"OpenSky flights/aircraft lookup error for {icao24}: {e}")
                     return cs_item, None
@@ -796,20 +1015,40 @@ class FlightEnrichmentService:
     def _resolve_flight_route(self, flight: NormalizedFlight) -> Optional[FlightRoute]:
         """
         Resolve departure and arrival destinations using live API route data.
+        Validates cached routes against current aircraft position and evicts stale records.
         Returns None when reliable route data is unavailable.
         """
         raw_callsign = (flight.identification.callsign or "").strip().upper()
         icao24 = (flight.identification.icao24 or "").lower().strip()
+        cur_lat = flight.position.latitude
+        cur_lon = flight.position.longitude
+
+        candidate: Optional[FlightRoute] = None
+        candidate_key: Optional[str] = None
 
         if raw_callsign:
             callsign = "".join(c for c in raw_callsign if c.isalnum())
             if raw_callsign in self._route_cache and self._route_cache[raw_callsign] is not None:
-                return self._route_cache[raw_callsign]
-            if callsign in self._route_cache and self._route_cache[callsign] is not None:
-                return self._route_cache[callsign]
+                candidate = self._route_cache[raw_callsign]
+                candidate_key = raw_callsign
+            elif callsign in self._route_cache and self._route_cache[callsign] is not None:
+                candidate = self._route_cache[callsign]
+                candidate_key = callsign
 
-        if icao24 and icao24 in self._route_cache and self._route_cache[icao24] is not None:
-            return self._route_cache[icao24]
+        if not candidate and icao24 and icao24 in self._route_cache and self._route_cache[icao24] is not None:
+            candidate = self._route_cache[icao24]
+            candidate_key = icao24
+
+        if candidate:
+            # Validate that candidate cached route is geometrically plausible for current live aircraft position
+            if _is_route_plausible(candidate, cur_lat, cur_lon):
+                return candidate
+            else:
+                # Stale or mismatched flight route cached under callsign / icao; evict it
+                logger.debug(f"Evicting implausible cached route for {candidate_key} vs live pos ({cur_lat}, {cur_lon})")
+                if candidate_key and candidate_key in self._route_cache:
+                    del self._route_cache[candidate_key]
+                    self._route_cache_timestamps.pop(candidate_key, None)
 
         # Unverified routes remain None - never fabricate synthetic routes
         return None
@@ -828,7 +1067,7 @@ class FlightEnrichmentService:
         cs = (flight.identification.callsign or "").strip().upper()
         icao = (flight.identification.icao24 or "").lower().strip()
         lookup_key = cs or icao
-        if lookup_key and not self._is_route_cached(lookup_key):
+        if lookup_key and not self._is_route_cached(lookup_key, flight.position.latitude, flight.position.longitude):
             await self._fetch_live_api_routes([lookup_key], {lookup_key: flight})
 
         resolved_route = self._resolve_flight_route(flight)
@@ -883,16 +1122,18 @@ class FlightEnrichmentService:
         for flight in flights:
             cs = (flight.identification.callsign or "").strip().upper()
             icao = (flight.identification.icao24 or "").lower().strip()
+            cur_lat = flight.position.latitude
+            cur_lon = flight.position.longitude
             if cs:
                 flights_map[cs] = flight
                 cs_alnum = "".join(c for c in cs if c.isalnum())
                 if cs_alnum:
                     flights_map[cs_alnum] = flight
-                if not self._is_route_cached(cs):
+                if not self._is_route_cached(cs, cur_lat, cur_lon):
                     needed_callsigns.append(cs)
             elif icao:
                 flights_map[icao] = flight
-                if not self._is_route_cached(icao):
+                if not self._is_route_cached(icao, cur_lat, cur_lon):
                     needed_callsigns.append(icao)
 
             # Determine whether external ADS-B DB lookup is needed:

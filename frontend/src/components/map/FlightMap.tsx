@@ -8,9 +8,9 @@ import {
   GeoJSONSource,
   setWorkerUrl,
 } from "maplibre-gl";
-import { NormalizedFlight } from "@/types/flight";
+import { NormalizedFlight, FlightTrajectoryResponse } from "@/types/flight";
 import { AirportSummary } from "@/types/airport";
-import { fetchFlightTrajectory } from "@/lib/api";
+import { fetchFlightTrajectory, fetchAirportDetail } from "@/lib/api";
 import { Layers, Scan } from "lucide-react";
 
 // Register MapLibre Web Worker from local public bundle (solves Next.js Turbopack missing vector tiles)
@@ -631,105 +631,16 @@ function flightsToGeoJSON(
 
 
 
-/**
- * Known regional and international reference airport coordinates [longitude, latitude]
- */
-const KNOWN_AIRPORT_COORDS: Record<string, [number, number]> = {
-  // Nepal Airports
-  VNKT: [85.3591, 27.6966],
-  KTM: [85.3591, 27.6966],
-  VNPK: [83.9821, 28.2009],
-  PKR: [83.9821, 28.2009],
-  VNBW: [83.4161, 27.5056],
-  BWA: [83.4161, 27.5056],
-  VNLK: [86.7297, 27.6869],
-  LUA: [86.7297, 27.6869],
-  VNVT: [87.2644, 26.4816],
-  BIR: [87.2644, 26.4816],
-  VNNG: [81.6669, 28.1054],
-  KEP: [81.6669, 28.1054],
-  VNCG: [88.0792, 26.5708],
-  BDP: [88.0792, 26.5708],
-  VNDH: [80.5794, 28.7522],
-  DHI: [80.5794, 28.7522],
-  VNJP: [85.9239, 26.7072],
-  JKR: [85.9239, 26.7072],
-  VNSI: [84.9692, 27.1594],
-  SIF: [84.9692, 27.1594],
-  VNJS: [83.7225, 28.7842],
-  JMO: [83.7225, 28.7842],
-  VNBP: [84.4294, 27.6789],
-  BHR: [84.4294, 27.6789],
-  VNTR: [87.1953, 27.3142],
-  TMI: [87.1953, 27.3142],
-  VNSK: [81.6369, 28.5861],
-  SKH: [81.6369, 28.5861],
-  VNST: [81.8172, 29.9686],
-  IMK: [81.8172, 29.9686],
-  // Regional & International Gateways
-  VIDP: [77.1031, 28.5665],
-  DEL: [77.1031, 28.5665],
-  VABB: [72.8656, 19.0896],
-  BOM: [72.8656, 19.0896],
-  VECC: [88.4467, 22.6547],
-  CCU: [88.4467, 22.6547],
-  VEBD: [88.3286, 26.6812],
-  IXB: [88.3286, 26.6812],
-  VEPT: [85.0880, 25.5913],
-  PAT: [85.0880, 25.5913],
-  VIBN: [82.8593, 25.4524],
-  VNS: [82.8593, 25.4524],
-  VILK: [80.8893, 26.7606],
-  LKO: [80.8893, 26.7606],
-  VEGK: [83.4497, 26.7397],
-  GOP: [83.4497, 26.7397],
-  VGHS: [90.3978, 23.8433],
-  DAC: [90.3978, 23.8433],
-  VQPR: [89.4246, 27.4032],
-  PBH: [89.4246, 27.4032],
-  OMDB: [55.3657, 25.2532],
-  DXB: [55.3657, 25.2532],
-  OTHH: [51.6081, 25.2731],
-  DOH: [51.6081, 25.2731],
-  OMSJ: [55.5172, 25.3286],
-  SHJ: [55.5172, 25.3286],
-  OKBK: [47.9800, 29.2267],
-  KWI: [47.9800, 29.2267],
-  OMAA: [54.6511, 24.4330],
-  AUH: [54.6511, 24.4330],
-  VTBS: [100.7501, 13.6900],
-  BKK: [100.7501, 13.6900],
-  VTBD: [100.6072, 13.9125],
-  DMK: [100.6072, 13.9125],
-  WMKK: [101.7099, 2.7456],
-  KUL: [101.7099, 2.7456],
-  WSSS: [103.9915, 1.3644],
-  SIN: [103.9915, 1.3644],
-  VHHH: [113.9185, 22.3080],
-  HKG: [113.9185, 22.3080],
-  // South & East Asian Common Hubs
-  OPIS: [72.8258, 33.5492],
-  ISB: [72.8258, 33.5492],
-  OPLA: [74.4036, 31.5216],
-  LHE: [74.4036, 31.5216],
-  OPKC: [67.1608, 24.9065],
-  KHI: [67.1608, 24.9065],
-  ZGGG: [113.2988, 23.3924],
-  CAN: [113.2988, 23.3924],
-  ZUUU: [103.9471, 30.5785],
-  CTU: [103.9471, 30.5785],
-  ZPPP: [102.9292, 25.1019],
-  KMG: [102.9292, 25.1019],
-  ZBAA: [116.5975, 40.0801],
-  PEK: [116.5975, 40.0801],
-  PKX: [116.4105, 39.5098],
-};
-
 function isPointInsideBox(lng: number, lat: number, box: [number, number, number, number]): boolean {
   return lng >= box[0] && lng <= box[2] && lat >= box[1] && lat <= box[3];
 }
 
-function intersectSegmentWithBox(
+/**
+ * Calculates the exact point where a line segment from pOut (outside box)
+ * to pIn (inside box) enters the axis-aligned boundary box.
+ * Uses the Liang-Barsky line clipping algorithm.
+ */
+function getBoundaryEntryIntersection(
   pOut: [number, number],
   pIn: [number, number],
   box: [number, number, number, number]
@@ -740,65 +651,70 @@ function intersectSegmentWithBox(
   const dx = x1 - x0;
   const dy = y1 - y0;
 
-  let bestT = 0.0;
+  let tEnter = 0.0;
+  let tExit = 1.0;
 
-  if (Math.abs(dx) > 1e-7) {
-    const tLeft = (minX - x0) / dx;
-    if (tLeft >= 0 && tLeft <= 1) {
-      const y = y0 + tLeft * dy;
-      if (y >= minY - 0.05 && y <= maxY + 0.05 && tLeft > bestT) bestT = tLeft;
-    }
-    const tRight = (maxX - x0) / dx;
-    if (tRight >= 0 && tRight <= 1) {
-      const y = y0 + tRight * dy;
-      if (y >= minY - 0.05 && y <= maxY + 0.05 && tRight > bestT) bestT = tRight;
+  const checks = [
+    { p: -dx, q: x0 - minX }, // Left: x >= minX
+    { p: dx, q: maxX - x0 },  // Right: x <= maxX
+    { p: -dy, q: y0 - minY }, // Bottom: y >= minY
+    { p: dy, q: maxY - y0 },  // Top: y <= maxY
+  ];
+
+  for (const { p, q } of checks) {
+    if (Math.abs(p) < 1e-9) {
+      if (q < 0) {
+        return [
+          Math.min(maxX, Math.max(minX, x0)),
+          Math.min(maxY, Math.max(minY, y0)),
+        ];
+      }
+    } else {
+      const t = q / p;
+      if (p < 0) {
+        if (t > tEnter) tEnter = t;
+      } else {
+        if (t < tExit) tExit = t;
+      }
     }
   }
 
-  if (Math.abs(dy) > 1e-7) {
-    const tBottom = (minY - y0) / dy;
-    if (tBottom >= 0 && tBottom <= 1) {
-      const x = x0 + tBottom * dx;
-      if (x >= minX - 0.05 && x <= maxX + 0.05 && tBottom > bestT) bestT = tBottom;
-    }
-    const tTop = (maxY - y0) / dy;
-    if (tTop >= 0 && tTop <= 1) {
-      const x = x0 + tTop * dx;
-      if (x >= minX - 0.05 && x <= maxX + 0.05 && tTop > bestT) bestT = tTop;
-    }
-  }
-
-  if (bestT > 0 && bestT < 1) {
+  if (tEnter <= tExit && tEnter >= 0 && tEnter <= 1) {
     return [
-      Math.min(maxX, Math.max(minX, x0 + bestT * dx)),
-      Math.min(maxY, Math.max(minY, y0 + bestT * dy)),
+      Math.min(maxX, Math.max(minX, x0 + tEnter * dx)),
+      Math.min(maxY, Math.max(minY, y0 + tEnter * dy)),
     ];
   }
 
-  // Robust fallback: clamp pOut to viewport boundary edge so segment begins precisely at viewport edge
   return [
     Math.min(maxX, Math.max(minX, x0)),
     Math.min(maxY, Math.max(minY, y0)),
   ];
 }
 
-function clipPathToViewport(
+/**
+ * Clips flight trajectory against the configured maximum map viewport boundary.
+ * If departure is inside the configured boundary, path is left unclipped.
+ * If departure is outside, path is clipped to start at the exact boundary entry intersection.
+ */
+function clipTrajectoryToMaxViewport(
   rawCoords: [number, number][],
-  viewportBox: [number, number, number, number]
+  maxBox: [number, number, number, number]
 ): [number, number][] {
   if (rawCoords.length < 2) return rawCoords;
 
   const firstPt = rawCoords[0];
-  // If the flight originated within the current viewport, display its available path fully
-  if (isPointInsideBox(firstPt[0], firstPt[1], viewportBox)) {
+  // 1. Straightforward case: If departure location is inside configured maximum map viewport,
+  // render the trace starting from the departure location toward the aircraft's current position.
+  if (isPointInsideBox(firstPt[0], firstPt[1], maxBox)) {
     return rawCoords;
   }
 
-  // If the origin is outside the visible viewport, only display starting from the current viewport boundary
-  const lastIdx = rawCoords.length - 1;
+  // 2. Departure outside configured maximum viewport:
+  // Find where the flight path first enters the configured maximum viewport boundary.
   let firstInsideIdx = -1;
-  for (let i = 0; i <= lastIdx; i++) {
-    if (isPointInsideBox(rawCoords[i][0], rawCoords[i][1], viewportBox)) {
+  for (let i = 0; i < rawCoords.length; i++) {
+    if (isPointInsideBox(rawCoords[i][0], rawCoords[i][1], maxBox)) {
       firstInsideIdx = i;
       break;
     }
@@ -810,20 +726,83 @@ function clipPathToViewport(
 
   const pOut = rawCoords[firstInsideIdx - 1];
   const pIn = rawCoords[firstInsideIdx];
-  const boundaryEntryPt = intersectSegmentWithBox(pOut, pIn, viewportBox);
+  const boundaryEntryPt = getBoundaryEntryIntersection(pOut, pIn, maxBox);
 
   return [boundaryEntryPt, ...rawCoords.slice(firstInsideIdx)];
 }
 
 /**
+ * Resolves the genuine departure coordinates using existing flight route and airports data.
+ * Strictly adheres to zero hardcoding requirement.
+ */
+function getDepartureCoordinates(
+  flight: NormalizedFlight,
+  airportsList: AirportSummary[],
+  serverTrajectory?: FlightTrajectoryResponse | null,
+  cachedAirportCoords?: Record<string, [number, number]>
+): [number, number] | null {
+  // 1. Direct from server trajectory response if provided
+  if (
+    serverTrajectory?.origin_longitude != null &&
+    serverTrajectory?.origin_latitude != null
+  ) {
+    return [serverTrajectory.origin_longitude, serverTrajectory.origin_latitude];
+  }
+
+  // 2. Direct from flight route if provided by backend API
+  if (
+    flight.route?.origin_longitude != null &&
+    flight.route?.origin_latitude != null
+  ) {
+    return [flight.route.origin_longitude, flight.route.origin_latitude];
+  }
+
+  const origKey = (
+    flight.route?.origin_icao ||
+    flight.route?.origin_iata ||
+    serverTrajectory?.origin_icao ||
+    serverTrajectory?.origin_iata ||
+    ""
+  ).trim().toUpperCase();
+
+  if (!origKey) return null;
+
+  // 3. From dynamically cached airport coordinates lookup
+  if (cachedAirportCoords && cachedAirportCoords[origKey]) {
+    return cachedAirportCoords[origKey];
+  }
+
+  // 4. From loaded airports dataset (passed as prop to FlightMap)
+  if (airportsList && airportsList.length > 0) {
+    const matchedAirport = airportsList.find(
+      (a) =>
+        a.ident.toUpperCase() === origKey ||
+        (a.iata_code && a.iata_code.toUpperCase() === origKey)
+    );
+    if (
+      matchedAirport &&
+      matchedAirport.longitude_deg != null &&
+      matchedAirport.latitude_deg != null
+    ) {
+      return [matchedAirport.longitude_deg, matchedAirport.latitude_deg];
+    }
+  }
+
+  return null;
+}
+
+/**
  * Builds GeoJSON FeatureCollection for authentic flight trajectory path rendering.
- * Renders the path the aircraft has flown from, clipping at viewport boundary if originated outside.
+ * Renders the path the aircraft has flown, starting from departure location, and clipping
+ * to the configured maximum viewport boundary if originated outside.
  */
 function buildTrajectoryGeoJSON(
   flight: NormalizedFlight,
   historyPts: Array<{ lng: number; lat: number; alt?: number | null; spd?: number | null }> = [],
-  serverPoints?: Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>,
-  viewportBox?: [number, number, number, number]
+  serverTrajectory?: FlightTrajectoryResponse | null,
+  airportsList: AirportSummary[] = [],
+  maxViewportBounds: [[number, number], [number, number]] = NEPAL_MAX_BOUNDS,
+  cachedAirportCoords?: Record<string, [number, number]>
 ): GeoJSON.FeatureCollection {
   if (flight.position.latitude === null || flight.position.longitude === null) {
     return { type: "FeatureCollection", features: [] };
@@ -834,7 +813,7 @@ function buildTrajectoryGeoJSON(
   const curAlt = flight.position.altitude_baro_ft;
   const curSpd = flight.position.groundspeed_kts;
 
-  let coords: [number, number][] = [];
+  let rawCoords: [number, number][] = [];
   const waypoints: Array<{
     longitude: number;
     latitude: number;
@@ -842,73 +821,80 @@ function buildTrajectoryGeoJSON(
     groundspeed_kts?: number | null;
   }> = [];
 
-  // 1. Incorporate server points if provided and has valid breadcrumbs
-  if (serverPoints && serverPoints.length > 0) {
+  const depCoord = getDepartureCoordinates(flight, airportsList, serverTrajectory, cachedAirportCoords);
+
+  // 1. If departure location is known, start the trace from the actual departure location
+  if (depCoord) {
+    rawCoords.push([depCoord[0], depCoord[1]]);
+    waypoints.push({
+      longitude: depCoord[0],
+      latitude: depCoord[1],
+      altitude_ft: 0,
+      groundspeed_kts: 0,
+    });
+  }
+
+  // 2. Gather historical breadcrumbs from server and/or client history
+  const serverPoints = serverTrajectory?.points || [];
+  const breadcrumbPoints: Array<{ lng: number; lat: number; alt?: number | null; spd?: number | null }> = [];
+  if (serverPoints.length >= 2) {
     for (const sp of serverPoints) {
-      if (
-        coords.length === 0 ||
-        Math.abs(sp.longitude - coords[coords.length - 1][0]) > 0.0001 ||
-        Math.abs(sp.latitude - coords[coords.length - 1][1]) > 0.0001
-      ) {
-        coords.push([sp.longitude, sp.latitude]);
-        waypoints.push({
-          longitude: sp.longitude,
-          latitude: sp.latitude,
-          altitude_ft: sp.altitude_ft ?? curAlt,
-          groundspeed_kts: sp.groundspeed_kts ?? curSpd,
-        });
-      }
-    }
-  } else if (historyPts && historyPts.length > 0) {
-    // 2. Use client-side recorded live history breadcrumbs
-    for (const hp of historyPts) {
-      if (
-        coords.length === 0 ||
-        Math.abs(hp.lng - coords[coords.length - 1][0]) > 0.0001 ||
-        Math.abs(hp.lat - coords[coords.length - 1][1]) > 0.0001
-      ) {
-        coords.push([hp.lng, hp.lat]);
-        waypoints.push({
-          longitude: hp.lng,
-          latitude: hp.lat,
-          altitude_ft: hp.alt ?? curAlt,
-          groundspeed_kts: hp.spd ?? curSpd,
-        });
-      }
-    }
-  }
-
-  // 3. If only 0 or 1 point available, use flight origin airport or reverse heading to guarantee immediate trail
-  if (coords.length <= 1) {
-    const origKey = (flight.route?.origin_icao || flight.route?.origin_iata || "").trim().toUpperCase();
-    let origCoord: [number, number] | null = null;
-    if (origKey && KNOWN_AIRPORT_COORDS[origKey]) {
-      origCoord = KNOWN_AIRPORT_COORDS[origKey];
-    }
-    if (origCoord) {
-      coords.unshift(origCoord);
-      waypoints.unshift({
-        longitude: origCoord[0],
-        latitude: origCoord[1],
-        altitude_ft: 0,
-        groundspeed_kts: 0,
+      breadcrumbPoints.push({
+        lng: sp.longitude,
+        lat: sp.latitude,
+        alt: sp.altitude_ft,
+        spd: sp.groundspeed_kts,
       });
-    } else if (flight.position.heading_deg !== null && flight.position.heading_deg !== undefined) {
-      // Reverse heading projection to boundary
-      const reverseRad = ((flight.position.heading_deg + 180) % 360) * (Math.PI / 180);
-      const backLng = curLng + Math.sin(reverseRad) * 4.5;
-      const backLat = curLat + Math.cos(reverseRad) * 4.5;
-      coords.unshift([backLng, backLat]);
+    }
+  } else if (historyPts.length >= 2) {
+    for (const hp of historyPts) {
+      breadcrumbPoints.push({
+        lng: hp.lng,
+        lat: hp.lat,
+        alt: hp.alt,
+        spd: hp.spd,
+      });
+    }
+  } else if (serverPoints.length === 1) {
+    breadcrumbPoints.push({
+      lng: serverPoints[0].longitude,
+      lat: serverPoints[0].latitude,
+      alt: serverPoints[0].altitude_ft,
+      spd: serverPoints[0].groundspeed_kts,
+    });
+  } else if (historyPts.length === 1) {
+    breadcrumbPoints.push({
+      lng: historyPts[0].lng,
+      lat: historyPts[0].lat,
+      alt: historyPts[0].alt,
+      spd: historyPts[0].spd,
+    });
+  }
+
+  // Append breadcrumb points with deduplication
+  for (const bp of breadcrumbPoints) {
+    if (
+      rawCoords.length === 0 ||
+      Math.abs(bp.lng - rawCoords[rawCoords.length - 1][0]) > 0.0001 ||
+      Math.abs(bp.lat - rawCoords[rawCoords.length - 1][1]) > 0.0001
+    ) {
+      rawCoords.push([bp.lng, bp.lat]);
+      waypoints.push({
+        longitude: bp.lng,
+        latitude: bp.lat,
+        altitude_ft: bp.alt ?? curAlt,
+        groundspeed_kts: bp.spd ?? curSpd,
+      });
     }
   }
 
-  // 4. Ensure current aircraft position is the exact end of the trajectory
+  // 3. Ensure the current aircraft position is the exact end of the trajectory
   if (
-    coords.length === 0 ||
-    Math.abs(curLng - coords[coords.length - 1][0]) > 0.0001 ||
-    Math.abs(curLat - coords[coords.length - 1][1]) > 0.0001
+    rawCoords.length === 0 ||
+    Math.abs(curLng - rawCoords[rawCoords.length - 1][0]) > 0.0001 ||
+    Math.abs(curLat - rawCoords[rawCoords.length - 1][1]) > 0.0001
   ) {
-    coords.push([curLng, curLat]);
+    rawCoords.push([curLng, curLat]);
     waypoints.push({
       longitude: curLng,
       latitude: curLat,
@@ -917,32 +903,44 @@ function buildTrajectoryGeoJSON(
     });
   }
 
-  // 5. Apply Viewport Boundary Clipping requirement
-  if (viewportBox) {
-    coords = clipPathToViewport(coords, viewportBox);
+  // 4. Strict check: If we only have 1 single coordinate (current position alone, no departure & no breadcrumbs),
+  // do not fabricate a path.
+  if (rawCoords.length < 2) {
+    return { type: "FeatureCollection", features: [] };
+  }
+
+  // 5. Configured maximum viewport boundary clipping
+  const maxBox: [number, number, number, number] = [
+    maxViewportBounds[0][0], // minLng
+    maxViewportBounds[0][1], // minLat
+    maxViewportBounds[1][0], // maxLng
+    maxViewportBounds[1][1], // maxLat
+  ];
+
+  const clippedCoords = clipTrajectoryToMaxViewport(rawCoords, maxBox);
+
+  if (clippedCoords.length < 2) {
+    return { type: "FeatureCollection", features: [] };
   }
 
   const features: GeoJSON.Feature[] = [];
 
-  // LineString path: only drawn when we have at least 2 coordinates
-  if (coords.length >= 2) {
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: coords,
-      },
-      properties: {
-        id: "trajectory-line",
-        isLine: true,
-      },
-    });
-  }
+  features.push({
+    type: "Feature",
+    geometry: {
+      type: "LineString",
+      coordinates: clippedCoords,
+    },
+    properties: {
+      id: "trajectory-line",
+      isLine: true,
+    },
+  });
 
-  // Waypoint dots (breadcrumbs strictly within visible bounds)
+  // Waypoints within configured maximum boundary
   const recentWaypoints = waypoints.slice(-30);
   recentWaypoints.forEach((wp, idx) => {
-    if (!viewportBox || isPointInsideBox(wp.longitude, wp.latitude, viewportBox)) {
+    if (isPointInsideBox(wp.longitude, wp.latitude, maxBox)) {
       features.push({
         type: "Feature",
         geometry: {
@@ -996,8 +994,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
   // Client-side breadcrumb history tracker: flight.id -> coordinates
   const flightHistoryRef = useRef<Record<string, Array<{ lng: number; lat: number; alt?: number | null; spd?: number | null }>>>({});
-  // Cached server radar breadcrumbs: icao24 -> points
-  const trajectoryServerCacheRef = useRef<Record<string, Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>>>({});
+  // Cached server radar breadcrumbs: icao24 -> trajectory response
+  const trajectoryServerCacheRef = useRef<Record<string, FlightTrajectoryResponse>>({});
+  const trajectoryReqIdRef = useRef<number>(0);
+  const airportCoordsCacheRef = useRef<Record<string, [number, number]>>({});
 
   const onBoundsChangeRef = useRef(onBoundsChange);
   const syncViewportRef = useRef(syncViewport);
@@ -1025,21 +1025,37 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   }, [flights]);
 
   useEffect(() => {
-    selectedFlightIdRef.current = selectedFlightId;
-    const map = mapInstanceRef.current;
-    if (map && map.isStyleLoaded()) {
-      const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
-      if (aircraftSource) {
-        aircraftSource.setData(flightsToGeoJSON(flightsRef.current, selectedFlightId));
-      }
+    onBoundsChangeRef.current = onBoundsChange;
+  }, [onBoundsChange]);
+
+  useEffect(() => {
+    syncViewportRef.current = syncViewport;
+  }, [syncViewport]);
+
+  useEffect(() => {
+    onSelectFlightRef.current = onSelectFlight;
+  }, [onSelectFlight]);
+
+  // Synchronously and immediately clear the trajectory GeoJSON source
+  const clearTrajectory = useCallback((mapInstance?: MapLibreMap | null) => {
+    const map = mapInstance || mapInstanceRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    const source = map.getSource("trajectory") as GeoJSONSource;
+    if (source) {
+      source.setData({ type: "FeatureCollection", features: [] });
     }
-  }, [selectedFlightId]);
+  }, []);
+
+  const clearTrajectoryRef = useRef(clearTrajectory);
+  useEffect(() => {
+    clearTrajectoryRef.current = clearTrajectory;
+  }, [clearTrajectory]);
 
   // Instant Trajectory Rendering Engine (Synchronous 0ms updates with boundary clipping)
   const renderInstantTrajectory = useCallback(
     (
       targetFlight: NormalizedFlight | null,
-      serverPoints?: Array<{ latitude: number; longitude: number; altitude_ft?: number | null; groundspeed_kts?: number | null }>
+      serverTrajectory?: FlightTrajectoryResponse | null
     ) => {
       const map = mapInstanceRef.current;
       if (!map || !map.isStyleLoaded()) return;
@@ -1055,20 +1071,13 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         return;
       }
 
-      // Compute current visible viewport boundary box for exact boundary clipping
-      const bounds = map.getBounds();
-      const viewportBox: [number, number, number, number] = [
-        bounds.getWest(),
-        bounds.getSouth(),
-        bounds.getEast(),
-        bounds.getNorth(),
-      ];
-
       const geojson = buildTrajectoryGeoJSON(
         targetFlight,
         flightHistoryRef.current[targetFlight.id] || [],
-        serverPoints,
-        viewportBox
+        serverTrajectory,
+        airportsRef.current,
+        NEPAL_MAX_BOUNDS,
+        airportCoordsCacheRef.current
       );
 
       source.setData(geojson);
@@ -1082,28 +1091,19 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   }, [renderInstantTrajectory]);
 
   useEffect(() => {
-    onBoundsChangeRef.current = onBoundsChange;
-  }, [onBoundsChange]);
-
-  useEffect(() => {
-    syncViewportRef.current = syncViewport;
-  }, [syncViewport]);
-
-  useEffect(() => {
-    onSelectFlightRef.current = onSelectFlight;
-  }, [onSelectFlight]);
-
-  useEffect(() => {
-    flightsRef.current = flights;
-  }, [flights]);
-
-  useEffect(() => {
-    airportsRef.current = airports;
-  }, [airports]);
-
-  useEffect(() => {
     selectedFlightIdRef.current = selectedFlightId;
-  }, [selectedFlightId]);
+    const map = mapInstanceRef.current;
+    if (map && map.isStyleLoaded()) {
+      const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+      if (aircraftSource) {
+        aircraftSource.setData(flightsToGeoJSON(flightsRef.current, selectedFlightId));
+      }
+    }
+    if (!selectedFlightId) {
+      trajectoryReqIdRef.current += 1;
+      clearTrajectory();
+    }
+  }, [selectedFlightId, clearTrajectory]);
 
   /**
    * Helper to set up GeoJSON vector layers (airspace borders, airports, and aircraft)
@@ -1205,24 +1205,32 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         }
       }
 
-      // 3. Airports GeoJSON
+      // 3. Airports & Heliports GeoJSON
       const airportFeatures: GeoJSON.Feature[] = (airportList || [])
         .filter((apt) => apt.latitude_deg && apt.longitude_deg)
-        .map((apt) => ({
-          type: "Feature",
-          properties: {
-            ident: apt.ident,
-            name: apt.name,
-            iata: apt.iata_code || "",
-            elevation: apt.elevation_ft || 0,
-            municipality: apt.municipality || "Nepal",
-            isMajor: MAJOR_AIRPORTS.has(apt.ident),
-          },
-          geometry: {
-            type: "Point",
-            coordinates: [apt.longitude_deg, apt.latitude_deg],
-          },
-        }));
+        .map((apt) => {
+          const isHeliport =
+            apt.type === "heliport" ||
+            (Boolean(apt.ident) && apt.ident.toUpperCase().startsWith("VNH")) ||
+            (Boolean(apt.name) && apt.name.toLowerCase().includes("heliport"));
+          return {
+            type: "Feature",
+            properties: {
+              ident: apt.ident,
+              name: apt.name,
+              iata: apt.iata_code || "",
+              elevation: apt.elevation_ft || 0,
+              municipality: apt.municipality || "Nepal",
+              isMajor: MAJOR_AIRPORTS.has(apt.ident),
+              isHeliport,
+              facilityType: isHeliport ? "Heliport" : "Airport",
+            },
+            geometry: {
+              type: "Point",
+              coordinates: [apt.longitude_deg, apt.latitude_deg],
+            },
+          };
+        });
 
       const airportsGeoJSON: GeoJSON.FeatureCollection = {
         type: "FeatureCollection",
@@ -1231,6 +1239,25 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
       if (map.getSource("airports")) {
         (map.getSource("airports") as GeoJSONSource).setData(airportsGeoJSON);
+        if (map.getLayer("airports-circle")) {
+          map.setPaintProperty("airports-circle", "circle-color", [
+            "case",
+            ["boolean", ["get", "isHeliport"], false],
+            "#ffffff",
+            "#10b981",
+          ]);
+          map.setPaintProperty("airports-circle", "circle-stroke-color", "rgba(0, 0, 0, 0.85)");
+          map.setPaintProperty("airports-circle", "circle-stroke-width", 1.5);
+          map.setPaintProperty("airports-circle", "circle-opacity", 0.95);
+        }
+        if (map.getLayer("airports-labels")) {
+          map.setPaintProperty("airports-labels", "text-color", [
+            "case",
+            ["boolean", ["get", "isHeliport"], false],
+            "#ffffff",
+            "#10b981",
+          ]);
+        }
       } else {
         try {
           map.addSource("airports", {
@@ -1238,26 +1265,63 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             data: airportsGeoJSON,
           });
 
+          // Airports & Heliports circles (Airports = green, Heliports = white)
           map.addLayer({
             id: "airports-circle",
             type: "circle",
             source: "airports",
             paint: {
               "circle-radius": [
-                "case",
-                ["boolean", ["get", "isMajor"], false],
-                6.0,
-                3.5,
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                5,
+                4.0,
+                8,
+                5.5,
+                11,
+                7.5,
               ],
               "circle-color": [
                 "case",
-                ["boolean", ["get", "isMajor"], false],
+                ["boolean", ["get", "isHeliport"], false],
+                "#ffffff",
                 "#10b981",
-                isDarkStyle ? "#a3a3a3" : "#525252",
               ],
-              "circle-stroke-color": isDarkStyle ? "#000000" : "#ffffff",
+              "circle-stroke-color": "rgba(0, 0, 0, 0.85)",
               "circle-stroke-width": 1.5,
               "circle-opacity": 0.95,
+            },
+          });
+
+          // Airport & Heliport Ident/IATA labels for closer zoom
+          map.addLayer({
+            id: "airports-labels",
+            type: "symbol",
+            source: "airports",
+            minzoom: 8.0,
+            layout: {
+              "text-field": [
+                "case",
+                ["!=", ["get", "iata"], ""],
+                ["get", "iata"],
+                ["get", "ident"],
+              ],
+              "text-font": ["Noto Sans Bold"],
+              "text-size": 10,
+              "text-offset": [0, 1.15],
+              "text-anchor": "top",
+              "text-allow-overlap": false,
+            },
+            paint: {
+              "text-color": [
+                "case",
+                ["boolean", ["get", "isHeliport"], false],
+                "#ffffff",
+                "#10b981",
+              ],
+              "text-halo-color": "rgba(0, 0, 0, 0.95)",
+              "text-halo-width": 2,
             },
           });
         } catch (err) {
@@ -1465,7 +1529,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       if (selectedFlightIdRef.current) {
         const sel = flightsRef.current.find((f) => f.id === selectedFlightIdRef.current);
         if (sel) {
-          renderInstantTrajectoryRef.current?.(sel);
+          const cached = trajectoryServerCacheRef.current[sel.identification.icao24];
+          renderInstantTrajectoryRef.current?.(sel, cached);
         }
       }
 
@@ -1609,6 +1674,22 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       featureClickedInThisCycle = true;
       const clickedId = e.features[0].properties?.id;
       if (clickedId) {
+        // Toggle/Deselect if clicking currently selected aircraft
+        if (clickedId === selectedFlightIdRef.current) {
+          selectedFlightIdRef.current = null;
+          trajectoryReqIdRef.current += 1;
+          clearTrajectoryRef.current?.(map);
+          const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+          if (aircraftSource) {
+            aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
+          }
+          onSelectFlightRef.current?.(null);
+          return;
+        }
+
+        // New flight selected: immediately clear previous aircraft's trace (0ms) and invalidate pending requests
+        trajectoryReqIdRef.current += 1;
+        clearTrajectoryRef.current?.(map);
         selectedFlightIdRef.current = clickedId;
 
         // 1. Instantly turn aircraft marker RED on exact click frame (0ms)
@@ -1629,8 +1710,8 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }
     });
 
-    // Click handler for airport selection on Nepal map
-    map.on("click", "airports-circle", (e) => {
+    // Click handler for airport & heliport selection on Nepal map
+    const handleAirportClick = (e: any) => {
       if (!e.features || e.features.length === 0) return;
       featureClickedInThisCycle = true;
       const clickedIdent = e.features[0].properties?.ident;
@@ -1640,19 +1721,19 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         }
         // Deselect flight and select airport
         selectedFlightIdRef.current = null;
+        trajectoryReqIdRef.current += 1;
+        clearTrajectoryRef.current?.(map);
         const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
         if (aircraftSource) {
           aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
         }
         onSelectFlightRef.current?.(null);
-        // Clear flight trajectory
-        const trajSource = map.getSource("trajectory") as GeoJSONSource;
-        if (trajSource) {
-          trajSource.setData({ type: "FeatureCollection", features: [] });
-        }
         onSelectAirportRef.current?.(clickedIdent);
       }
-    });
+    };
+
+    map.on("click", "airports-circle", handleAirportClick);
+    map.on("click", "airports-labels", handleAirportClick);
 
     // Deselect aircraft and airport on empty map background click (INSTANT 0ms TRAIL REMOVAL)
     map.on("click", (e) => {
@@ -1669,19 +1750,19 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       const aircraftHits = mapInstanceRef.current.queryRenderedFeatures(bbox, {
         layers: ["aircraft-icons"],
       });
+      const airportLayers = ["airports-circle", "airports-labels"].filter((l) =>
+        Boolean(mapInstanceRef.current?.getLayer(l))
+      );
       const airportHits = mapInstanceRef.current.queryRenderedFeatures(bbox, {
-        layers: ["airports-circle"],
+        layers: airportLayers,
       });
       if (aircraftHits.length === 0 && airportHits.length === 0) {
         selectedFlightIdRef.current = null;
+        trajectoryReqIdRef.current += 1;
+        clearTrajectoryRef.current?.(mapInstanceRef.current);
         const aircraftSource = mapInstanceRef.current.getSource("aircraft") as GeoJSONSource;
         if (aircraftSource) {
           aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
-        }
-        // Synchronously clear trajectory source on the exact click event
-        const trajSource = mapInstanceRef.current.getSource("trajectory") as GeoJSONSource;
-        if (trajSource) {
-          trajSource.setData({ type: "FeatureCollection", features: [] });
         }
         onSelectFlightRef.current?.(null);
         onSelectAirportRef.current?.(null);
@@ -1696,7 +1777,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       map.getCanvas().style.cursor = "";
     });
 
-    // Airport Hover Tooltip
+    // Airport & Heliport Hover Tooltip
     popupRef.current = new Popup({
       closeButton: false,
       closeOnClick: false,
@@ -1704,27 +1785,32 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       className: "avionics-map-popup",
     });
 
-    map.on("mouseenter", "airports-circle", (e) => {
+    const handleAirportHover = (e: any) => {
       map.getCanvas().style.cursor = "pointer";
       if (!e.features || e.features.length === 0 || !popupRef.current) return;
       const f = e.features[0];
       const geom = f.geometry as GeoJSON.Point;
       const coords = geom.coordinates.slice() as [number, number];
       const p = f.properties || {};
+      const isHeliport = Boolean(p.isHeliport);
 
       popupRef.current
         .setLngLat(coords)
         .setHTML(`
           <div class="p-1 font-sans text-xs cursor-pointer select-none" id="popup-airport-${p.ident}">
-            <div class="font-bold text-neutral-100 flex items-center gap-1">
+            <div class="font-bold text-neutral-100 flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full ${isHeliport ? "bg-white border border-neutral-300" : "bg-emerald-400 border border-emerald-300"}"></span>
               <span>${p.name}</span>
-              <span class="text-emerald-400 font-mono font-bold">(${p.ident}${p.iata ? ` / ${p.iata}` : ""})</span>
+              <span class="${isHeliport ? "text-neutral-200" : "text-emerald-400"} font-mono font-bold">(${p.ident}${p.iata ? ` / ${p.iata}` : ""})</span>
             </div>
-            <div class="text-neutral-400 mt-1 font-mono text-[11px]">
-              Elev: ${p.elevation ? `${p.elevation.toLocaleString()} ft` : "N/A"} • ${p.municipality || "Nepal"}
+            <div class="text-neutral-300 mt-1 font-mono text-[11px] flex items-center gap-1.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold ${isHeliport ? "bg-white/15 text-white border border-white/30" : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"}">
+                ${isHeliport ? "Heliport" : "Airport"}
+              </span>
+              <span>Elev: ${p.elevation ? `${p.elevation.toLocaleString()} ft` : "N/A"} • ${p.municipality || "Nepal"}</span>
             </div>
-            <div class="text-[10px] text-emerald-400 font-sans font-semibold mt-1 flex items-center gap-1">
-              <span>Click to view airport & runway details</span>
+            <div class="text-[10px] ${isHeliport ? "text-neutral-300" : "text-emerald-400"} font-sans font-semibold mt-1.5 flex items-center gap-1">
+              <span>Click to view ${isHeliport ? "heliport" : "airport"} details</span>
               <span>→</span>
             </div>
           </div>
@@ -1735,22 +1821,30 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       if (popupEl) {
         popupEl.onclick = () => {
           if (popupRef.current) popupRef.current.remove();
-          onSelectFlightRef.current?.(null);
-          const trajSource = map.getSource("trajectory") as GeoJSONSource;
-          if (trajSource) {
-            trajSource.setData({ type: "FeatureCollection", features: [] });
+          selectedFlightIdRef.current = null;
+          trajectoryReqIdRef.current += 1;
+          clearTrajectoryRef.current?.(map);
+          const aircraftSource = map.getSource("aircraft") as GeoJSONSource;
+          if (aircraftSource) {
+            aircraftSource.setData(flightsToGeoJSON(flightsRef.current, null));
           }
+          onSelectFlightRef.current?.(null);
           onSelectAirportRef.current?.(p.ident);
         };
       }
-    });
+    };
 
-    map.on("mouseleave", "airports-circle", () => {
+    const handleAirportLeave = () => {
       map.getCanvas().style.cursor = "";
       if (popupRef.current) {
         popupRef.current.remove();
       }
-    });
+    };
+
+    map.on("mouseenter", "airports-circle", handleAirportHover);
+    map.on("mouseenter", "airports-labels", handleAirportHover);
+    map.on("mouseleave", "airports-circle", handleAirportLeave);
+    map.on("mouseleave", "airports-labels", handleAirportLeave);
 
     mapInstanceRef.current = map;
     if (typeof window !== "undefined") {
@@ -1923,45 +2017,78 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!selectedFlightId) {
-      if (map && map.isStyleLoaded() && map.getSource("trajectory")) {
-        (map.getSource("trajectory") as GeoJSONSource).setData({
-          type: "FeatureCollection",
-          features: [],
-        });
-      }
+      trajectoryReqIdRef.current += 1;
+      clearTrajectory(map);
       return;
     }
 
     const selectedFlight = flightsRef.current.find((f) => f.id === selectedFlightId);
-    if (!selectedFlight) return;
+    if (!selectedFlight) {
+      trajectoryReqIdRef.current += 1;
+      clearTrajectory(map);
+      return;
+    }
 
     const targetIcao = selectedFlight.identification.icao24;
-    const cachedPoints = trajectoryServerCacheRef.current[targetIcao];
+    const cached = trajectoryServerCacheRef.current[targetIcao];
+    const reqId = ++trajectoryReqIdRef.current;
+    let isCancelled = false;
 
     // Render instant boundary-aware trajectory immediately (0ms synchronous render)
-    renderInstantTrajectory(selectedFlight, cachedPoints);
+    renderInstantTrajectory(selectedFlight, cached);
 
-    let isCancelled = false;
+    // If departure airport coords not in memory yet, dynamically resolve via /airports/{ident}
+    const origKey = (
+      selectedFlight.route?.origin_icao ||
+      selectedFlight.route?.origin_iata ||
+      cached?.origin_icao ||
+      cached?.origin_iata ||
+      ""
+    ).trim().toUpperCase();
+
+    if (
+      origKey &&
+      !airportCoordsCacheRef.current[origKey] &&
+      !selectedFlight.route?.origin_latitude &&
+      !cached?.origin_latitude
+    ) {
+      fetchAirportDetail(origKey)
+        .then((apt) => {
+          if (isCancelled || reqId !== trajectoryReqIdRef.current) return;
+          if (apt && apt.longitude_deg != null && apt.latitude_deg != null) {
+            airportCoordsCacheRef.current[origKey] = [apt.longitude_deg, apt.latitude_deg];
+            if (selectedFlightIdRef.current === selectedFlight.id) {
+              renderInstantTrajectory(selectedFlight, trajectoryServerCacheRef.current[targetIcao]);
+            }
+          }
+        })
+        .catch(() => {});
+    }
 
     // Fetch full trajectory trail from backend in background to enhance precision
     fetchFlightTrajectory(targetIcao)
       .then((res) => {
-        if (isCancelled) return;
-        if (res.points && res.points.length > 0) {
-          trajectoryServerCacheRef.current[targetIcao] = res.points;
+        if (isCancelled || reqId !== trajectoryReqIdRef.current) return;
+        if (selectedFlightIdRef.current !== selectedFlight.id) return;
+        if (res) {
+          trajectoryServerCacheRef.current[targetIcao] = res;
         }
-        if (selectedFlightIdRef.current === selectedFlight.id) {
-          renderInstantTrajectory(selectedFlight, res.points || cachedPoints);
-        }
+        renderInstantTrajectory(selectedFlight, res || cached);
       })
       .catch((err) => {
+        if (isCancelled || reqId !== trajectoryReqIdRef.current) return;
+        if (selectedFlightIdRef.current !== selectedFlight.id) return;
         console.warn(`Could not fetch trajectory for ${targetIcao}:`, err);
+        renderInstantTrajectory(selectedFlight, cached);
       });
 
     return () => {
       isCancelled = true;
+      if (selectedFlightIdRef.current !== selectedFlight.id) {
+        clearTrajectory(mapInstanceRef.current);
+      }
     };
-  }, [selectedFlightId, renderInstantTrajectory]);
+  }, [selectedFlightId, renderInstantTrajectory, clearTrajectory]);
 
   return (
     <div className="relative w-full h-full flex-1 overflow-hidden">

@@ -35,6 +35,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function getCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function deleteCookie(name: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -51,8 +62,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return;
     }
 
-    const savedAccessToken = localStorage.getItem("access_token");
-    const savedRefreshToken = localStorage.getItem("refresh_token");
+    // 1. Check if tokens were transferred via OAuth callback cookies
+    const cookieAccessToken = getCookie("aerotrace_access_token");
+    const cookieRefreshToken = getCookie("aerotrace_refresh_token");
+
+    let savedAccessToken = localStorage.getItem("access_token");
+    let savedRefreshToken = localStorage.getItem("refresh_token");
+
+    if (cookieAccessToken) {
+      savedAccessToken = cookieAccessToken;
+      localStorage.setItem("access_token", cookieAccessToken);
+      deleteCookie("aerotrace_access_token");
+
+      if (cookieRefreshToken) {
+        savedRefreshToken = cookieRefreshToken;
+        localStorage.setItem("refresh_token", cookieRefreshToken);
+        deleteCookie("aerotrace_refresh_token");
+      }
+    }
 
     if (!savedAccessToken) {
       setIsLoading(false);

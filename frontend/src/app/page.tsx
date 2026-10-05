@@ -16,6 +16,7 @@ import { useAirports } from "@/hooks/useAirports";
 import { NormalizedFlight } from "@/types/flight";
 import { getUserFriendlyErrorMessage } from "@/lib/errors";
 import { List } from "lucide-react";
+import { Spinner } from "@heroui/react";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,7 +30,12 @@ export default function Home() {
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="fixed inset-0 bg-[#000000] z-50 flex items-center justify-center" />
+      <div className="fixed inset-0 bg-[#000000] z-50 flex flex-col items-center justify-center gap-3 select-none">
+        <Spinner size="lg" className="w-9 h-9 border-[#108AEF] border-t-transparent animate-spin" />
+        <span className="text-xs font-sans font-medium text-neutral-400">
+          Entering Radar Dashboard...
+        </span>
+      </div>
     );
   }
 

@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { AirportSummary } from "@/types/airport";
 import { fetchNepalAirports } from "@/lib/api";
 import { getUserFriendlyErrorMessage } from "@/lib/errors";
+import staticAirports from "@/data/nepalAirports.json";
 
 export function useAirports() {
-  const [airports, setAirports] = useState<AirportSummary[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [airports, setAirports] = useState<AirportSummary[]>(staticAirports as unknown as AirportSummary[]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {

@@ -119,6 +119,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         if (isDep) role = "departure";
         if (isDest) role = "destination";
 
+        const isHeliport =
+          a.type === "heliport" ||
+          (Boolean(a.ident) && a.ident.toUpperCase().startsWith("VNH")) ||
+          (Boolean(a.name) && a.name.toLowerCase().includes("heliport"));
+
         return {
           type: "Feature",
           properties: {
@@ -129,6 +134,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             elevation: a.elevation_ft || 0,
             city: a.municipality || "Nepal",
             isSelected: isDep || isDest,
+            isHeliport,
           },
           geometry: {
             type: "Point",
@@ -254,7 +260,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               "#108AEF",
               "destination",
               "#FB7185",
-              "#71717A",
+              ["case", ["boolean", ["get", "isHeliport"], false], "#ffffff", "#10b981"],
             ],
             "circle-stroke-width": [
               "case",
@@ -297,7 +303,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               "#38bdf8",
               "destination",
               "#f43f5e",
-              "#A1A1AA",
+              ["case", ["boolean", ["get", "isHeliport"], false], "#ffffff", "#10b981"],
             ],
             "text-halo-color": "rgba(0, 0, 0, 0.95)",
             "text-halo-width": 2,
@@ -324,7 +330,6 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             // Fallback from feature properties if airportsRef is still populating
             const coords = (feat.geometry as GeoJSON.Point).coordinates;
             const fallback: AirportSummary = {
-              id: 0,
               ident: props.ident,
               type: "medium_airport",
               name: props.name || props.ident,
@@ -335,6 +340,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               iso_country: "NP",
               iso_region: "NP",
               municipality: props.city || "Nepal",
+              scheduled_service: false,
               iata_code: props.iata || null,
               gps_code: props.ident,
               local_code: props.ident,

@@ -63,9 +63,13 @@ class FlightRoute(BaseModel):
     origin_icao: Optional[str] = Field(default=None, description="Origin airport 4-letter ICAO code (e.g. 'VNKT')")
     origin_iata: Optional[str] = Field(default=None, description="Origin airport 3-letter IATA code (e.g. 'KTM')")
     origin_name: Optional[str] = Field(default=None, description="Origin airport common name")
+    origin_latitude: Optional[float] = Field(default=None, description="Origin airport latitude in decimal degrees")
+    origin_longitude: Optional[float] = Field(default=None, description="Origin airport longitude in decimal degrees")
     destination_icao: Optional[str] = Field(default=None, description="Destination airport 4-letter ICAO code (e.g. 'VNPK')")
     destination_iata: Optional[str] = Field(default=None, description="Destination airport 3-letter IATA code (e.g. 'PKR')")
     destination_name: Optional[str] = Field(default=None, description="Destination airport common name")
+    destination_latitude: Optional[float] = Field(default=None, description="Destination airport latitude in decimal degrees")
+    destination_longitude: Optional[float] = Field(default=None, description="Destination airport longitude in decimal degrees")
 
 class NormalizedFlight(BaseModel):
     """Canonical representation of an active flight."""
@@ -105,4 +109,10 @@ class FlightTrajectoryResponse(BaseModel):
     callsign: Optional[str] = Field(default=None, description="Radiotelephony callsign")
     total_points: int = Field(description="Count of breadcrumb waypoints")
     points: List[TrajectoryPoint] = Field(default_factory=list, description="Chronological trajectory breadcrumbs")
+    origin_icao: Optional[str] = Field(default=None, description="Origin airport 4-letter ICAO code")
+    origin_iata: Optional[str] = Field(default=None, description="Origin airport 3-letter IATA code")
+    origin_name: Optional[str] = Field(default=None, description="Origin airport common name")
+    origin_latitude: Optional[float] = Field(default=None, description="Origin airport latitude in decimal degrees")
+    origin_longitude: Optional[float] = Field(default=None, description="Origin airport longitude in decimal degrees")
+
 

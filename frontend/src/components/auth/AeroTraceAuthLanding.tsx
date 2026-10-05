@@ -150,11 +150,11 @@ export const AeroTraceAuthLanding: React.FC<AeroTraceAuthLandingProps> = ({
   const isCardVisible = stage === "card-entrance" || stage === "settled";
 
   return (
-    <div className="min-h-screen w-full bg-[#000000] text-neutral-100 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-x-hidden overflow-y-auto selection:bg-[#1890f8]/30">
+    <div className="h-screen h-[100dvh] w-full bg-[#000000] text-neutral-100 flex flex-col items-center overflow-x-hidden overflow-y-auto selection:bg-[#1890f8]/30">
       {/* Centered Main Container — maintains continuous layout throughout the entire scene */}
       <div
         ref={mainContainerRef}
-        className="w-full max-w-md flex flex-col items-center my-auto py-6 sm:py-8 z-10"
+        className="w-full max-w-md flex flex-col items-center my-auto px-4 py-8 sm:py-12 z-10 shrink-0"
       >
         {/* Continuous AeroTrace Logo Container */}
         <div
