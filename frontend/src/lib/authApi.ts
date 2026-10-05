@@ -38,7 +38,7 @@ async function parseErrorResponse(res: Response): Promise<string> {
       return messages.join(". ");
     }
 
-    // 2. Structured AppError / ProviderError 
+    // 2. Structured AppError / ProviderError / RateLimitError Check
     if (data.error && typeof data.error === "object") {
       return resolveUserFacingMessage(
         res.status,
