@@ -1,6 +1,7 @@
 /**
  * Backend Authentication API Client
  * Connects frontend directly to FastAPI authentication endpoints.
+ * Author-Mandeep Pokharel
  */
 
 import {
@@ -22,7 +23,7 @@ async function parseErrorResponse(res: Response): Promise<string> {
   try {
     const data = await res.json();
 
-    // 1. Pydantic validation errors (HTTP 422)
+    // 1. Pydantic validation errors (HTTP 422). Validations Error
     if (data.detail && Array.isArray(data.detail)) {
       const messages = data.detail.map((d: { msg?: string; loc?: string[] }) => {
         let msg = d.msg || "Invalid field";
