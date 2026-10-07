@@ -167,20 +167,22 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
                 </div>
 
                 {isMonthlyQuotaExhausted ? (
-                  <Button
-                    size="sm"
-                    radius="full"
-                    isDisabled
+                  <span
+                    className="inline-flex cursor-not-allowed"
                     title={monthlyQuotaMessage || "FlightAware monthly API quota limit reached. Reverted to OpenSky Network."}
-                    className="h-8 px-4 rounded-full !bg-rose-500/15 border border-rose-500/30 !text-rose-300 text-xs font-medium cursor-not-allowed select-none opacity-80"
-                    aria-label="Monthly quota limit reached"
                   >
-                    Monthly Limit Reached
-                  </Button>
+                    <Button
+                      size="sm"
+                      isDisabled
+                      className="h-8 px-4 rounded-full !bg-rose-500/15 border border-rose-500/30 !text-rose-300 text-xs font-medium cursor-not-allowed select-none opacity-80 pointer-events-none"
+                      aria-label="Monthly quota limit reached"
+                    >
+                      Monthly Limit Reached
+                    </Button>
+                  </span>
                 ) : isDetailedMode ? (
                   <Button
                     size="sm"
-                    radius="full"
                     onPress={onToggleDetailedMode}
                     className="h-8 px-4 rounded-full !bg-amber-500/20 hover:!bg-amber-500/30 !text-amber-200 border border-amber-500/40 text-xs font-medium transition-colors cursor-pointer shadow-none active:scale-95"
                     aria-label="Stop Detailed Mode"
@@ -190,7 +192,6 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
                 ) : isDetailedQuotaExhausted ? (
                   <Button
                     size="sm"
-                    radius="full"
                     isDisabled
                     className="h-8 px-4 rounded-full !bg-[#27272a]/70 !text-neutral-400 text-xs font-medium cursor-not-allowed select-none opacity-60 border-0"
                     aria-label="Daily limit reached"
@@ -200,7 +201,6 @@ export const BottomStatsSlider: React.FC<BottomStatsSliderProps> = ({
                 ) : (
                   <Button
                     size="sm"
-                    radius="full"
                     onPress={onToggleDetailedMode}
                     className="h-8 px-4 rounded-full !bg-[#27272a] hover:!bg-[#3f3f46] !text-[#f4f4f5] hover:!text-white text-xs font-medium transition-colors cursor-pointer shadow-none border-0 active:scale-95"
                     aria-label="Load Detailed Flights"
