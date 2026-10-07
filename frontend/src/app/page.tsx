@@ -59,10 +59,7 @@ export default function Home() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const hasVisited = localStorage.getItem("aerotrace_has_visited") === "true";
-    // Only redirect to /login on genuine first visit if user is not authenticated
-    if (!isLoading && !isAuthenticated && !hasVisited) {
-      localStorage.setItem("aerotrace_has_visited", "true");
+    if (!isLoading && !isAuthenticated) {
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);

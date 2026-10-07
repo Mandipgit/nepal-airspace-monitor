@@ -32,11 +32,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const { user, isAuthenticated, openAuthModal, logout } = useAuth();
 
   // Dynamic user data
-  const userInitial = (user?.first_name || user?.email || "G").charAt(0).toUpperCase();
+  const userInitial = (user?.first_name || user?.email || "U").charAt(0).toUpperCase();
   const displayName = user
     ? `${user.first_name || ""} ${user.last_name || ""}`.trim() || user.email
-    : "Guest User";
-  const userEmail = user?.email || (isAuthenticated ? "" : "Not signed in");
+    : "Not signed in";
+  const userEmail = user?.email || (isAuthenticated ? "" : "Sign in to access your profile");
 
   const isRouteAnalyzerActive = activeNav === "route-analyzer";
   const isNepalAircraftActive = activeNav === "nepal-aircraft";
@@ -112,7 +112,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             {/* Adjacent: User name in larger bold text, email underneath as subtitle */}
             <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-[#FAFAFA] tracking-tight truncate font-sans">
-                {isAuthenticated ? displayName : "Guest User"}
+                {isAuthenticated ? displayName : "Not signed in"}
               </span>
               <span className="text-[11px] text-[#71717A] truncate font-sans">
                 {userEmail}

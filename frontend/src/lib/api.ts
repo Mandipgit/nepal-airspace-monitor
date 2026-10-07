@@ -18,59 +18,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8
 // In-memory cache for static route distance/runway lookups (keyed by DEP:DEST)
 const routeInfoCache = new Map<string, RouteInformationResponse>();
 
-let guestTokenPromise: Promise<string | null> | null = null;
-
-/**
- * Ensures an active authentication token exists.
- * If user is logged in, returns user's access_token.
- * If user is in Guest Mode, fetches or returns cached guest session token.
- */
-export async function getOrFetchGuestToken(): Promise<string | null> {
-  if (typeof window === "undefined") return null;
-
-  const userToken = localStorage.getItem("access_token");
-  if (userToken) return userToken;
-
-  const existingGuestToken = localStorage.getItem("guest_token");
-  if (existingGuestToken) return existingGuestToken;
-
-  if (guestTokenPromise) return guestTokenPromise;
-
-  guestTokenPromise = (async () => {
-    try {
-      const authBase = API_BASE_URL.replace(/\/v1$/, "");
-      const res = await fetch(`${authBase}/auth/guest`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.access_token) {
-          localStorage.setItem("guest_token", data.access_token);
-          return data.access_token as string;
-        }
-      }
-    } catch (err) {
-      console.warn("Failed to acquire anonymous guest session:", err);
-    } finally {
-      guestTokenPromise = null;
-    }
-    return null;
-  })();
-
-  return guestTokenPromise;
-}
-
 /**
  * Returns authorization headers with active Bearer token.
  */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   if (typeof window !== "undefined") {
-    let token = localStorage.getItem("access_token") || localStorage.getItem("guest_token");
-    if (!token) {
-      token = await getOrFetchGuestToken();
-    }
+    const token = localStorage.getItem("access_token");
     if (token) {
       return { Authorization: `Bearer ${token}` };
     }
@@ -79,8 +32,7 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
 }
 
 /**
- * Robust fetch wrapper that automatically injects JWT Bearer tokens and transparently
- * handles token expiration / 401 Unauthorized errors by refreshing the guest session and retrying.
+ * Robust fetch wrapper that automatically injects JWT Bearer tokens.
  */
 async function authenticatedFetch(
   url: string,
@@ -93,24 +45,7 @@ async function authenticatedFetch(
     ...(options.headers || {}),
   };
 
-  let res = await fetch(url, { ...options, headers });
-
-  // If 401 Unauthorized, token might be expired; clear stale tokens and retry once with fresh guest token
-  if (res.status === 401 && typeof window !== "undefined") {
-    localStorage.removeItem("guest_token");
-    localStorage.removeItem("access_token");
-    const freshToken = await getOrFetchGuestToken();
-    if (freshToken) {
-      const retryHeaders = {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${freshToken}`,
-        ...(options.headers || {}),
-      };
-      res = await fetch(url, { ...options, headers: retryHeaders });
-    }
-  }
-
-  return res;
+  return await fetch(url, { ...options, headers });
 }
 
 export interface FetchLiveFlightsOptions {

@@ -171,6 +171,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Clear local state immediately for snappy UX
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    localStorage.removeItem("guest_token");
+    localStorage.removeItem("aerotrace_has_visited");
     setUser(null);
     setToken(null);
     setRefreshToken(null);

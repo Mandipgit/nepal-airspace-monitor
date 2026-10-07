@@ -301,26 +301,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
               </>
             )}
           </Button>
-
-          {/* Continue as Guest Button */}
-          <Button
-            type="button"
-            onPress={() => {
-              if (typeof window !== "undefined") {
-                localStorage.setItem("aerotrace_has_visited", "true");
-              }
-              if (onSuccess) {
-                onSuccess();
-              } else {
-                router.push("/");
-              }
-            }}
-            variant="ghost"
-            fullWidth
-            className="flex items-center justify-center py-2 px-4 rounded-xl font-medium text-xs text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer"
-          >
-            Continue as Guest
-          </Button>
         </Form>
       </Card.Content>
 
