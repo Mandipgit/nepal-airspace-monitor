@@ -2,7 +2,7 @@
 Application Configuration Settings
 Loads configuration from environment variables and .env file.
 """
-
+#Author-Mandeep Pokharel
 import os
 from functools import lru_cache
 from typing import List
