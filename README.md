@@ -31,57 +31,57 @@
 
 ## 📸 Screenshots & Visual Overview
 
-<div align="center">
-
-### 🛰️ Live Radar & Airspace Surveillance Dashboard
-
-<a href="https://github.com/user-attachments/assets/6cbe0b46-9164-48f1-a5dd-035e89ec9d3d" target="_blank">
-  <img src="https://github.com/user-attachments/assets/6cbe0b46-9164-48f1-a5dd-035e89ec9d3d" alt="AeroTrace Live Radar Dashboard" width="100%" style="border-radius: 12px; border: 1px solid #262626; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
-</a>
-
-<p><em>Real-time vector radar visualizing commercial and regional aircraft transiting the Himalayan corridor with directional markers, heading vectors, and spatial breadcrumbs.</em></p>
-
-</div>
-
-<br />
-
 <table width="100%">
   <tr>
-    <th width="50%" align="center">🛫 Flight Telemetry Dossier</th>
-    <th width="50%" align="center">⚖️ Route Aircraft Analyzer</th>
+    <th width="50%" align="center">🛫 Flight Telemetry & Kinematics Dossier</th>
+    <th width="50%" align="center">⚖️ Route Aircraft Suitability Analyzer</th>
   </tr>
   <tr>
     <td align="center" valign="top">
-      <a href="https://github.com/user-attachments/assets/9ee3680c-b74c-4af8-b5e1-5f8f76491699" target="_blank">
-        <img src="https://github.com/user-attachments/assets/9ee3680c-b74c-4af8-b5e1-5f8f76491699" alt="Flight Telemetry Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="./Screenshot%202026-10-05%20105913.png" target="_blank">
+        <img src="./Screenshot%202026-10-05%20105913.png" alt="Flight Telemetry & Kinematics Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
-      <p align="center"><sub><em>Real-time telemetry, altitude graphs, groundspeed, and CAAN aircraft specification integration.</em></sub></p>
+      <p align="center"><sub><em>Real-time telemetry drawer displaying live barometric altitude, groundspeed, track heading, transponder surveillance, and CAAN aircraft specifications.</em></sub></p>
     </td>
     <td align="center" valign="top">
-      <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Route+Aircraft+Analyzer+Screenshot" alt="Route Aircraft Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="./Screenshot%202026-10-07%20225641.png" target="_blank">
+        <img src="./Screenshot%202026-10-07%20225641.png" alt="Route Aircraft Suitability Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      </a>
       <br />
-      <p align="center"><sub><em>Mathematical suitability analysis evaluating TOFL, LFL, headwinds, and route viability.</em></sub></p>
+      <p align="center"><sub><em>Aeronautical engineering comparison evaluating TOFL, LFL, headwind components, and route viability between Nepal aerodromes.</em></sub></p>
     </td>
   </tr>
   <tr>
-    <th width="50%" align="center">🇳🇵 Nepal Civil Fleet Catalog</th>
-    <th width="50%" align="center">🏔️ Runway & Airport Encyclopedia</th>
+    <th width="50%" align="center">🇳🇵 Nepal Civil Aircraft Fleet Directory</th>
+    <th width="50%" align="center">📻 ICAO Phonetic Alphabet & Audio Guide</th>
   </tr>
   <tr>
     <td align="center" valign="top">
-      <a href="https://github.com/user-attachments/assets/e397b6b1-d5c1-4c7a-b13c-a5b01edf3a57" target="_blank">
-        <img src="https://github.com/user-attachments/assets/e397b6b1-d5c1-4c7a-b13c-a5b01edf3a57" alt="Nepal Civil Fleet Catalog" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="./Screenshot%202026-10-07%20225855.png" target="_blank">
+        <img src="./Screenshot%202026-10-07%20225855.png" alt="Nepal Civil Aircraft Fleet Directory" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
-      <p align="center"><sub><em>Comprehensive 9N- registered fleet catalog indexed with operators, models, and serials.</em></sub></p>
+      <p align="center"><sub><em>Comprehensive 9N- registered fleet catalog indexed with airline operators, ICAO models, manufacturers, serial numbers, and passenger capacities.</em></sub></p>
     </td>
     <td align="center" valign="top">
-      <a href="https://github.com/user-attachments/assets/93250ed4-2f92-40f1-813e-85d031795097" target="_blank">
-        <img src="https://github.com/user-attachments/assets/93250ed4-2f92-40f1-813e-85d031795097" alt="Airport Runways Catalog" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="./Screenshot%202026-10-07%20233326.png" target="_blank">
+        <img src="./Screenshot%202026-10-07%20233326.png" alt="ICAO Phonetic Alphabet Guide" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
-      <p align="center"><sub><em>Runway threshold headings, lengths, surface types, and elevations for all Nepal aerodromes.</em></sub></p>
+      <p align="center"><sub><em>Interactive international aviation phonetic alphabet reference with standardized pronunciation keys and Morse code transmitter signals.</em></sub></p>
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2" align="center">🏔️ Aerodrome Intelligence & Airport Dossier (Lukla VNLK)</th>
+  </tr>
+  <tr>
+    <td colspan="2" align="center" valign="top">
+      <a href="./Screenshot%202026-10-07%20230134.png" target="_blank">
+        <img src="./Screenshot%202026-10-07%20230134.png" alt="Aerodrome Intelligence & Airport Dossier" width="380" style="border-radius: 8px; border: 1px solid #262626;" />
+      </a>
+      <br />
+      <p align="center"><sub><em>Detailed aerodrome specifications (Tenzing-Hillary Lukla VNLK - 9,380 ft MSL), runway infrastructure thresholds, classifications, and coordinates.</em></sub></p>
     </td>
   </tr>
 </table>
