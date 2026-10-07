@@ -92,6 +92,8 @@ class FlightCollectionResponse(BaseModel):
     cached: bool = Field(default=False, description="True if served from server-side in-memory cache")
     cache_age_seconds: Optional[float] = Field(default=None, description="Age of cached payload in seconds")
     rate_limit_remaining: Optional[int] = Field(default=None, description="Remaining API rate limit credits reported by provider (X-Rate-Limit-Remaining)")
+    provider_status: Optional[str] = Field(default="ok", description="Operational status: 'ok', 'quota_exceeded', 'rate_limited', or 'error'")
+    provider_error: Optional[str] = Field(default=None, description="Detailed provider warning or error message if limits reached")
     flights: List[NormalizedFlight] = Field(default_factory=list, description="List of normalized flight entities")
 
 class TrajectoryPoint(BaseModel):

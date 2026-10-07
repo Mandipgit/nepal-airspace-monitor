@@ -28,6 +28,7 @@ async def get_live_flights(
     nepal_only: bool = Query(False, description="Filter only Nepalese registered aircraft (70a8.. ICAO24 prefix)"),
     nepal_context_only: bool = Query(True, description="Filter only flights inbound/outbound/domestic or physically inside Nepal"),
     source: Optional[str] = Query(None, description="Filter by surveillance source (e.g. ADS-B, MLAT, UAT)"),
+    provider: Optional[str] = Query(None, description="Flight data provider: 'opensky' or 'flightaware'"),
     enriched: bool = Query(True, description="Enrich with aircraft specs and nearest airport proximity"),
     force_refresh: bool = Query(False, description="Bypass server-side cache and query provider immediately")
 ):
@@ -44,6 +45,7 @@ async def get_live_flights(
         nepal_only=nepal_only,
         nepal_context_only=nepal_context_only,
         source=source,
+        provider=provider,
         enriched=enriched,
         force_refresh=force_refresh
     )

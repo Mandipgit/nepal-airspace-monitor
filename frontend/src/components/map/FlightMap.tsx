@@ -983,9 +983,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<MapLibreMap | null>(null);
-  const [activeTileStyle, setActiveTileStyle] = useState<TileStyle>(
-    (propActiveTileStyle as TileStyle) || "dark"
-  );
+  const targetInitialStyle: TileStyle = !isDarkMode
+    ? ((propActiveTileStyle && propActiveTileStyle !== "dark" ? propActiveTileStyle : "bright") as TileStyle)
+    : "dark";
+  const [activeTileStyle, setActiveTileStyle] = useState<TileStyle>(targetInitialStyle);
 
   const popupRef = useRef<Popup | null>(null);
   const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1007,6 +1008,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   const airportsRef = useRef(airports);
   const selectedFlightIdRef = useRef(selectedFlightId);
   const selectedAirportIdentRef = useRef(selectedAirportIdent);
+  const hoveredAirportIdentRef = useRef<string | null>(null);
 
   useEffect(() => {
     onSelectAirportRef.current = onSelectAirport;
@@ -1123,6 +1125,26 @@ export const FlightMap: React.FC<FlightMapProps> = ({
         }
       }
 
+      // Neutralize any fill-pattern on basemap layers (e.g. landcover_wood referencing 'wood-pattern')
+      // which causes repeating polka-dot stippling grids across terrain when zoomed in
+      const fillPatternLayers = [
+        "landcover_wood",
+        "landcover_scrub",
+        "landcover_grass",
+        "landcover_wetland",
+        "landuse_park",
+        "landuse_nature_reserve",
+      ];
+      fillPatternLayers.forEach((layerId) => {
+        if (map.getLayer(layerId)) {
+          try {
+            map.setPaintProperty(layerId, "fill-pattern", undefined);
+          } catch {
+            // safely ignore
+          }
+        }
+      });
+
       // Keep regional basemap boundaries subtle so surrounding countries/states remain dark and unhighlighted
       const boundaryLayers = [
         "boundary_country_z5-",
@@ -1215,6 +1237,7 @@ export const FlightMap: React.FC<FlightMapProps> = ({
             (Boolean(apt.name) && apt.name.toLowerCase().includes("heliport"));
           return {
             type: "Feature",
+            id: apt.ident,
             properties: {
               ident: apt.ident,
               name: apt.name,
@@ -1240,11 +1263,27 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       if (map.getSource("airports")) {
         (map.getSource("airports") as GeoJSONSource).setData(airportsGeoJSON);
         if (map.getLayer("airports-circle")) {
+          map.setPaintProperty("airports-circle", "circle-radius", [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5,
+            3.2,
+            8,
+            4.5,
+            11,
+            6.2,
+          ]);
           map.setPaintProperty("airports-circle", "circle-color", [
             "case",
             ["boolean", ["get", "isHeliport"], false],
             "#ffffff",
-            "#10b981",
+            [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#ef4444",
+              "#10b981",
+            ],
           ]);
           map.setPaintProperty("airports-circle", "circle-stroke-color", "rgba(0, 0, 0, 0.85)");
           map.setPaintProperty("airports-circle", "circle-stroke-width", 1.5);
@@ -1263,9 +1302,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
           map.addSource("airports", {
             type: "geojson",
             data: airportsGeoJSON,
+            promoteId: "ident",
           });
 
-          // Airports & Heliports circles (Airports = green, Heliports = white)
+          // Airports & Heliports circles (Airports = green, turn red on hover; Heliports = white)
           map.addLayer({
             id: "airports-circle",
             type: "circle",
@@ -1276,17 +1316,22 @@ export const FlightMap: React.FC<FlightMapProps> = ({
                 ["linear"],
                 ["zoom"],
                 5,
-                4.0,
+                3.2,
                 8,
-                5.5,
+                4.5,
                 11,
-                7.5,
+                6.2,
               ],
               "circle-color": [
                 "case",
                 ["boolean", ["get", "isHeliport"], false],
                 "#ffffff",
-                "#10b981",
+                [
+                  "case",
+                  ["boolean", ["feature-state", "hover"], false],
+                  "#ef4444",
+                  "#10b981",
+                ],
               ],
               "circle-stroke-color": "rgba(0, 0, 0, 0.85)",
               "circle-stroke-width": 1.5,
@@ -1542,7 +1587,10 @@ export const FlightMap: React.FC<FlightMapProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const initialStyleDef = OPENFREEMAP_STYLES.dark;
+    const initialStyleKey: TileStyle = !isDarkMode
+      ? ((propActiveTileStyle && propActiveTileStyle !== "dark" ? propActiveTileStyle : "bright") as TileStyle)
+      : "dark";
+    const initialStyleDef = OPENFREEMAP_STYLES[initialStyleKey] || (isDarkMode ? OPENFREEMAP_STYLES.dark : OPENFREEMAP_STYLES.bright);
 
     const map = new MapLibreMap({
       container: mapContainerRef.current,
@@ -1573,21 +1621,46 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       "top-right"
     );
 
-    // Provide clean fallback for any missing sprite icons (e.g. circle-11 in OpenFreeMap)
+    // Provide clean fallback for any missing sprite icons without corrupting fill-patterns
     map.on("styleimagemissing", (e) => {
       const id = e.id;
       if (!map.hasImage(id)) {
-        const size = 16;
+        // If it's a fill-pattern (e.g. wood-pattern), provide an empty 1x1 transparent image so it never tiles as polka dots
+        if (id.includes("pattern") || id.includes("fill")) {
+          const canvas = document.createElement("canvas");
+          canvas.width = 1;
+          canvas.height = 1;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            map.addImage(id, ctx.getImageData(0, 0, 1, 1));
+          }
+          return;
+        }
+
+        // Only generate a small dot icon for city/town circle markers (e.g. circle-11 in OpenFreeMap)
+        if (id.startsWith("circle")) {
+          const size = 16;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, 3, 0, Math.PI * 2);
+            ctx.fillStyle = "#666666";
+            ctx.fill();
+            map.addImage(id, ctx.getImageData(0, 0, size, size));
+          }
+          return;
+        }
+
+        // Default transparent fallback for any other missing sprite assets
         const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = 1;
+        canvas.height = 1;
         const ctx = canvas.getContext("2d");
         if (ctx) {
-          ctx.beginPath();
-          ctx.arc(size / 2, size / 2, 4, 0, Math.PI * 2);
-          ctx.fillStyle = "#888888";
-          ctx.fill();
-          map.addImage(id, ctx.getImageData(0, 0, size, size));
+          map.addImage(id, ctx.getImageData(0, 0, 1, 1));
         }
       }
     });
@@ -1794,24 +1867,38 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       const p = f.properties || {};
       const isHeliport = Boolean(p.isHeliport);
 
+      // Handle marker hover color: airports turn red immediately on hover
+      if (hoveredAirportIdentRef.current && hoveredAirportIdentRef.current !== p.ident) {
+        try {
+          map.setFeatureState(
+            { source: "airports", id: hoveredAirportIdentRef.current },
+            { hover: false }
+          );
+        } catch {}
+      }
+      hoveredAirportIdentRef.current = p.ident;
+      if (!isHeliport) {
+        try {
+          map.setFeatureState(
+            { source: "airports", id: p.ident },
+            { hover: true }
+          );
+        } catch {}
+      }
+
+      // Format code line: ICAO · IATA (or ICAO if no distinct IATA)
+      const hasDistinctIata = Boolean(p.iata && p.iata.trim() && p.iata.trim().toUpperCase() !== p.ident);
+      const codeLine = hasDistinctIata ? `${p.ident} · ${p.iata.trim().toUpperCase()}` : p.ident;
+
       popupRef.current
         .setLngLat(coords)
         .setHTML(`
-          <div class="p-1 font-sans text-xs cursor-pointer select-none" id="popup-airport-${p.ident}">
-            <div class="font-bold text-neutral-100 flex items-center gap-1.5">
-              <span class="inline-block w-2.5 h-2.5 rounded-full ${isHeliport ? "bg-white border border-neutral-300" : "bg-emerald-400 border border-emerald-300"}"></span>
-              <span>${p.name}</span>
-              <span class="${isHeliport ? "text-neutral-200" : "text-emerald-400"} font-mono font-bold">(${p.ident}${p.iata ? ` / ${p.iata}` : ""})</span>
+          <div class="py-1 px-1.5 cursor-pointer select-none font-sans" id="popup-airport-${p.ident}">
+            <div class="text-[13px] font-semibold text-white tracking-normal leading-tight font-sans">
+              ${p.name}
             </div>
-            <div class="text-neutral-300 mt-1 font-mono text-[11px] flex items-center gap-1.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold ${isHeliport ? "bg-white/15 text-white border border-white/30" : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"}">
-                ${isHeliport ? "Heliport" : "Airport"}
-              </span>
-              <span>Elev: ${p.elevation ? `${p.elevation.toLocaleString()} ft` : "N/A"} • ${p.municipality || "Nepal"}</span>
-            </div>
-            <div class="text-[10px] ${isHeliport ? "text-neutral-300" : "text-emerald-400"} font-sans font-semibold mt-1.5 flex items-center gap-1">
-              <span>Click to view ${isHeliport ? "heliport" : "airport"} details</span>
-              <span>→</span>
+            <div class="text-[11px] font-medium text-neutral-400 mt-1 tracking-normal font-sans">
+              ${codeLine}
             </div>
           </div>
         `)
@@ -1836,6 +1923,15 @@ export const FlightMap: React.FC<FlightMapProps> = ({
 
     const handleAirportLeave = () => {
       map.getCanvas().style.cursor = "";
+      if (hoveredAirportIdentRef.current) {
+        try {
+          map.setFeatureState(
+            { source: "airports", id: hoveredAirportIdentRef.current },
+            { hover: false }
+          );
+        } catch {}
+        hoveredAirportIdentRef.current = null;
+      }
       if (popupRef.current) {
         popupRef.current.remove();
       }
@@ -1930,14 +2026,15 @@ export const FlightMap: React.FC<FlightMapProps> = ({
       }
     } else {
       if (activeTileStyle === "dark") {
-        setActiveTileStyle("bright");
-        map.setStyle(OPENFREEMAP_STYLES.bright.url);
+        const nextStyle = (propActiveTileStyle && propActiveTileStyle !== "dark" ? propActiveTileStyle : "bright") as TileStyle;
+        setActiveTileStyle(nextStyle);
+        map.setStyle(OPENFREEMAP_STYLES[nextStyle].url);
         map.once("style.load", () => {
           setupMapLayers(map, airportsRef.current, false);
         });
       }
     }
-  }, [isDarkMode, activeTileStyle, setupMapLayers]);
+  }, [isDarkMode, activeTileStyle, propActiveTileStyle, setupMapLayers]);
 
   // Synchronize Map Tile Style from Prop (TopBar control)
   useEffect(() => {
@@ -2094,25 +2191,6 @@ export const FlightMap: React.FC<FlightMapProps> = ({
     <div className="relative w-full h-full flex-1 overflow-hidden">
       {/* MapLibre WebGL DOM Container */}
       <div ref={mapContainerRef} className="w-full h-full" />
-
-
-
-      {/* Streamlined Minimal Floating Legend */}
-      <div
-        style={{
-          willChange: "transform",
-          transform: isSidebarOpen ? "translateX(268px)" : "translateX(0px)",
-          transition: isSidebarOpen
-            ? "transform 320ms cubic-bezier(0.16, 1, 0.3, 1)"
-            : "transform 260ms cubic-bezier(0.25, 1, 0.5, 1)",
-        }}
-        className="absolute bottom-4 left-4 z-20 hidden sm:flex items-center space-x-3.5 px-4 py-2 rounded-2xl bg-[#0a0b0e]/95 border border-white/18 text-[11px] shadow-[0_4px_15px_rgba(0,0,0,0.45)] backdrop-blur-xl pointer-events-none select-none"
-      >
-        <span className="font-semibold text-emerald-400">9N (Nepal)</span>
-        <span className="font-semibold text-yellow-300">Other / Transit</span>
-        <span className="font-semibold text-red-400">Selected & Trail</span>
-        <span className="font-medium text-neutral-300">Airports</span>
-      </div>
     </div>
   );
 };

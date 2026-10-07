@@ -10,8 +10,6 @@ import {
   Moon,
   Layers,
   Scan,
-  Plane,
-  Globe,
   ChevronLeft,
 } from "lucide-react";
 import { GlobalSearch } from "./GlobalSearch";
@@ -55,8 +53,20 @@ export const TopBar: React.FC<TopBarProps> = ({
   onCenterFlight,
   onCenterAirport,
 }) => {
-  // Default state: The control section is closed
-  const [isControlsOpen, setIsControlsOpen] = useState<boolean>(false);
+  // Default state: The control section restores persisted preference or defaults to closed
+  const [isControlsOpen, setIsControlsOpen] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("aerotrace_controls_open");
+      if (saved !== null) return saved === "true";
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_controls_open", String(isControlsOpen));
+    }
+  }, [isControlsOpen]);
 
   return (
     <header className="h-14 w-full bg-[#111113] border-b border-white/[0.08] shadow-[0_2px_10px_rgba(0,0,0,0.35)] px-4 flex items-center justify-between z-40 shrink-0 select-none font-sans">
@@ -148,12 +158,12 @@ export const TopBar: React.FC<TopBarProps> = ({
               </button>
             )}
 
-            {/* Nepal Corridors vs All Regional Flights Scope Toggle */}
+            {/* Nepal Flights vs All Regional Flights Scope Toggle */}
             {onToggleNepalContext && (
               <button
                 type="button"
                 onClick={onToggleNepalContext}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm whitespace-nowrap ${
+                className={`flex items-center px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer shadow-sm whitespace-nowrap ${
                   nepalContextOnly
                     ? "bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/40 text-emerald-300"
                     : "bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/40 text-sky-200"
@@ -161,40 +171,36 @@ export const TopBar: React.FC<TopBarProps> = ({
                 title={
                   nepalContextOnly
                     ? "Nepal Airspace Focus ON: Inbound, outbound, domestic, and overflights. Click to show All Regional Traffic."
-                    : "All Regional Flights ON: All planes in map viewport. Click to focus on Nepal Corridors only."
+                    : "All Regional Flights ON: All planes in map viewport. Click to focus on Nepal Flights only."
                 }
               >
-                {nepalContextOnly ? (
-                  <Plane className="w-3.5 h-3.5 text-emerald-400 rotate-45" />
-                ) : (
-                  <Globe className="w-3.5 h-3.5 text-sky-400" />
-                )}
-                <span>{nepalContextOnly ? "Nepal Corridors" : "All Traffic"}</span>
+                <span>{nepalContextOnly ? "Nepal Flights" : "All Traffic"}</span>
               </button>
             )}
           </div>
         </motion.div>
 
         {/* Circular HeroUI-style button with left-pointing arrow */}
-        <Tooltip
-          content={isControlsOpen ? "Collapse controls" : "Map & airspace controls"}
-          closeDelay={100}
-        >
-          <Button
-            isIconOnly
-            radius="full"
-            size="sm"
-            variant="flat"
-            onPress={() => setIsControlsOpen((prev) => !prev)}
-            aria-label={isControlsOpen ? "Collapse controls" : "Expand controls"}
-            className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] text-neutral-300 hover:text-white transition-all duration-300 ease-out cursor-pointer shadow-sm shrink-0 flex items-center justify-center"
-          >
-            <ChevronLeft
-              className={`w-4 h-4 transition-transform duration-450 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                isControlsOpen ? "rotate-180" : "rotate-0"
-              }`}
-            />
-          </Button>
+        <Tooltip closeDelay={100}>
+          <Tooltip.Trigger>
+            <Button
+              isIconOnly
+              size="sm"
+              variant="ghost"
+              onPress={() => setIsControlsOpen((prev) => !prev)}
+              aria-label={isControlsOpen ? "Collapse controls" : "Expand controls"}
+              className="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.10] text-neutral-300 hover:text-white transition-all duration-300 ease-out cursor-pointer shadow-sm shrink-0 flex items-center justify-center"
+            >
+              <ChevronLeft
+                className={`w-4 h-4 transition-transform duration-450 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  isControlsOpen ? "rotate-180" : "rotate-0"
+                }`}
+              />
+            </Button>
+          </Tooltip.Trigger>
+          <Tooltip.Content className="px-2.5 py-1 text-xs rounded-lg bg-neutral-900 border border-neutral-700 text-neutral-200">
+            {isControlsOpen ? "Collapse controls" : "Map & airspace controls"}
+          </Tooltip.Content>
         </Tooltip>
 
         {/* Theme Toggle: rounded-full pill with sliding active thumb */}

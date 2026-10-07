@@ -1,0 +1,15 @@
+.spin {
+  transform-box: view-box;
+  transform-origin: var(--fan-origin);
+  animation: fan-spin var(--fan-duration, 2.25s) linear infinite;
+  will-change: transform;
+}
+
+@keyframes fan-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 12s; }
+}

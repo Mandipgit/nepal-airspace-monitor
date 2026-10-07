@@ -118,6 +118,7 @@ export interface FetchLiveFlightsOptions {
   nepalContextOnly?: boolean;
   filterGround?: boolean;
   source?: string;
+  provider?: "opensky" | "flightaware";
   enriched?: boolean;
   lamin?: number;
   lomin?: number;
@@ -134,6 +135,7 @@ export async function fetchLiveFlights(
     nepalContextOnly,
     filterGround = false,
     source,
+    provider,
     enriched = true,
     lamin,
     lomin,
@@ -147,6 +149,7 @@ export async function fetchLiveFlights(
   }
   if (filterGround) params.append("filter_ground", "true");
   if (source) params.append("source", source);
+  if (provider) params.append("provider", provider);
   if (enriched) params.append("enriched", "true");
   if (lamin !== undefined) params.append("lamin", lamin.toFixed(4));
   if (lomin !== undefined) params.append("lomin", lomin.toFixed(4));
@@ -394,4 +397,37 @@ export async function fetchNepalAircraftDetail(identifier: string): Promise<Nepa
 
   return res.json();
 }
+
+/**
+ * Official ICAO Phonetic Alphabet contract
+ */
+export interface IcaoPhoneticItem {
+  letter: string;
+  phonetic: string;
+  morse_code?: string | null;
+  pronunciation?: string | null;
+}
+
+export interface IcaoPhoneticResponse {
+  total: number;
+  alphabet: IcaoPhoneticItem[];
+}
+
+/**
+ * Retrieve official ICAO phonetic alphabet data from the backend database.
+ * Returns all 26 entries (A through Z) in alphabetical order.
+ */
+export async function fetchIcaoPhoneticAlphabet(): Promise<IcaoPhoneticResponse> {
+  const url = `${API_BASE_URL}/icao/phonetic`;
+  const res = await authenticatedFetch(url, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw await parseApiResponseError(res, "icao_phonetic");
+  }
+
+  return res.json();
+}
+
 

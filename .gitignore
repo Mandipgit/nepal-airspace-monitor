@@ -60,6 +60,10 @@ htmlcov/
 .hypothesis/
 .mypy_cache/
 .ruff_cache/
+backend/test_*.py
+test_*.py
+!backend/tests/**
+!tests/**
 
 # --- Node.js & Next.js ---
 node_modules/

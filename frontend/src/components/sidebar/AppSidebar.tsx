@@ -2,8 +2,9 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import SpinningFan from "@/components/SpinningFan";
 
 interface AppSidebarProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ interface AppSidebarProps {
   flightCount?: number;
   syncViewport?: boolean;
   onToggleSyncViewport?: () => void;
-  activeNav?: "directory" | "route-analyzer" | "dashboard";
+  activeNav?: "directory" | "route-analyzer" | "nepal-aircraft" | "icao-phonetic" | "dashboard";
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
@@ -39,10 +40,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const isRouteAnalyzerActive = activeNav === "route-analyzer";
   const isNepalAircraftActive = activeNav === "nepal-aircraft";
-  const isDirectoryActive = !isRouteAnalyzerActive && !isNepalAircraftActive && (activeNav === "directory" || isSearchOpen);
+  const isIcaoPhoneticActive = activeNav === "icao-phonetic";
+  const isDirectoryActive = !isRouteAnalyzerActive && !isNepalAircraftActive && !isIcaoPhoneticActive && (activeNav === "directory" || isSearchOpen);
 
   const handleDirectoryClick = () => {
-    if (activeNav === "route-analyzer" || activeNav === "nepal-aircraft") {
+    if (activeNav === "route-analyzer" || activeNav === "nepal-aircraft" || activeNav === "icao-phonetic") {
       router.push("/");
     } else if (onToggleSearch) {
       onToggleSearch();
@@ -61,6 +63,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const handleNepalAircraftClick = () => {
     if (activeNav !== "nepal-aircraft") {
       router.push("/nepal-aircraft");
+    }
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleIcaoPhoneticClick = () => {
+    if (activeNav !== "icao-phonetic") {
+      router.push("/icao-phonetic");
     }
     if (onClose) {
       onClose();
@@ -88,9 +99,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {/* User Profile Header Area */}
         <div className="p-4 pb-0 flex flex-col">
           <div className="flex items-center space-x-3">
-            {/* Left: Larger circular avatar with dynamic first letter */}
-            <div className="w-11 h-11 rounded-full bg-white/[0.08] border border-white/[0.12] text-[#FAFAFA] font-bold text-base flex items-center justify-center shrink-0 shadow-sm select-none">
-              {isAuthenticated ? userInitial : "G"}
+            {/* Left: Jet engine turbofan logo animation inside circular window */}
+            <div className="w-11 h-11 rounded-full bg-black border border-white/[0.15] flex items-center justify-center shrink-0 shadow-inner overflow-hidden select-none">
+              <SpinningFan
+                size={35}
+                color="#ffffff"
+                background="#000000"
+                duration={2.5}
+              />
             </div>
 
             {/* Adjacent: User name in larger bold text, email underneath as subtitle */}
@@ -117,47 +133,34 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
           {/* Navigation list with 4px gap between rows */}
           <div className="flex flex-col gap-1">
-            {/* 1. Flight Directory Nav Row (logos removed) */}
+            {/* 1. Flight Directory Nav Row */}
             <button
               type="button"
               suppressHydrationWarning
               onClick={handleDirectoryClick}
-              className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+              className={`group w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
                 isDirectoryActive
                   ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
                   : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
               }`}
             >
               <span className="leading-none">Flight Directory</span>
-              {/* Trailing badge */}
-              <span
-                suppressHydrationWarning
-                className={`rounded-full px-2 py-0.5 text-[11px] font-mono-avionics transition-all duration-150 ease-out ${
-                  flightCount > 0
-                    ? "text-[#4ADE80] bg-[rgba(34,197,94,0.18)] border border-[rgba(34,197,94,0.25)] font-bold"
-                    : "text-[#71717A] bg-white/[0.05] border border-white/[0.08]"
-                }`}
-              >
-                {flightCount}
-              </span>
+              <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-white opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out shrink-0" />
             </button>
 
-            {/* 2. Route Analyzer Nav Row (logos removed) */}
+            {/* 2. Route Analyzer Nav Row */}
             <button
               type="button"
               suppressHydrationWarning
               onClick={handleRouteAnalyzerClick}
-              className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+              className={`group w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
                 isRouteAnalyzerActive
                   ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
                   : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
               }`}
             >
               <span className="leading-none">Route Analyzer</span>
-              {/* Context Badge */}
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-mono tracking-wider text-[#108AEF] bg-[#108AEF]/10 border border-[#108AEF]/20 font-semibold uppercase">
-                Tool
-              </span>
+              <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-white opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out shrink-0" />
             </button>
 
             {/* 3. Nepal Aircraft Nav Row */}
@@ -165,17 +168,37 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               type="button"
               suppressHydrationWarning
               onClick={handleNepalAircraftClick}
-              className={`w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+              className={`group w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
                 isNepalAircraftActive
                   ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
                   : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
               }`}
             >
               <span className="leading-none">Nepal Aircraft</span>
-              {/* Context Badge */}
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-mono tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 font-semibold uppercase">
-                Fleet
-              </span>
+              <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-white opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out shrink-0" />
+            </button>
+          </div>
+
+          {/* Extras Section */}
+          <div className="text-[11px] font-bold tracking-[0.05em] uppercase text-neutral-200 mt-5 mb-3 select-none font-sans">
+            EXTRAS
+          </div>
+
+          {/* Extras list */}
+          <div className="flex flex-col gap-1">
+            {/* 1. ICAO Phonetic Alphabet Nav Row */}
+            <button
+              type="button"
+              suppressHydrationWarning
+              onClick={handleIcaoPhoneticClick}
+              className={`group w-full flex items-center justify-between py-2.5 px-3 rounded-xl text-sm transition-all duration-150 ease-out active:scale-[0.97] cursor-pointer ${
+                isIcaoPhoneticActive
+                  ? "bg-white/[0.10] text-[#FAFAFA] font-semibold border border-white/[0.08]"
+                  : "bg-transparent text-[#A1A1AA] hover:bg-white/[0.06] hover:text-[#FAFAFA] font-medium"
+              }`}
+            >
+              <span className="leading-none">ICAO Phonetic Alphabet</span>
+              <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-white opacity-0 -translate-x-1.5 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out shrink-0" />
             </button>
           </div>
         </div>

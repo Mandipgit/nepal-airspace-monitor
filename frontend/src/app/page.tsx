@@ -18,17 +18,56 @@ import { getUserFriendlyErrorMessage } from "@/lib/errors";
 import { List } from "lucide-react";
 import { Spinner } from "@heroui/react";
 
+const DAILY_AEROAPI_QUOTA_SECONDS = 210; // 3.5 minutes allowed per 24 hours
+const STORAGE_AEROAPI_REMAINING = "aerotrace_aeroapi_remaining_seconds";
+const STORAGE_AEROAPI_RESET = "aerotrace_aeroapi_reset_timestamp";
+
+function getInitialAeroApiQuota(): { remaining: number; resetTime: number } {
+  if (typeof window === "undefined") {
+    return { remaining: DAILY_AEROAPI_QUOTA_SECONDS, resetTime: Date.now() + 86400000 };
+  }
+  const now = Date.now();
+  const savedReset = localStorage.getItem(STORAGE_AEROAPI_RESET);
+  const savedRemaining = localStorage.getItem(STORAGE_AEROAPI_REMAINING);
+
+  let resetTime = savedReset ? parseInt(savedReset, 10) : 0;
+  if (!resetTime || isNaN(resetTime) || now >= resetTime) {
+    resetTime = now + 24 * 60 * 60 * 1000;
+    localStorage.setItem(STORAGE_AEROAPI_RESET, resetTime.toString());
+    localStorage.setItem(STORAGE_AEROAPI_REMAINING, DAILY_AEROAPI_QUOTA_SECONDS.toString());
+    return { remaining: DAILY_AEROAPI_QUOTA_SECONDS, resetTime };
+  }
+
+  const remaining = savedRemaining !== null ? parseInt(savedRemaining, 10) : DAILY_AEROAPI_QUOTA_SECONDS;
+  return { remaining: isNaN(remaining) ? DAILY_AEROAPI_QUOTA_SECONDS : remaining, resetTime };
+}
+
+function formatResetCountdown(targetTimestamp: number): string {
+  const diffMs = Math.max(0, targetTimestamp - Date.now());
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+  return `${mins}m ${secs}s`;
+}
+
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (typeof window === "undefined") return;
+    const hasVisited = localStorage.getItem("aerotrace_has_visited") === "true";
+    // Only redirect to /login on genuine first visit if user is not authenticated
+    if (!isLoading && !isAuthenticated && !hasVisited) {
+      localStorage.setItem("aerotrace_has_visited", "true");
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
     return (
       <div className="fixed inset-0 bg-[#000000] z-50 flex flex-col items-center justify-center gap-3 select-none">
         <Spinner size="lg" className="w-9 h-9 border-[#108AEF] border-t-transparent animate-spin" />
@@ -45,10 +84,59 @@ export default function Home() {
 function DashboardView() {
   const { isAuthenticated } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
-  const [activeTileStyle, setActiveTileStyle] = useState<string>("dark");
-  const [syncViewport, setSyncViewport] = useState<boolean>(true);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("aerotrace_dark_mode");
+      if (saved !== null) return saved === "true";
+    }
+    return true;
+  });
+  const [activeTileStyle, setActiveTileStyle] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const savedDark = localStorage.getItem("aerotrace_dark_mode");
+      const savedStyle = localStorage.getItem("aerotrace_tile_style");
+      if (savedDark === "false" && (!savedStyle || savedStyle === "dark")) return "bright";
+      if (savedStyle) return savedStyle;
+      if (savedDark === "false") return "bright";
+    }
+    return "dark";
+  });
+  const [syncViewport, setSyncViewport] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("aerotrace_sync_viewport");
+      if (saved !== null) return saved === "true";
+    }
+    return true;
+  });
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Persist dashboard view states across page navigations and reloads
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_dark_mode", String(isDarkMode));
+    }
+  }, [isDarkMode]);
+
+  // Ensure root document strictly remains in dark mode so other pages are NEVER affected
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+      document.documentElement.removeAttribute("data-theme");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_tile_style", activeTileStyle);
+    }
+  }, [activeTileStyle]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_sync_viewport", String(syncViewport));
+    }
+  }, [syncViewport]);
 
   // Automatic App Drawer reveal when cursor touches the leftmost boundary of the entire screen
   // and smooth hide when mouse directs away into the map (> 275px)
@@ -71,7 +159,105 @@ function DashboardView() {
     lomax?: number;
   }>({});
 
-  const [nepalContextOnly, setNepalContextOnly] = useState<boolean>(true);
+  const [nepalContextOnly, setNepalContextOnly] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("aerotrace_nepal_context");
+      if (saved !== null) return saved === "true";
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_nepal_context", String(nepalContextOnly));
+    }
+  }, [nepalContextOnly]);
+
+  // FlightAware AeroAPI detailed mode management (3.5 min daily limit, strict mutual exclusion)
+  const [isDetailedMode, setIsDetailedMode] = useState<boolean>(false);
+  const [detailedRemainingSeconds, setDetailedRemainingSeconds] = useState<number>(() => {
+    return getInitialAeroApiQuota().remaining;
+  });
+  const [detailedResetTimestamp, setDetailedResetTimestamp] = useState<number>(() => {
+    return getInitialAeroApiQuota().resetTime;
+  });
+  const [detailedResetCountdown, setDetailedResetCountdown] = useState<string>("24h");
+
+  // Keep 24-hour reset countdown fresh and automatically restore quota when 24h cycle elapses
+  useEffect(() => {
+    const updateResetInfo = () => {
+      const now = Date.now();
+      if (now >= detailedResetTimestamp) {
+        const newReset = now + 24 * 60 * 60 * 1000;
+        setDetailedResetTimestamp(newReset);
+        setDetailedRemainingSeconds(DAILY_AEROAPI_QUOTA_SECONDS);
+        localStorage.setItem(STORAGE_AEROAPI_RESET, newReset.toString());
+        localStorage.setItem(STORAGE_AEROAPI_REMAINING, DAILY_AEROAPI_QUOTA_SECONDS.toString());
+        setDetailedResetCountdown("24h");
+      } else {
+        setDetailedResetCountdown(formatResetCountdown(detailedResetTimestamp));
+      }
+    };
+
+    updateResetInfo();
+    const interval = setInterval(updateResetInfo, 10000);
+    return () => clearInterval(interval);
+  }, [detailedResetTimestamp]);
+
+  // Second-by-second countdown while Detailed Mode is active; auto-reverts to OpenSky at 0
+  useEffect(() => {
+    if (!isDetailedMode) return;
+
+    const timer = setInterval(() => {
+      setDetailedRemainingSeconds((prev) => {
+        const next = prev - 1;
+        if (next <= 0) {
+          setIsDetailedMode(false);
+          localStorage.setItem(STORAGE_AEROAPI_REMAINING, "0");
+          return 0;
+        }
+        localStorage.setItem(STORAGE_AEROAPI_REMAINING, next.toString());
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isDetailedMode]);
+
+  // Turn off detailed mode when unmounting (e.g. navigating to other pages) to prevent background calls
+  useEffect(() => {
+    return () => {
+      setIsDetailedMode(false);
+    };
+  }, []);
+
+  const isDetailedQuotaExhausted = detailedRemainingSeconds <= 0;
+
+  // Track if overall monthly AeroAPI quota is exhausted
+  const [isAeroApiMonthlyExhausted, setIsAeroApiMonthlyExhausted] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("aerotrace_aeroapi_monthly_exceeded") === "true";
+    }
+    return false;
+  });
+  const [aeroApiNotice, setAeroApiNotice] = useState<string | null>(null);
+
+  const handleToggleDetailedMode = useCallback(() => {
+    if (isDetailedMode) {
+      setIsDetailedMode(false);
+      return;
+    }
+    if (isAeroApiMonthlyExhausted) {
+      setAeroApiNotice(
+        "FlightAware AeroAPI monthly usage quota has been exhausted. Live radar will remain on OpenSky Network."
+      );
+      return;
+    }
+    if (detailedRemainingSeconds <= 0) {
+      return;
+    }
+    setIsDetailedMode(true);
+  }, [isDetailedMode, isAeroApiMonthlyExhausted, detailedRemainingSeconds]);
 
   const {
     flights,
@@ -82,12 +268,33 @@ function DashboardView() {
     cacheAge,
     countdown,
     rateLimitRemaining,
+    providerStatus,
+    providerError,
     refetch,
   } = useLiveFlights({
     enriched: true,
     nepalContextOnly,
-    ...(syncViewport ? viewportBounds : {}),
+    provider: isDetailedMode ? "flightaware" : "opensky",
+    // When in detailed mode, use fixed Nepal full bounds as requested ("with the viewport that we have set (maximum zoomed out state of the map)")
+    ...(isDetailedMode
+      ? { lamin: 25.80, lomin: 79.80, lamax: 30.65, lomax: 88.50 }
+      : (syncViewport ? viewportBounds : {})),
   });
+
+  // Automatically catch and warn if backend signals AeroAPI monthly quota exhaustion
+  useEffect(() => {
+    if (providerStatus === "quota_exceeded") {
+      setIsAeroApiMonthlyExhausted(true);
+      setIsDetailedMode(false);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("aerotrace_aeroapi_monthly_exceeded", "true");
+      }
+      setAeroApiNotice(
+        providerError ||
+          "FlightAware AeroAPI monthly quota has been reached. Live radar automatically switched back to OpenSky Network."
+      );
+    }
+  }, [providerStatus, providerError]);
 
   // Automatically refetch live flights when user logs in
   useEffect(() => {
@@ -182,7 +389,12 @@ function DashboardView() {
   }, []);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans transition-colors duration-150 ease-out">
+    <div
+      data-theme={isDarkMode ? "dark" : "light"}
+      className={`flex flex-col h-screen w-screen overflow-hidden ${
+        isDarkMode ? "dark" : "light"
+      } bg-[var(--page-bg)] text-[var(--text-primary)] relative font-sans transition-colors duration-150 ease-out`}
+    >
       {/* 1. Dedicated Top Navigation Bar Inspired by Reference Screenshot */}
       <TopBar
         onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
@@ -335,15 +547,36 @@ function DashboardView() {
           <BottomStatsSlider
             totalFlights={stats.total}
             nepalFlights={stats.nepalRegistered}
-            countdown={countdown}
             refreshing={refreshing}
             onRefresh={refetch}
             cacheAge={cacheAge}
             rateLimitRemaining={rateLimitRemaining}
+            isDetailedMode={isDetailedMode}
+            onToggleDetailedMode={handleToggleDetailedMode}
+            detailedRemainingSeconds={detailedRemainingSeconds}
+            detailedResetCountdown={detailedResetCountdown}
+            isDetailedQuotaExhausted={isDetailedQuotaExhausted}
+            isMonthlyQuotaExhausted={isAeroApiMonthlyExhausted}
+            monthlyQuotaMessage={aeroApiNotice}
           />
 
+          {/* AeroAPI Monthly Quota Exceeded Notice Banner */}
+          {aeroApiNotice && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-[#160b0b]/95 px-4 py-2 rounded-full text-xs text-rose-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-rose-500/40">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              <span className="font-medium">{aeroApiNotice}</span>
+              <button
+                onClick={() => setAeroApiNotice(null)}
+                className="px-2 py-0.5 rounded bg-rose-950/80 hover:bg-rose-900 text-rose-200 text-[10px] font-semibold transition-colors cursor-pointer ml-1"
+                aria-label="Dismiss notice"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Connection Notice Pill */}
-          {error && (
+          {error && !aeroApiNotice && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-black/95 px-3.5 py-1.5 rounded-full text-xs text-amber-300 flex items-center space-x-2.5 shadow-2xl backdrop-blur-xl border border-amber-500/30">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
               <span>Connection notice: {getUserFriendlyErrorMessage(error, "live_flights")}</span>

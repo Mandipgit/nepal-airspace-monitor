@@ -14,6 +14,7 @@ import {
   Link,
   Separator,
 } from "@heroui/react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
 import { GoogleLogo } from "@/components/auth/GoogleLogo";
@@ -28,6 +29,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   onSuccess,
   onSwitchToRegister,
 }) => {
+  const router = useRouter();
   const { login, authError, clearAuthError } = useAuth();
 
   const [email, setEmail] = useState<string>("");
@@ -298,6 +300,26 @@ export const LoginForm: React.FC<LoginFormProps> = ({
                 <span>Continue with Google</span>
               </>
             )}
+          </Button>
+
+          {/* Continue as Guest Button */}
+          <Button
+            type="button"
+            onPress={() => {
+              if (typeof window !== "undefined") {
+                localStorage.setItem("aerotrace_has_visited", "true");
+              }
+              if (onSuccess) {
+                onSuccess();
+              } else {
+                router.push("/");
+              }
+            }}
+            variant="ghost"
+            fullWidth
+            className="flex items-center justify-center py-2 px-4 rounded-xl font-medium text-xs text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer"
+          >
+            Continue as Guest
           </Button>
         </Form>
       </Card.Content>

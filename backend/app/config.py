@@ -45,8 +45,10 @@ class Settings(BaseModel):
     OPENSKY_BASE_URL: str = os.getenv("OPENSKY_BASE_URL", "https://opensky-network.org/api")
     OPENSKY_CACHE_TTL_SECONDS: int = int(os.getenv("OPENSKY_CACHE_TTL_SECONDS", "10"))
     
-    # FlightAware AeroAPI (Reserved for Phase 9)
+    # FlightAware AeroAPI
     FLIGHTAWARE_API_KEY: str = os.getenv("FLIGHTAWARE_API_KEY", "")
+    FLIGHTAWARE_BASE_URL: str = os.getenv("FLIGHTAWARE_BASE_URL", "https://aeroapi.flightaware.com/aeroapi")
+    FLIGHTAWARE_CACHE_TTL_SECONDS: int = int(os.getenv("FLIGHTAWARE_CACHE_TTL_SECONDS", "5"))
     
     # ADS-B DB Aircraft Metadata API
     ADSBDB_AIRCRAFT_API_URL: str = os.getenv("ADSBDB_AIRCRAFT_API_URL", "https://api.adsbdb.com/v0/aircraft")

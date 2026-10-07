@@ -135,12 +135,66 @@ const DEFAULT_FALLBACK_FLEET: AircraftSpecification[] = [
     loadFleet();
   }, [loadFleet]);
 
-  // Route Configuration State
-  const [departure, setDeparture] = useState<AirportSummary | null>(null);
-  const [destination, setDestination] = useState<AirportSummary | null>(null);
-  const [windKmh, setWindKmh] = useState<number>(0);
-  const [descentDistanceKm, setDescentDistanceKm] = useState<number>(50);
+  // Route Configuration State (persisted across tab/navigation switches)
+  const [departure, setDeparture] = useState<AirportSummary | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const s = sessionStorage.getItem("aerotrace_route_dep");
+        if (s) return JSON.parse(s);
+      } catch {}
+    }
+    return null;
+  });
+  const [destination, setDestination] = useState<AirportSummary | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const s = sessionStorage.getItem("aerotrace_route_dest");
+        if (s) return JSON.parse(s);
+      } catch {}
+    }
+    return null;
+  });
+  const [windKmh, setWindKmh] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const s = sessionStorage.getItem("aerotrace_route_wind");
+      if (s) return Number(s) || 0;
+    }
+    return 0;
+  });
+  const [descentDistanceKm, setDescentDistanceKm] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const s = sessionStorage.getItem("aerotrace_route_descent");
+      if (s) return Number(s) || 50;
+    }
+    return 50;
+  });
   const [selectedAircraft, setSelectedAircraft] = useState<AircraftSpecification[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (departure) sessionStorage.setItem("aerotrace_route_dep", JSON.stringify(departure));
+      else sessionStorage.removeItem("aerotrace_route_dep");
+    }
+  }, [departure]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (destination) sessionStorage.setItem("aerotrace_route_dest", JSON.stringify(destination));
+      else sessionStorage.removeItem("aerotrace_route_dest");
+    }
+  }, [destination]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("aerotrace_route_wind", String(windKmh));
+    }
+  }, [windKmh]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("aerotrace_route_descent", String(descentDistanceKm));
+    }
+  }, [descentDistanceKm]);
 
   // Route Info State (fetched from GET /api/v1/route-analyzer/route)
   const [routeInfo, setRouteInfo] = useState<RouteInformationResponse | null>(null);

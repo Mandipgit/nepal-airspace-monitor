@@ -6,7 +6,7 @@ import { fetchLiveFlights, FetchLiveFlightsOptions } from "@/lib/api";
 import { getUserFriendlyErrorMessage } from "@/lib/errors";
 
 const DEFAULT_POLL_INTERVAL = parseInt(
-  process.env.NEXT_PUBLIC_FLIGHT_POLL_INTERVAL_MS || "10000",
+  process.env.NEXT_PUBLIC_FLIGHT_POLL_INTERVAL_MS || "2000",
   10
 );
 
@@ -19,7 +19,7 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [countdown, setCountdown] = useState<number>(Math.round(DEFAULT_POLL_INTERVAL / 1000));
 
-  const pollIntervalMs = DEFAULT_POLL_INTERVAL;
+  const pollIntervalMs = options.provider === "flightaware" ? 5000 : DEFAULT_POLL_INTERVAL;
   const isMountedRef = useRef<boolean>(true);
   const lastFetchTimeRef = useRef<number>(0);
   const activeRequestSeqRef = useRef<number>(0);
@@ -101,6 +101,7 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
       options.nepalContextOnly,
       options.filterGround,
       options.source,
+      options.provider,
       options.enriched,
       options.lamin,
       options.lomin,
@@ -151,6 +152,8 @@ export function useLiveFlights(options: FetchLiveFlightsOptions = {}) {
     cacheAge: data?.cache_age_seconds ?? null,
     rateLimitRemaining: data?.rate_limit_remaining ?? null,
     countdown,
+    providerStatus: data?.provider_status ?? null,
+    providerError: data?.provider_error ?? null,
     stats: {
       total: data?.total ?? flights.length,
       airborne: flights.filter((f) => !f.position.on_ground).length,

@@ -20,7 +20,15 @@ export const AeroTraceAuthLanding: React.FC<AeroTraceAuthLandingProps> = ({
   const { isAuthenticated, isLoading } = useAuth();
 
   const [authMode, setAuthMode] = useState<"login" | "register">(initialMode);
-  const [stage, setStage] = useState<Stage>("animating");
+  const [stage, setStage] = useState<Stage>(() => {
+    if (typeof window !== "undefined") {
+      const alreadyPlayed = sessionStorage.getItem("aerotrace_login_anim_done");
+      if (alreadyPlayed === "true") {
+        return "settled";
+      }
+    }
+    return "animating";
+  });
   const [offsetY, setOffsetY] = useState<number>(240);
   const [initialScale, setInitialScale] = useState<number>(1.16);
 
@@ -87,6 +95,10 @@ export const AeroTraceAuthLanding: React.FC<AeroTraceAuthLandingProps> = ({
 
   // When the logo animation finishes:
   const handleLogoAnimationComplete = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("aerotrace_login_anim_done", "true");
+      localStorage.setItem("aerotrace_has_visited", "true");
+    }
     setStage((prev) => {
       if (prev === "animating") {
         return "logo-moving";
@@ -124,6 +136,9 @@ export const AeroTraceAuthLanding: React.FC<AeroTraceAuthLandingProps> = ({
   }, []);
 
   const handleAuthSuccess = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aerotrace_has_visited", "true");
+    }
     router.push("/");
   }, [router]);
 

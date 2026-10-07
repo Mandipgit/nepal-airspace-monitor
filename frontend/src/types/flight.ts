@@ -151,6 +151,8 @@ export interface FlightCollectionResponse {
   cached: boolean;
   cache_age_seconds: number | null;
   rate_limit_remaining?: number | null;
+  provider_status?: "ok" | "quota_exceeded" | "rate_limited" | "error" | string | null;
+  provider_error?: string | null;
   flights: NormalizedFlight[];
 }
 

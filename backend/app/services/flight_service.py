@@ -4,10 +4,9 @@ Coordinates live providers and in-memory TTL caching to provide stable, normaliz
 """
 
 import time
-import math
 import asyncio
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 
 
@@ -21,6 +20,7 @@ from app.models.flight import (
 )
 from app.services.providers.base import BaseFlightProvider
 from app.services.providers.opensky import OpenSkyProvider
+from app.services.providers.flightaware import FlightAwareProvider
 from app.services.enrichment import enrichment_service, get_airport_coords
 from app.services.nepal_airspace import should_display_flight_in_nepal_context
 
@@ -31,7 +31,8 @@ class FlightService:
 
     def __init__(self, provider: Optional[BaseFlightProvider] = None):
         self.settings = get_settings()
-        self.provider = provider or OpenSkyProvider()
+        self.opensky_provider = provider or OpenSkyProvider()
+        self.flightaware_provider = FlightAwareProvider()
         # Track persistence buffer: icao24 -> (NormalizedFlight, last_seen_monotonic)
         # Keeps aircraft alive for 75 seconds during mountain terrain shadow/fade, matching tar1090
         self._track_store: Dict[str, Tuple[NormalizedFlight, float]] = {}
@@ -52,6 +53,7 @@ class FlightService:
         nepal_only: bool = False,
         nepal_context_only: bool = True,
         source: Optional[str] = None,
+        provider: Optional[str] = None,
         enriched: bool = True,
         force_refresh: bool = False
     ) -> FlightCollectionResponse:
@@ -81,12 +83,35 @@ class FlightService:
             (lomax is None or lomax <= 91.5)
         )
 
-        if is_sub_regional:
+        use_flightaware = (provider == "flightaware")
+        active_provider = self.flightaware_provider if use_flightaware else self.opensky_provider
+        provider_status = "ok"
+        provider_error = None
+
+        if use_flightaware and self.flightaware_provider.is_monthly_quota_exceeded:
+            provider_status = "quota_exceeded"
+            provider_error = (
+                self.flightaware_provider.quota_error_message or
+                "FlightAware AeroAPI monthly usage quota has been exhausted. Switched to OpenSky Network."
+            )
+            logger.info("FlightAware monthly quota already marked exhausted; using OpenSky fallback.")
+            active_provider = self.opensky_provider
+            use_flightaware = False
+
+        if use_flightaware:
+            query_lamin = reg_lamin
+            query_lomin = reg_lomin
+            query_lamax = reg_lamax
+            query_lomax = reg_lomax
+            cache_key = f"live_flights_flightaware_{query_lamin:.2f}_{query_lomin:.2f}_{query_lamax:.2f}_{query_lomax:.2f}"
+            ttl = float(self.settings.FLIGHTAWARE_CACHE_TTL_SECONDS)
+        elif is_sub_regional:
             cache_key = "live_flights_nepal_regional"
             query_lamin = min(reg_lamin, 24.20)
             query_lomin = min(reg_lomin, 78.00)
             query_lamax = max(reg_lamax, 32.20)
             query_lomax = max(reg_lomax, 90.00)
+            ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
         else:
             b_lamin = lamin if lamin is not None else reg_lamin
             b_lomin = lomin if lomin is not None else reg_lomin
@@ -95,6 +120,7 @@ class FlightService:
             cache_key = f"live_flights_{b_lamin:.2f}_{b_lomin:.2f}_{b_lamax:.2f}_{b_lomax:.2f}"
             query_lamin, query_lomin = b_lamin, b_lomin
             query_lamax, query_lomax = b_lamax, b_lomax
+            ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
 
         flights: List[NormalizedFlight] = []
         is_cached = False
@@ -110,13 +136,36 @@ class FlightService:
 
         # Cache miss or forced refresh: query external provider
         if not is_cached:
-            logger.info(f"Cache miss for {cache_key}. Fetching live flights from provider '{self.provider.name}'...")
-            raw_flights = await self.provider.get_live_flights(
-                lamin=query_lamin,
-                lomin=query_lomin,
-                lamax=query_lamax,
-                lomax=query_lomax
-            )
+            logger.info(f"Cache miss for {cache_key}. Fetching live flights from provider '{active_provider.name}'...")
+            try:
+                raw_flights = await active_provider.get_live_flights(
+                    lamin=query_lamin,
+                    lomin=query_lomin,
+                    lamax=query_lamax,
+                    lomax=query_lomax
+                )
+            except Exception as e:
+                logger.error(f"Error fetching from provider {active_provider.name}: {e}")
+                if use_flightaware:
+                    if self.flightaware_provider.is_monthly_quota_exceeded or "quota" in str(e).lower() or "limit" in str(e).lower():
+                        provider_status = "quota_exceeded"
+                        provider_error = (
+                            self.flightaware_provider.quota_error_message or
+                            "FlightAware AeroAPI monthly usage quota has been exhausted. "
+                            "Live radar has automatically switched to OpenSky Network."
+                        )
+                    else:
+                        provider_status = "error"
+                        provider_error = f"FlightAware query failed: {str(e)}"
+                    logger.info("Falling back to OpenSkyProvider due to FlightAware error...")
+                    raw_flights = await self.opensky_provider.get_live_flights(
+                        lamin=query_lamin,
+                        lomin=query_lomin,
+                        lamax=query_lamax,
+                        lomax=query_lomax
+                    )
+                else:
+                    raw_flights = []
 
             # Fast in-memory enrichment: nearest airport, Nepal fleet identity & specs, cached routes
             if enriched:
@@ -223,7 +272,6 @@ class FlightService:
                     self._trajectory_last_seen.pop(ic, None)
 
             # Update cache with full persistent regional results
-            ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
             await flight_cache.set(cache_key, flights, ttl_seconds=ttl)
 
 
@@ -264,7 +312,9 @@ class FlightService:
             timestamp=datetime.now(timezone.utc),
             cached=is_cached,
             cache_age_seconds=round(cache_age, 1),
-            rate_limit_remaining=self.provider.last_rate_limit_remaining,
+            rate_limit_remaining=active_provider.last_rate_limit_remaining,
+            provider_status=provider_status,
+            provider_error=provider_error,
             flights=filtered_flights
         )
 
@@ -286,8 +336,12 @@ class FlightService:
                     if icao in self._track_store:
                         _, seen_mono = self._track_store[icao]
                         self._track_store[icao] = (f, seen_mono)
+                ttl = (
+                    float(self.settings.FLIGHTAWARE_CACHE_TTL_SECONDS)
+                    if cache_key.startswith("live_flights_flightaware")
+                    else float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
+                )
                 persistent_flights = [f for f, _ in self._track_store.values()]
-                ttl = float(self.settings.OPENSKY_CACHE_TTL_SECONDS)
                 await flight_cache.set(cache_key, persistent_flights, ttl_seconds=ttl)
             logger.debug(f"Background enrichment completed for {len(enriched_flights)} flights.")
         except Exception as e:

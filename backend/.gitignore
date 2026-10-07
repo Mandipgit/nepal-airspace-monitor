@@ -35,7 +35,7 @@ logs/
 *.sqlite
 *.sqlite3
 
-# IDE & Temporary Files
+# IDE, Scratch & Temporary Files
 .idea/
 .vscode/
 *.swp
@@ -44,5 +44,8 @@ logs/
 *.orig
 *.rej
 scratch_*
+*.scratch.*
 *_option*
+test_*.py
+!tests/**
 

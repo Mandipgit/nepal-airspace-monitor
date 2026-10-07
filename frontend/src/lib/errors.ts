@@ -17,6 +17,7 @@ export type ErrorContext =
   | "nepal_fleet"
   | "nepal_aircraft_detail"
   | "route_analyzer"
+  | "icao_phonetic"
   | "auth"
   | "general";
 

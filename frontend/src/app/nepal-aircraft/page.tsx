@@ -22,9 +22,31 @@ export default function NepalAircraftPage() {
   const [fleet, setFleet] = useState<NepalAircraft[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedOperator, setSelectedOperator] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("aerotrace_fleet_search") || "";
+    }
+    return "";
+  });
+  const [selectedOperator, setSelectedOperator] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("aerotrace_fleet_operator") || "all";
+    }
+    return "all";
+  });
   const [selectedAircraft, setSelectedAircraft] = useState<NepalAircraft | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("aerotrace_fleet_search", searchQuery);
+    }
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("aerotrace_fleet_operator", selectedOperator);
+    }
+  }, [selectedOperator]);
 
   // Load Nepal fleet from database via API
   const loadFleet = useCallback(async () => {
@@ -122,10 +144,10 @@ export default function NepalAircraftPage() {
                   size="sm"
                   variant="ghost"
                   onPress={loadFleet}
-                  isLoading={loading}
+                  isDisabled={loading}
                   className="text-xs text-neutral-300 hover:text-white hover:bg-white/5 border border-white/10"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1 ${loading ? "animate-spin" : ""}`} />
                   Refresh
                 </Button>
               </div>
@@ -335,7 +357,7 @@ export default function NepalAircraftPage() {
                             <td className="py-3.5 px-4 text-right">
                               <Button
                                 size="sm"
-                                variant="flat"
+                                variant="ghost"
                                 onPress={() => setSelectedAircraft(ac)}
                                 className="bg-white/[0.05] hover:bg-white/[0.12] text-xs font-semibold text-neutral-200 border border-white/[0.08]"
                               >
