@@ -31,6 +31,20 @@
 
 ## 📸 Screenshots & Visual Overview
 
+<div align="center">
+
+### 🛰️ Live Radar & Airspace Surveillance Dashboard
+
+<a href="https://github.com/user-attachments/assets/6cbe0b46-9164-48f1-a5dd-035e89ec9d3d" target="_blank">
+  <img src="https://github.com/user-attachments/assets/6cbe0b46-9164-48f1-a5dd-035e89ec9d3d" alt="AeroTrace Live Radar Dashboard" width="100%" style="border-radius: 12px; border: 1px solid #262626; box-shadow: 0 8px 30px rgba(0,0,0,0.5);" />
+</a>
+
+<p><em>Real-time vector radar visualizing commercial and regional aircraft transiting the Himalayan corridor with directional markers, heading vectors, and spatial breadcrumbs.</em></p>
+
+</div>
+
+<br />
+
 <table width="100%">
   <tr>
     <th width="50%" align="center">🛫 Flight Telemetry & Kinematics Dossier</th>
@@ -38,15 +52,15 @@
   </tr>
   <tr>
     <td align="center" valign="top">
-      <a href="./Screenshot%202026-10-05%20105913.png" target="_blank">
-        <img src="./Screenshot%202026-10-05%20105913.png" alt="Flight Telemetry & Kinematics Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="Screenshot 2026-10-05 105913.png" target="_blank">
+        <img src="Screenshot 2026-10-05 105913.png" alt="Flight Telemetry & Kinematics Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
       <p align="center"><sub><em>Real-time telemetry drawer displaying live barometric altitude, groundspeed, track heading, transponder surveillance, and CAAN aircraft specifications.</em></sub></p>
     </td>
     <td align="center" valign="top">
-      <a href="./Screenshot%202026-10-07%20225641.png" target="_blank">
-        <img src="./Screenshot%202026-10-07%20225641.png" alt="Route Aircraft Suitability Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="Screenshot 2026-10-07 225641.png" target="_blank">
+        <img src="Screenshot 2026-10-07 225641.png" alt="Route Aircraft Suitability Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
       <p align="center"><sub><em>Aeronautical engineering comparison evaluating TOFL, LFL, headwind components, and route viability between Nepal aerodromes.</em></sub></p>
@@ -58,15 +72,15 @@
   </tr>
   <tr>
     <td align="center" valign="top">
-      <a href="./Screenshot%202026-10-07%20225855.png" target="_blank">
-        <img src="./Screenshot%202026-10-07%20225855.png" alt="Nepal Civil Aircraft Fleet Directory" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="Screenshot 2026-10-07 225855.png" target="_blank">
+        <img src="Screenshot 2026-10-07 225855.png" alt="Nepal Civil Aircraft Fleet Directory" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
       <p align="center"><sub><em>Comprehensive 9N- registered fleet catalog indexed with airline operators, ICAO models, manufacturers, serial numbers, and passenger capacities.</em></sub></p>
     </td>
     <td align="center" valign="top">
-      <a href="./Screenshot%202026-10-07%20233326.png" target="_blank">
-        <img src="./Screenshot%202026-10-07%20233326.png" alt="ICAO Phonetic Alphabet Guide" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="Screenshot 2026-10-07 233326.png" target="_blank">
+        <img src="Screenshot 2026-10-07 233326.png" alt="ICAO Phonetic Alphabet Guide" width="100%" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
       <p align="center"><sub><em>Interactive international aviation phonetic alphabet reference with standardized pronunciation keys and Morse code transmitter signals.</em></sub></p>
@@ -77,8 +91,8 @@
   </tr>
   <tr>
     <td colspan="2" align="center" valign="top">
-      <a href="./Screenshot%202026-10-07%20230134.png" target="_blank">
-        <img src="./Screenshot%202026-10-07%20230134.png" alt="Aerodrome Intelligence & Airport Dossier" width="380" style="border-radius: 8px; border: 1px solid #262626;" />
+      <a href="Screenshot 2026-10-07 230134.png" target="_blank">
+        <img src="Screenshot 2026-10-07 230134.png" alt="Aerodrome Intelligence & Airport Dossier" width="380" style="border-radius: 8px; border: 1px solid #262626;" />
       </a>
       <br />
       <p align="center"><sub><em>Detailed aerodrome specifications (Tenzing-Hillary Lukla VNLK - 9,380 ft MSL), runway infrastructure thresholds, classifications, and coordinates.</em></sub></p>
