@@ -13,7 +13,32 @@ import {
 } from "@/types/routeAnalyzer";
 import { parseApiResponseError } from "@/lib/errors";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+/**
+ * Normalizes the API base URL to ensure the canonical '/api/v1' namespace:
+ * - Trims whitespace and trailing slashes
+ * - Automatically ensures '/api/v1' is present as the terminal path
+ * - Prevents duplicated '/api/v1/api/v1' or missing '/api/v1'
+ */
+export function normalizeApiBaseUrl(rawUrl?: string): string {
+  const url = (rawUrl || "").trim();
+  if (!url) {
+    return "http://localhost:8000/api/v1";
+  }
+  // Strip trailing slashes
+  const stripped = url.replace(/\/+$/, "");
+  // If already ends with /api/v1, return it
+  if (stripped.endsWith("/api/v1")) {
+    return stripped;
+  }
+  // If ends with /api, append /v1
+  if (stripped.endsWith("/api")) {
+    return `${stripped}/v1`;
+  }
+  // If base url provided without /api/v1 (e.g. https://aerotrace-backend.onrender.com), append /api/v1
+  return `${stripped}/api/v1`;
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
 
 // In-memory cache for static route distance/runway lookups (keyed by DEP:DEST)
 const routeInfoCache = new Map<string, RouteInformationResponse>();

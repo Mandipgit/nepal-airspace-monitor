@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServerClient } from "@/lib/supabaseServer";
+import { normalizeApiBaseUrl } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -58,8 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 4. Verify Google session with FastAPI backend and issue AeroTrace JWT tokens
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+    const apiBaseUrl = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
 
     const backendRes = await fetch(`${apiBaseUrl}/auth/google/verify`, {
       method: "POST",

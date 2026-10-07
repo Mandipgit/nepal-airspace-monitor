@@ -87,6 +87,26 @@ class AuthService:
 
         return await self._build_token_response(user_record)
 
+    async def guest_session(self) -> TokenResponseSchema:
+        """Create a temporary guest user session and issue valid application session tokens."""
+        import uuid
+        guest_id = f"guest_{uuid.uuid4().hex[:12]}"
+        guest_email = f"{guest_id}@aerotrace.local"
+        now_iso = datetime.now(timezone.utc).isoformat()
+        user_record = {
+            "id": guest_id,
+            "email": guest_email,
+            "password_hash": "",
+            "first_name": "Guest",
+            "last_name": "User",
+            "is_active": True,
+            "created_at": now_iso,
+            "updated_at": now_iso
+        }
+        self.repo._in_memory_users[guest_id] = user_record
+        self.repo._in_memory_by_email[guest_email] = guest_id
+        return await self._build_token_response(user_record)
+
     async def refresh(self, raw_refresh_token: str) -> TokenResponseSchema:
         """Validate an active refresh token and issue a new access token."""
         token_hash = hash_token(raw_refresh_token.strip())

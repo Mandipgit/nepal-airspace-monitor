@@ -66,8 +66,21 @@ async def login(req: UserLoginRequest):
     Returns a JWT access token and session refresh token upon success.
     """
     return await auth_service.login(req)
-
-
+ 
+ 
+@router.post(
+    "/guest",
+    response_model=TokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Create temporary guest session"
+)
+async def guest_login():
+    """
+    Issue guest session access and refresh tokens.
+    """
+    return await auth_service.guest_session()
+ 
+ 
 @router.get(
     "/me",
     response_model=UserResponseSchema,

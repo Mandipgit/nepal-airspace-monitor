@@ -82,7 +82,7 @@ class FlightsAPITestCase(unittest.TestCase):
         flight_service.provider = self.mock_provider
         self.client = TestClient(app)
         # Obtain valid authentication session
-        reg_res = self.client.post("/api/auth/register", json={
+        reg_res = self.client.post("/api/v1/auth/register", json={
             "first_name": "Flight",
             "last_name": "Tester",
             "email": "flight_tester@example.com",
@@ -91,7 +91,7 @@ class FlightsAPITestCase(unittest.TestCase):
         if reg_res.status_code == 201:
             self.token = reg_res.json()["access_token"]
         else:
-            login_res = self.client.post("/api/auth/login", json={
+            login_res = self.client.post("/api/v1/auth/login", json={
                 "email": "flight_tester@example.com",
                 "password": "Password123!"
             })

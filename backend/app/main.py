@@ -57,11 +57,8 @@ def create_app() -> FastAPI:
     # Routers
     # Direct /health for container/load-balancer liveness checks
     app.include_router(health_router)
-    # Versioned API routes under /api/v1
+    # Canonical versioned API routes under /api/v1
     app.include_router(api_v1_router, prefix="/api/v1")
-    # Direct /api/auth routes for frontend specification compatibility
-    from app.api.v1.auth import router as auth_router
-    app.include_router(auth_router, prefix="/api")
     
     return app
 

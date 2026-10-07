@@ -11,8 +11,9 @@ import {
   User,
 } from "@/types/auth";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1";
+import { normalizeApiBaseUrl } from "@/lib/api";
+
+const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL);
 
 import { resolveUserFacingMessage } from "@/lib/errors";
 
@@ -250,5 +251,27 @@ export async function logoutApi(token?: string | null, refreshToken?: string | n
     // Non-blocking logout network error
     console.warn("Server logout notification failed:", err);
   }
+}
+
+/**
+ * Create a guest session without registration.
+ * Calls POST /api/v1/auth/guest
+ */
+export async function guestLoginApi(): Promise<TokenResponse> {
+  const url = `${API_BASE_URL}/auth/guest`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const errorMsg = await parseErrorResponse(res);
+    throw new Error(errorMsg);
+  }
+
+  return res.json();
 }
 

@@ -14,7 +14,7 @@ class AirportsAPITestCase(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
         # Obtain valid authentication session
-        reg_res = self.client.post("/api/auth/register", json={
+        reg_res = self.client.post("/api/v1/auth/register", json={
             "first_name": "Airport",
             "last_name": "Tester",
             "email": "airport_tester@example.com",
@@ -23,7 +23,7 @@ class AirportsAPITestCase(unittest.TestCase):
         if reg_res.status_code == 201:
             self.token = reg_res.json()["access_token"]
         else:
-            login_res = self.client.post("/api/auth/login", json={
+            login_res = self.client.post("/api/v1/auth/login", json={
                 "email": "airport_tester@example.com",
                 "password": "Password123!"
             })
