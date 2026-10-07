@@ -35,21 +35,25 @@
 
 ### 🛰️ Live Radar & Airspace Surveillance Dashboard
 <!-- PLACEHOLDER: Insert high-resolution screenshot of the main radar dashboard with active aircraft and telemetry cards -->
-<img src="airport_image.jpg" alt="AeroTrace Live Radar Dashboard" width="100%" style="border-radius: 12px; border: 1px solid #262626;" />
+<img src="<img width="1911" height="968" alt="Screenshot 2026-10-07 224808" src="https://github.com/user-attachments/assets/6cbe0b46-9164-48f1-a5dd-035e89ec9d3d" />
+" alt="AeroTrace Live Radar Dashboard" width="100%" style="border-radius: 12px; border: 1px solid #262626;" />
 <p><em>Real-time vector radar visualizing commercial and regional aircraft transiting the Himalayan corridor with directional markers, heading vectors, and spatial breadcrumbs.</em></p>
 
 <br />
 
 | 🛫 Flight Telemetry Dossier | ⚖️ Route Aircraft Analyzer |
 | :---: | :---: |
-| <!-- PLACEHOLDER: Insert screenshot of the detailed aircraft drawer / specs card --> <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Flight+Details+Dossier+Placeholder" alt="Flight Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> | <!-- PLACEHOLDER: Insert screenshot of Route Analyzer comparison table & map --> <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Route+Aircraft+Analyzer+Placeholder" alt="Route Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> |
+| <!-- PLACEHOLDER: Insert screenshot of the detailed aircraft drawer / specs card --> <img src="https://github.com/user-attachments/assets/9ee3680c-b74c-4af8-b5e1-5f8f76491699" width="1914" height="959" alt="image" />
+" alt="Flight Dossier" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> | <!-- PLACEHOLDER: Insert screenshot of Route Analyzer comparison table & map --> <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Route+Aircraft+Analyzer+Placeholder" alt="Route Analyzer" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> |
 | *Real-time telemetry, altitude graphs, groundspeed, and CAAN aircraft specification integration.* | *Mathematical suitability analysis evaluating TOFL, LFL, headwinds, and route viability.* |
 
 <br />
 
 | 🇳🇵 Nepal Civil Fleet Catalog | 🏔️ Runway & Airport Encyclopedia |
 | :---: | :---: |
-| <!-- PLACEHOLDER: Insert screenshot of the Nepal registered fleet table/search --> <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Nepal+Civil+Fleet+Directory+Placeholder" alt="Nepal Fleet Directory" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> | <!-- PLACEHOLDER: Insert screenshot of airport runways and physical coordinates --> <img src="https://via.placeholder.com/600x380/0a0a0a/108aef?text=Airport+Runways+Catalog+Placeholder" alt="Airport Runways Catalog" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> |
+| <!-- PLACEHOLDER: Insert screenshot of the Nepal registered fleet table/search --> <img src="https://github.com/user-attachments/assets/e397b6b1-d5c1-4c7a-b13c-a5b01edf3a57" width="1886" height="966" alt="image"  />
+" alt="Nepal Fleet Directory" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> | <!-- PLACEHOLDER: Insert screenshot of airport runways and physical coordinates --> <img src="https://github.com/user-attachments/assets/93250ed4-2f92-40f1-813e-85d031795097" width="413" height="908" alt="image"  />
+" alt="Airport Runways Catalog" width="100%" style="border-radius: 8px; border: 1px solid #262626;" /> |
 | *Comprehensive 9N- registered fleet catalog indexed with operators, models, and serials.* | *Runway threshold headings, lengths, surface types, and elevations for all Nepal aerodromes.* |
 
 </div>
