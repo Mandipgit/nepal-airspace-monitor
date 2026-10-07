@@ -6,7 +6,8 @@
 
   **A high-precision, provider-independent real-time aviation intelligence platform engineered for the Kathmandu Flight Information Region (VNKT FIR) and Himalayan flight corridors.**
 
-  [![Live Website](<img width="1911" height="968" alt="image" src="https://github.com/user-attachments/assets/412bb349-225c-425b-9fb7-86411996abe0" />
+  [![Live Website](<img width="1911" height="968" alt="image" src="https://github.com/user-attachments/assets/3b449628-7e84-4f3a-8f8e-6f1d243e5c20" />
+" />
 )](https://aerotrace.live)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
   [![Next.js](https://img.shields.io/badge/Next.js-15%20(React%2019)-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
