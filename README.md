@@ -2,7 +2,7 @@
 
   <img src="project_logo.jpg" alt="AeroTrace Logo" width="180" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);" />
 
-  # ✈️ AeroTrace: Nepal Airspace Monitor & Flight Tracker
+  #   AeroTrace: Nepal Airspace Monitor & Flight Tracker
 
   **A high-precision, provider-independent real-time aviation intelligence platform engineered for the Kathmandu Flight Information Region (VNKT FIR) and Himalayan flight corridors.**
 
