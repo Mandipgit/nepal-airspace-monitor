@@ -1,7 +1,8 @@
 <div align="center">
 
   <img src="project_logo.jpg" alt="AeroTrace Logo" width="180" style="border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);" />
-  #[aerotrace.live](https://aerotrace.live)
+  <br>
+  aerotrace.live
 
   # ✈️ AeroTrace: Nepal Airspace Monitor & Flight Tracker
 
